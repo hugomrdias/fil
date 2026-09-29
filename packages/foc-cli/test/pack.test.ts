@@ -5,7 +5,12 @@ import { mkdir, open, readFile, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { CarIndexer } from '@ipld/car'
-import { extractCar, listEntries, packDirectory } from '../src/storage/pack.ts'
+import {
+  extractCar,
+  listEntries,
+  packDirectory,
+  READ_WINDOW,
+} from '../src/storage/pack.ts'
 import { tempDir } from './helpers.ts'
 
 /** Create a small site with nested assets, a dotfile, and an empty dir. */
@@ -114,4 +119,15 @@ test('extractCar rejects a block that does not match its CID', async () => {
   await assert.rejects(extractCar(car, join(root, 'out')), {
     code: 'INTEGRITY_ERROR',
   })
+})
+
+test('extractCar restores files larger than one read window', async () => {
+  const root = await tempDir()
+  const dir = join(root, 'large')
+  await mkdir(dir)
+  const bytes = randomBytes(READ_WINDOW * 2 + 12_345)
+  await writeFile(join(dir, 'blob.bin'), bytes)
+  await packDirectory(dir, join(root, 'large.car'))
+  await extractCar(join(root, 'large.car'), join(root, 'out'))
+  assert.ok(bytes.equals(await readFile(join(root, 'out', 'blob.bin'))))
 })

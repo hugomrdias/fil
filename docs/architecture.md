@@ -197,6 +197,8 @@ The lock is a compare-and-swap `UPDATE` on `(execution_status, pid)`. A `running
 
 Folders are packed with `ipfs-unixfs-importer` using the IPIP-499 `unixfs-v1-2025` profile (CIDv1, raw leaves, 1 MiB chunks), the same profile Filecoin Pin uses. Entries are walked in sorted order, dotfiles are skipped, and symlinks are rejected, so packing the same folder twice gives the same root CID. Parent directories are derived from file paths; only empty directories are passed to the importer explicitly, because an explicit parent makes the importer emit an unreferenced empty-directory block. Blocks stream to disk under a placeholder root, then the CAR header is updated with the real root.
 
+Extraction reads each file in 8 MiB windows. `ipfs-unixfs-exporter` queues a file's blocks without waiting for the consumer, so a single `content()` call over a local CAR would buffer the whole file (about 1 GB of RSS for a 1 GB file, against 83 MB with windows).
+
 Extraction checks every block's bytes against its CID, as `ipfs-car unpack --verify` does. A CAR downloaded from `/piece` is already covered by the PieceCID check, but a CAR rebuilt by a gateway (such as Curio `/ipfs/…?format=car`) can only be trusted block by block.
 
 ### Comparison with ipfs-car

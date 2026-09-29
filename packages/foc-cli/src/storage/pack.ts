@@ -161,6 +161,32 @@ export async function packDirectory(
   return { rootCid, size, files: files.length }
 }
 
+/** Bytes read from a UnixFS file per exporter call during extraction. */
+export const READ_WINDOW = 8 * 1024 * 1024
+
+/**
+ * Read a UnixFS file in bounded windows. The exporter pushes a file's blocks
+ * into an unbounded queue without waiting for the consumer, so with a fast
+ * local CAR one `content()` call buffers the whole file. Reading
+ * `READ_WINDOW` bytes per call keeps memory bounded.
+ */
+async function* readWindows(
+  node: {
+    content: (options: {
+      offset: number
+      length: number
+    }) => AsyncIterable<Uint8Array>
+  },
+  size: number
+): AsyncGenerator<Uint8Array> {
+  for (let offset = 0; offset < size; offset += READ_WINDOW) {
+    yield* node.content({
+      offset,
+      length: Math.min(READ_WINDOW, size - offset),
+    })
+  }
+}
+
 /** Multihash code for identity CIDs, whose digest is the block itself. */
 const IDENTITY_CODE = 0x00
 
@@ -246,11 +272,14 @@ export async function extractCar(
           }
           await write(entry.cid as unknown as CID, resolve(dest, entry.name))
         }
-      } else if (
-        node.type === 'file' ||
-        node.type === 'raw' ||
-        node.type === 'identity'
-      ) {
+      } else if (node.type === 'file') {
+        await mkdir(dirname(dest), { recursive: true })
+        await pipeline(
+          Readable.from(readWindows(node, Number(node.unixfs.fileSize()))),
+          createWriteStream(dest)
+        )
+        files++
+      } else if (node.type === 'raw' || node.type === 'identity') {
         await mkdir(dirname(dest), { recursive: true })
         await pipeline(
           Readable.from(node.content() as AsyncIterable<Uint8Array>),
