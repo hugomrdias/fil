@@ -1,0 +1,9 @@
+packages:
+  - 'packages/*'
+
+allowBuilds:
+  '@biomejs/biome': true
+
+catalog:
+  '@types/node': 26.5.1
+  typescript: 7.0.2
