@@ -27,5 +27,16 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@filoz/synapse-core": "^0.10.0",
+    "@ipld/car": "^5.4.7",
+    "env-paths": "^4.0.0",
+    "incur": "^0.5.1",
+    "ipfs-unixfs-exporter": "^16.2.3",
+    "ipfs-unixfs-importer": "^16.1.5",
+    "iso-conf": "^0.4.1",
+    "multiformats": "^14.0.5",
+    "viem": "^2.56.9"
   }
 }
