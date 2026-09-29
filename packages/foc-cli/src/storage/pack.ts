@@ -1,0 +1,218 @@
+import { createReadStream, createWriteStream } from 'node:fs'
+import { lstat, mkdir, open, readdir, rename, rm } from 'node:fs/promises'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import { CarIndexedReader, CarWriter } from '@ipld/car'
+import { exporter } from 'ipfs-unixfs-exporter'
+import {
+  type DirectoryCandidate,
+  type FileCandidate,
+  type ImporterOptions,
+  importer,
+} from 'ipfs-unixfs-importer'
+import { CID } from 'multiformats/cid'
+import * as Digest from 'multiformats/hashes/digest'
+import { sha256 } from 'multiformats/hashes/sha2'
+import { ExitCode, FocError } from '../errors.ts'
+
+/**
+ * The single UnixFS profile used for every artifact: IPIP-499
+ * `unixfs-v1-2025` (CIDv1, raw leaves, 1 MiB chunks), matching Filecoin Pin.
+ *
+ * @see https://github.com/ipfs/specs/pull/499
+ */
+export const IMPORTER_OPTIONS: ImporterOptions = { profile: 'unixfs-v1-2025' }
+
+/** A file included in an artifact, relative to the packed directory. */
+export type PackEntry = { path: string; size: number }
+
+/**
+ * List the files and directories to pack, sorted for a deterministic DAG.
+ * Dotfiles and dot-directories are skipped. Symlinks are rejected rather than
+ * followed, so a publication never reaches outside the chosen directory.
+ */
+export async function listEntries(
+  root: string
+): Promise<{ files: PackEntry[]; directories: string[] }> {
+  const files: PackEntry[] = []
+  const directories: string[] = []
+  async function walk(dir: string): Promise<void> {
+    const names = (await readdir(dir)).sort()
+    for (const name of names) {
+      if (name.startsWith('.')) continue
+      const path = join(dir, name)
+      const stats = await lstat(path)
+      const rel = relative(root, path).split(sep).join('/')
+      if (stats.isSymbolicLink()) {
+        throw new FocError(
+          'UNSUPPORTED_ENTRY',
+          `Symlinks are not supported: ${rel}`,
+          { exitCode: ExitCode.invalidInput }
+        )
+      }
+      if (stats.isDirectory()) {
+        directories.push(rel)
+        await walk(path)
+      } else if (stats.isFile()) {
+        files.push({ path: rel, size: stats.size })
+      }
+    }
+  }
+  await walk(root)
+  return { files, directories }
+}
+
+/** Result of {@link packDirectory}. */
+export type PackResult = {
+  rootCid: CID
+  /** CAR size in bytes. */
+  size: number
+  files: number
+}
+
+/**
+ * A CID with the same encoded length as a UnixFS root, written into the CAR
+ * header until the real root is known.
+ */
+function placeholderCid(): CID {
+  return CID.create(1, 0x70, Digest.create(sha256.code, new Uint8Array(32)))
+}
+
+/**
+ * Pack a directory into a UnixFS CAR at `carPath`. Blocks stream to a
+ * temporary file under a placeholder root; the header is patched with the
+ * real root, then the file is renamed into place.
+ *
+ * @see https://github.com/filecoin-project/filecoin-pin/blob/master/documentation/behind-the-scenes-of-adding-a-file.md
+ */
+export async function packDirectory(
+  dir: string,
+  carPath: string
+): Promise<PackResult> {
+  const root = resolve(dir)
+  const name = basename(root)
+  const { files, directories } = await listEntries(root)
+  await mkdir(dirname(carPath), { recursive: true })
+  const tmpPath = `${carPath}.tmp`
+
+  const { writer, out } = CarWriter.create([placeholderCid()])
+  const written = pipeline(Readable.from(out), createWriteStream(tmpPath))
+  const seen = new Set<string>()
+  const blockstore = {
+    async put(cid: CID, bytes: Uint8Array) {
+      const key = cid.toString()
+      if (!seen.has(key)) {
+        seen.add(key)
+        await writer.put({ cid, bytes })
+      }
+      return cid
+    },
+  }
+
+  function* candidates(): Generator<FileCandidate | DirectoryCandidate> {
+    yield { path: name }
+    for (const directory of directories) {
+      yield { path: `${name}/${directory}` }
+    }
+    for (const file of files) {
+      yield {
+        path: `${name}/${file.path}`,
+        content: createReadStream(join(root, file.path)),
+      }
+    }
+  }
+
+  let rootCid: CID | undefined
+  try {
+    for await (const entry of importer(
+      candidates(),
+      blockstore as never,
+      IMPORTER_OPTIONS
+    )) {
+      if (entry.path === name) rootCid = entry.cid as unknown as CID
+    }
+    await writer.close()
+    await written
+  } catch (error) {
+    await writer.close().catch(() => undefined)
+    await written.catch(() => undefined)
+    await rm(tmpPath, { force: true })
+    throw error
+  }
+  if (!rootCid) throw new Error(`Packing ${dir} produced no root.`)
+
+  const handle = await open(tmpPath, 'r+')
+  try {
+    await CarWriter.updateRootsInFile(handle, [rootCid])
+  } finally {
+    await handle.close()
+  }
+  const { size } = await lstat(tmpPath)
+  await rename(tmpPath, carPath)
+  return { rootCid, size, files: files.length }
+}
+
+/**
+ * Extract a UnixFS CAR into `outDir`, rejecting entries that would escape it.
+ * Returns the root CID read from the CAR header.
+ */
+export async function extractCar(
+  carPath: string,
+  outDir: string
+): Promise<{ rootCid: CID; files: number }> {
+  const reader = await CarIndexedReader.fromFile(carPath)
+  try {
+    const [headerRoot] = await reader.getRoots()
+    if (!headerRoot) throw new Error('CAR has no root.')
+    // Normalize to this package's multiformats CID class for the exporter.
+    const rootCid = CID.decode(headerRoot.bytes)
+    const blockstore = {
+      async *get(cid: CID) {
+        const block = await reader.get(cid as never)
+        if (!block) throw new Error(`Block ${cid} missing from CAR.`)
+        yield block.bytes
+      },
+    }
+    const target = resolve(outDir)
+    let files = 0
+    async function write(cid: CID, dest: string): Promise<void> {
+      if (dest !== target && !dest.startsWith(target + sep)) {
+        throw new FocError(
+          'UNSAFE_PATH',
+          `Refusing to write outside ${outDir}: ${dest}`,
+          { exitCode: ExitCode.invalidInput }
+        )
+      }
+      const node = await exporter(cid, blockstore as never)
+      if (node.type === 'directory') {
+        await mkdir(dest, { recursive: true })
+        for await (const entry of node.entries()) {
+          if (entry.name.includes('/') || entry.name.includes('\\')) {
+            throw new FocError(
+              'UNSAFE_PATH',
+              `Refusing entry name with a path separator: ${entry.name}`,
+              { exitCode: ExitCode.invalidInput }
+            )
+          }
+          await write(entry.cid as unknown as CID, resolve(dest, entry.name))
+        }
+      } else if (
+        node.type === 'file' ||
+        node.type === 'raw' ||
+        node.type === 'identity'
+      ) {
+        await mkdir(dirname(dest), { recursive: true })
+        await pipeline(
+          Readable.from(node.content() as AsyncIterable<Uint8Array>),
+          createWriteStream(dest)
+        )
+        files++
+      }
+    }
+    await write(rootCid, target)
+    return { rootCid, files }
+  } finally {
+    await reader.close()
+  }
+}
