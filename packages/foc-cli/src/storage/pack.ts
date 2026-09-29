@@ -110,10 +110,18 @@ export async function packDirectory(
     },
   }
 
+  // Parent directories are created from file paths. Passing them explicitly
+  // makes the importer also emit an orphan empty-directory block, so only
+  // empty directories (and an empty root) are passed as candidates.
+  const parents = new Set(
+    [...files.map((f) => f.path), ...directories].map((path) =>
+      path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+    )
+  )
   function* candidates(): Generator<FileCandidate | DirectoryCandidate> {
-    yield { path: name }
+    if (!parents.has('')) yield { path: name }
     for (const directory of directories) {
-      yield { path: `${name}/${directory}` }
+      if (!parents.has(directory)) yield { path: `${name}/${directory}` }
     }
     for (const file of files) {
       yield {
@@ -153,9 +161,49 @@ export async function packDirectory(
   return { rootCid, size, files: files.length }
 }
 
+/** Multihash code for identity CIDs, whose digest is the block itself. */
+const IDENTITY_CODE = 0x00
+
 /**
- * Extract a UnixFS CAR into `outDir`, rejecting entries that would escape it.
- * Returns the root CID read from the CAR header.
+ * Check that a block's bytes hash to its CID, like ipfs-car's `--verify`.
+ * A CAR verified by PieceCID is already exact, but a CAR rebuilt by a
+ * gateway (for example Curio `/ipfs/…?format=car`) is only trustworthy
+ * block by block.
+ *
+ * @see https://github.com/storacha/ipfs-car
+ */
+export async function assertBlock(cid: CID, bytes: Uint8Array): Promise<void> {
+  const { code, digest } = cid.multihash
+  let actual: Uint8Array
+  if (code === sha256.code) {
+    actual = (await sha256.digest(bytes)).digest
+  } else if (code === IDENTITY_CODE) {
+    actual = bytes
+  } else {
+    throw new FocError(
+      'INTEGRITY_ERROR',
+      `Unsupported multihash 0x${code.toString(16)} in block ${cid}.`,
+      { exitCode: ExitCode.invalidInput }
+    )
+  }
+  if (
+    actual.length !== digest.length ||
+    !actual.every((byte, i) => byte === digest[i])
+  ) {
+    throw new FocError(
+      'INTEGRITY_ERROR',
+      `Block ${cid} does not match its CID.`,
+      {
+        exitCode: ExitCode.transient,
+      }
+    )
+  }
+}
+
+/**
+ * Extract a UnixFS CAR into `outDir`, verifying every block against its CID
+ * and rejecting entries that would escape `outDir`. Returns the root CID read
+ * from the CAR header.
  */
 export async function extractCar(
   carPath: string,
@@ -171,6 +219,7 @@ export async function extractCar(
       async *get(cid: CID) {
         const block = await reader.get(cid as never)
         if (!block) throw new Error(`Block ${cid} missing from CAR.`)
+        await assertBlock(cid, block.bytes)
         yield block.bytes
       },
     }
