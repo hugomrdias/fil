@@ -8,6 +8,7 @@ The `foc` command-line interface, organized as a pnpm monorepo managed with Turb
 | --- | --- | --- |
 | `packages/foc-cli` | `foc-cli` | [CLI usage](packages/foc-cli/README.md) |
 | `packages/clipact` | `clipact` | [Framework for agent-friendly CLIs](packages/clipact/README.md) |
+| `examples/launchpad` | `launchpad-example` | [Example clipact CLI with bundling](examples/launchpad/README.md) |
 
 ## Guides
 
