@@ -7,10 +7,11 @@ The `foc` command-line interface, organized as a pnpm monorepo managed with Turb
 | Directory | Package | Documentation |
 | --- | --- | --- |
 | `packages/foc-cli` | `foc-cli` | [CLI usage](packages/foc-cli/README.md) |
+| `packages/clipact` | `clipact` | [Framework for agent-friendly CLIs](packages/clipact/README.md) |
 
 ## Guides
 
 - [Development](docs/development.md): requirements, installation, and validation.
 - [CLI guidelines for agents](docs/agent-cli-guidelines.md): generic output, error, exit-code, discovery, and startup-performance conventions for agent-facing Node.js CLIs.
-- [CLI framework design](docs/cli-framework-design.md): draft design for a small framework that implements the agent CLI guidelines.
+- [CLI framework design](docs/cli-framework-design.md): design of `clipact`, the small framework that implements the agent CLI guidelines.
 - [FOC CLI interface research](docs/foc-cli-interface-research.md): FOC command surface, resources, operations, CLI state, and artifact delivery design.
