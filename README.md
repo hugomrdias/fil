@@ -11,4 +11,6 @@ The `foc` command-line interface, organized as a pnpm monorepo managed with Turb
 ## Guides
 
 - [Development](docs/development.md): requirements, installation, and validation.
-- [CLI interface research](docs/foc-cli-interface-research.md): command surface, output and exit-code contracts, and CLI state design.
+- [CLI guidelines for agents](docs/agent-cli-guidelines.md): generic output, error, exit-code, discovery, and startup-performance conventions for agent-facing Node.js CLIs.
+- [CLI framework design](docs/cli-framework-design.md): draft design for a small framework that implements the agent CLI guidelines.
+- [FOC CLI interface research](docs/foc-cli-interface-research.md): FOC command surface, resources, operations, CLI state, and artifact delivery design.
