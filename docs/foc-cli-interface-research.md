@@ -10,22 +10,11 @@ Use familiar file operations for raw storage, and a higher-level publishing oper
 
 Both resource groups use canonical `put`, `get`, and `delete` commands: `foc files` for raw bytes and `foc artifacts` for IPFS files and folders. `foc publish` is a convenience alias for `foc artifacts put`, with identical behavior and results.
 
-For folder publishing, reuse Filecoin Pin's UnixFS/CAR approach and make Curio's native IPFS retrieval a first-class delivery path. It already provides an interoperable directory representation. Validate the library integration and browser gateway before committing to packaging details. Do not commit to a new proprietary file-tree format before testing this route.
+For folder publishing, reuse [Filecoin Pin](https://github.com/filecoin-project/filecoin-pin)'s UnixFS/CAR approach and make Curio's native IPFS retrieval a first-class delivery path. It already provides an interoperable directory representation. Validate the library integration and browser gateway before committing to packaging details. Do not commit to a new proprietary file-tree format before testing this route.
 
-“Best” remains a hypothesis until tested across harnesses. The research supports these design choices; it does not establish that CLI universally outperforms MCP.
+Provide both a useful workflow and a dependable execution contract. A large command tree generated directly from contracts would expose too much machinery for the primary task.
 
-## Patterns worth borrowing
-
-| Reference | Observed behavior | Application to FOC |
-| --- | --- | --- |
-| [Vercel deploy](https://vercel.com/docs/cli/deploy) | Deployment URL on stdout; separate stderr; noninteractive options | One publishing command, one useful link; an explicit URL-only output option |
-| [Google Workspace CLI](https://github.com/googleworkspace/cli) | Structured JSON, runtime schema discovery, dry runs, packaged skills | Stable structured results and discoverable inputs; curated publishing workflows |
-| [GitHub CLI formatting](https://cli.github.com/manual/gh_help_formatting) | JSON field selection and filtering | Small results that agents can inspect without parsing terminal tables |
-| [CLI Guidelines](https://clig.dev/) | Composable streams, JSON mode, meaningful exit codes, terminal-aware presentation | Treat stdout as an API; keep interactive presentation optional |
-| [Anthropic tool design](https://www.anthropic.com/engineering/writing-tools-for-agents) | Task-oriented tools, clear parameters, compact responses, evaluations | Publish in one operation; evaluate actual artifact tasks and recovery |
-| [Filecoin Pin](https://github.com/filecoin-project/filecoin-pin) | CLI, library, and CI artifact publishing built on FOC/IPFS | Reuse storage and packing behavior instead of duplicating it |
-
-The shared lesson is to provide both a useful workflow and a dependable execution contract. A large command tree generated directly from contracts would expose too much machinery for the primary task.
+This document covers FOC-specific design. Generic conventions for agent-facing Node.js CLIs (output and error contract, exit codes, agent detection, schema discovery, non-interactive behavior, harness integration, evaluation, and startup performance) are in [CLI guidelines for agents](agent-cli-guidelines.md); `foc` follows them.
 
 ## Proposed user interface
 
@@ -34,6 +23,7 @@ The shared lesson is to provide both a useful workflow and a dependable executio
 foc auth login
 foc auth status --json
 foc doctor --json
+foc skills install --json
 
 # Artifacts: publish, retrieve, inspect, and delete IPFS files or folders
 foc artifacts put ./report.pdf --json --non-interactive
@@ -233,25 +223,24 @@ Account/network preferences belong in CLI configuration; private and session key
 
 ## The agent execution contract
 
-| Concern | Recommended contract |
+`foc` applies the [CLI guidelines for agents](agent-cli-guidelines.md): one JSON result object on stdout (success and error), human-readable diagnostics on stderr, exit codes `0` and `1` only, structured `retryable` and `next` fields, agent-aware help, no prompts in noninteractive mode, and offline `foc schema <command>` discovery. FOC adds these specifics:
+
+| Concern | FOC-specific contract |
 | --- | --- |
-| Output | `--json` emits exactly one versioned result object to stdout, including on ordinary application errors. Logs/progress go to stderr. No banners, ANSI, update notices, or wallet material in machine output. |
-| Interaction | `--non-interactive` never reads a prompt or opens a browser. Non-TTY execution also disables prompts. Missing authorization returns a structured action-required result. Noninteractive execution is not itself spending authorization. |
-| Discovery | Ship local input/output/error schemas through `foc schema <command>`. Discovering commands must work without credentials or network access. |
-| Compactness | Bounded list defaults, cursor pagination, and `--fields`. Never put file bytes, full storage histories, or verbose transaction traces in ordinary results. |
-| Input | Human-friendly flags plus `--input <request.json>` for complex requests. Validate both against the same schema and define precedence/conflicts. Do not force shell-escaped JSON for simple file paths. |
-| Streaming | Optional `--events` emits typed NDJSON with sequence numbers and a terminal result. Keep this mutually exclusive with single-object `--json`. |
-| Pipes | Support `-` where meaningful. A binary stdout download cannot also emit JSON to that stream; reject conflicting modes. Stdin publishing requires a name and a durable spool if restart recovery is promised. |
-| Errors | Stable code, actionable message, retry classification, operation ID, and structured next action. Avoid a single generic “upload failed.” |
-| Numeric precision | Serialize chain IDs/amounts that can exceed safe JSON integer precision as decimal strings; represent monetary quantities with explicit token/unit fields. |
-| Configuration | Named account/network profiles; explicit resolution order: flag, environment, profile, documented default. Include resolved network and payer in resource and operation inspection. |
-| Raw output | `--output url` prints only a verified ready URL; `--json` is the recommended agent mode. Human mode can show a concise summary. |
+| Secrets | No wallet material, private keys, or session keys in any output, error, or log. |
+| Authorization | Missing authorization, an expired session key, or insufficient funding returns an error with a `next` step for the user. Noninteractive execution is not itself spending authorization. |
+| Compactness | Never put file bytes, full storage histories, or verbose transaction traces in ordinary results. |
+| Pipes | A binary stdout download cannot also emit JSON to that stream; reject conflicting modes. Stdin publishing requires a name and a durable spool if restart recovery is promised. |
+| Errors | Include the operation ID in every put/delete error. Avoid a single generic “upload failed.” |
+| Retries | Put and delete errors are never `retryable`, because repeating the original command creates a new paid operation. Recovery is a `next` step running `foc operations resume <id>`. Reads can be `retryable`. |
+| Numeric precision | Serialize chain IDs and amounts as decimal strings; represent monetary quantities with explicit token/unit fields. |
+| Configuration | Named account/network profiles. Include the resolved network and payer in resource and operation inspection. |
+| Raw output | `--output url` prints only a verified ready URL. JSON is the recommended agent mode. |
 
 Illustrative compact successful result, with placeholder IDs and a reserved example hostname:
 
 ```json
 {
-  "schemaVersion": "1",
   "ok": true,
   "operationId": "op_example",
   "state": "ready",
@@ -283,7 +272,26 @@ Illustrative compact successful result, with placeholder IDs and a reserved exam
 
 The resource is the small managed-content record. The surrounding state, storage summary, and retrieval check describe this operation's outcome at a point in time; they are not additional resource fields or a permanent availability guarantee. Use the resource reference for get/inspect/delete and the operation ID for job inspection or recovery.
 
-Suggested exit classes: `0` requested command contract satisfied; `1` unexpected failure; `2` invalid input; `3` authorization/funding/policy action required; `4` not found; `5` transient service failure; `6` partial result; `7` timeout/pending. Structured error codes carry the detailed diagnosis. Operation inspection can succeed while reporting a still-pending operation.
+Exit `0` only when the requested command contract is satisfied (`ok: true`); exit `1` otherwise. Partial copies, pending publication, and action-required outcomes exit `1`, and their stable error `code` (for example `storage_partial`, `publication_pending`, `insufficient_funds`) carries the diagnosis. A partial or pending put still returns the resource, its URL, and its operation ID so a harness can share the link or resume. Operation inspection exits `0` while reporting a still-pending operation.
+
+Illustrative pending result, following the guidelines' error shape:
+
+```json
+{
+  "ok": false,
+  "operationId": "op_example",
+  "state": "pending",
+  "resource": { "ref": "artifact_example", "url": "https://artifact.example/report/" },
+  "error": {
+    "code": "publication_pending",
+    "message": "Both copies are committed; the gateway has not served the entry point yet.",
+    "retryable": false
+  },
+  "next": [
+    { "by": "agent", "command": "foc operations resume op_example --json", "description": "Continue publication checks for this operation" }
+  ]
+}
+```
 
 ## Artifact representation and delivery
 
@@ -344,15 +352,11 @@ Store-and-serve has ongoing costs. Report current storage obligations and egress
 
 ## Harness integration
 
-Start with one compact Agent Skill covering publishing, retrieval, inspection, and recovery. Link advanced schemas and examples on demand. The [Agent Skills specification](https://agentskills.io/specification), [OpenAI skill documentation](https://developers.openai.com/plugins/concepts/skills), and [Claude Code skill documentation](https://code.claude.com/docs/en/skills) support this reusable workflow packaging. Keep harness-specific installation metadata outside the shared instructions.
+Start with one compact Agent Skill covering publishing, retrieval, inspection, and recovery; see [Agent Skills](agent-cli-guidelines.md#agent-skills) for packaging and `foc skills install`. The skill should teach a few essential facts: use structured output; return the actual URL from the result; distinguish pending/partial/ready; resume an existing operation after interruption; never paste credentials.
 
-The skill should teach a few essential facts: use structured output; return the actual URL from the result; distinguish pending/partial/ready; resume an existing operation after interruption; never paste credentials. The CLI must enforce correctness rather than depending on the model remembering every rule.
+For a local MCP adapter, expose a small set such as `put_artifact`, `inspect_artifact`, `list_artifacts`, `get_artifact`, `delete_artifact`, and `list_operations`/`inspect_operation`/`resume_operation`. `put_artifact` maps to the same operation as `artifacts put` and its `publish` alias; expose one creation tool rather than duplicate tools for the alias. Deletion requires separately authorized removal permissions. Resource links can point to published artifacts; client rendering support varies, so a resource link does not guarantee an inline preview.
 
-For a local MCP adapter, expose a small set such as `put_artifact`, `inspect_artifact`, `list_artifacts`, `get_artifact`, `delete_artifact`, and `list_operations`/`inspect_operation`/`resume_operation`. `put_artifact` maps to the same operation as `artifacts put` and its `publish` alias; expose one creation tool rather than duplicate tools for the alias. Deletion requires separately authorized removal permissions. Share validators and application operations with the CLI. Use structured results and resource links, both supported by the [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools). Client rendering support varies; a resource link does not guarantee an inline preview.
-
-A remote MCP server cannot read a path from the agent's sandbox merely because the agent supplies it. It needs an upload capability or a harness-accessible artifact URI. Design that transfer explicitly. A local stdio adapter can use an authorized shared filesystem. Do not send large file bodies through model context or base64 tool arguments.
-
-[Anthropic's code-execution discussion](https://www.anthropic.com/engineering/code-execution-with-mcp) supports on-demand discovery and keeping intermediate data outside model context. It is not evidence that MCP is inherently inferior to a shell command.
+A remote MCP server cannot read a file from the agent's sandbox; publishing through one needs an explicit upload capability or a harness-accessible artifact URI.
 
 ## Gaps in this repository
 
@@ -374,7 +378,7 @@ Ship `files put/get/delete`, `artifacts put/get/delete`, the `publish` command a
 
 Before settling the delivery architecture, prototype one PDF and one static folder through Filecoin Pin/UnixFS and through raw-piece delivery. Check whether the chosen gateway actually renders/downloads them correctly, including asset paths and origin separation. This is the main unresolved dependency.
 
-Evaluate the resulting interface in at least two shell-capable harnesses and an MCP client. Use fresh and interrupted sessions. Measure completion rate, number of calls, output volume, duplicate paid mutations, recovery success, and correctness of the final share link.
+Evaluate the resulting interface as described in [Evaluate with agents](agent-cli-guidelines.md#evaluate-with-agents), additionally measuring duplicate paid mutations and correctness of the final share link.
 
 Acceptance scenarios:
 
