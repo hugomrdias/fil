@@ -214,7 +214,7 @@ Completion is saved in the same transaction as the resource, so a stop after the
 
 ### Cancellation
 
-clipact aborts `ctx.signal` on the first SIGINT, SIGTERM, or SIGHUP. Handlers pass it to `createApp`, which binds it to the RPC transport, so every chain read made through synapse-core or viem is cancelled at the request. The synapse backend passes `app.signal` to uploads, downloads, and piece polling, and races provider calls that take no signal (commit submission and waits, removal, ping) against it with `abortable()`, so the handler returns promptly. The job records the operation as failed with `Interrupted`, and clipact writes an `interrupted` result with the resume step from the checkpoint, then re-raises the signal (`130` or `143`).
+clipact aborts `ctx.signal` on the first SIGINT, SIGTERM, or SIGHUP. Handlers pass it to `createApp`, which binds it to the RPC transport: every chain read made through synapse-core or viem rejects as soon as the signal aborts, and no request starts after it. The request itself is not cancelled, because viem's HTTP transport would use the signal in place of its own timeout. The synapse backend passes `app.signal` to uploads, downloads, and piece polling, races provider calls that take no signal (commit submission and waits, removal, ping) against it with `abortable()`, and never sends a commit or removal after an abort, so the handler returns promptly. The job records the operation as failed with `Interrupted`, and clipact writes an `interrupted` result with the resume step from the checkpoint, then re-raises the signal (`130` or `143`).
 
 ## Storage: get
 
