@@ -57,11 +57,15 @@ export function createSynapseBackend(
     ReturnType<typeof WarmStorage.getPdpDataSet>
   >()
 
-  /** Read a data set once per invocation; placement and quote share it. */
+  /**
+   * Read a data set once per invocation; placement and quote share it. A
+   * failed read is forgotten so the next call tries again.
+   */
   function getDataSet(dataSetId: bigint) {
     let dataSet = dataSets.get(dataSetId)
     if (!dataSet) {
       dataSet = WarmStorage.getPdpDataSet(client, { dataSetId })
+      dataSet.catch(() => dataSets.delete(dataSetId))
       dataSets.set(dataSetId, dataSet)
     }
     return dataSet
@@ -221,6 +225,8 @@ export function createSynapseBackend(
       const pieces = [
         { pieceCid: Piece.from(pieceCid), metadata: pieceMetadata },
       ]
+      // Never start a paid mutation once the user has interrupted.
+      signal?.throwIfAborted()
       if (commit.created) {
         const result = await abortable(
           SP.createDataSetAndAddPieces(signer, {
@@ -298,6 +304,7 @@ export function createSynapseBackend(
     async schedulePieceRemoval({ serviceURL, dataSetId, pieceId }) {
       const dataSet = await getDataSet(dataSetId)
       if (!dataSet) throw notFound(`Data set ${dataSetId} not found.`)
+      signal?.throwIfAborted()
       const result = await abortable(
         SP.schedulePieceDeletions(signer, {
           serviceURL,

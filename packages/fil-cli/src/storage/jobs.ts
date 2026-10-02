@@ -460,7 +460,7 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
       () => undefined
     )
   }
-  return jobResult(op, resource)
+  return { operationId: op.id, state: 'ready', resource, urls }
 }
 
 /**

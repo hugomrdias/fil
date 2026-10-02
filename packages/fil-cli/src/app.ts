@@ -59,17 +59,24 @@ export type CreateAppOptions = {
 }
 
 /**
- * Bind `transport` to `signal`: each request gets the signal, so the HTTP
- * transport cancels its fetch, and rejects as soon as the signal aborts.
- * synapse-core and viem read actions take no signal of their own.
+ * Bind `transport` to `signal`: a request rejects as soon as the signal
+ * aborts, and none starts after it. synapse-core and viem read actions take
+ * no signal of their own. The signal is not passed down: viem's http
+ * transport would use it in place of its own timeout, so requests would no
+ * longer time out, and the fallback transport drops it anyway.
  */
-function withSignal(transport: Transport, signal: AbortSignal): Transport {
+export function withSignal(
+  transport: Transport,
+  signal: AbortSignal
+): Transport {
   return (options) => {
     const inner = transport(options)
     return {
       ...inner,
       request: (args, requestOptions) =>
-        abortable(inner.request(args, { ...requestOptions, signal }), signal),
+        signal.aborted
+          ? Promise.reject(signal.reason)
+          : abortable(inner.request(args, requestOptions), signal),
     }
   }
 }
