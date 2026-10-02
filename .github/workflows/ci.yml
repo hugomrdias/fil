@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up pnpm, Node.js, and dependencies
-        uses: pnpm/setup@v2
+        uses: pnpm/setup@v3
         with:
           require-lockfile: true
 
