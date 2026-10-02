@@ -67,7 +67,7 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
 
-  packages/foc-cli:
+  packages/fil-cli:
     dependencies:
       '@filoz/synapse-core':
         specifier: ^0.10.0

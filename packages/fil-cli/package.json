@@ -1,0 +1,40 @@
+{
+  "name": "fil-cli",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "fil": "./bin/fil.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "skills",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "node scripts/build.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test 'test/**/*.test.ts'",
+    "lint": "biome check .",
+    "check": "pnpm typecheck && pnpm test && pnpm lint"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "clipact": "workspace:*",
+    "esbuild": "0.28.2",
+    "typescript": "catalog:",
+    "zod": "4.6.5"
+  },
+  "dependencies": {
+    "@filoz/synapse-core": "^0.10.0",
+    "@ipld/car": "^5.4.7",
+    "env-paths": "^4.0.0",
+    "ipfs-unixfs-exporter": "^16.2.3",
+    "ipfs-unixfs-importer": "^16.1.5",
+    "iso-conf": "^0.4.2",
+    "multiformats": "^14.0.5",
+    "viem": "^2.56.9"
+  }
+}

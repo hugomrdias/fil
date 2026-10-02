@@ -295,6 +295,6 @@ The framework depends only on the Standard Schema interfaces, so applications ch
 ## Milestones
 
 1. **Core** (implemented): definitions, router, `parseArgs` integration, input merging and validation, envelope and errors, modes and agent detection, help, `schema`, signals and exit, testing helpers.
-2. **Spike**: build `foc artifacts put` and `foc operations resume` on the core; run the guideline tests in Claude Code, Codex, and Gemini CLI. The `foc` prototype now runs on clipact ([architecture](architecture.md)); the harness runs remain.
+2. **Spike**: build `foc artifacts put` and `foc operations resume` on the core; run the guideline tests in Claude Code, Codex, and Gemini CLI. The prototype, now named `fil`, runs on clipact ([architecture](architecture.md)); the harness runs remain.
 3. **Services**: telemetry, gating and dry-run polish, startup budget in CI. Skills are implemented.
 4. **Later**: `--events`. Shell completions are implemented.

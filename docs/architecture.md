@@ -1,12 +1,12 @@
-# foc CLI architecture
+# fil CLI architecture
 
-This document describes how the `foc` prototype in [`packages/foc-cli`](../packages/foc-cli) works: its modules, the login, put, get, and delete flows, local state, and the recovery model. The [interface research](foc-cli-interface-research.md) explains why the design looks like this. This document describes what was built and where it departs from that design.
+This document describes how the `fil` prototype in [`packages/fil-cli`](../packages/fil-cli) works: its modules, the login, put, get, and delete flows, local state, and the recovery model. The [interface research](foc-cli-interface-research.md) explains why the design looks like this. This document describes what was built and where it departs from that design.
 
 ## Overview
 
-`foc` stores one file or folder on Filecoin Onchain Cloud (FOC) and returns Curio retrieval URLs.
+`fil` stores one file or folder on Filecoin Onchain Cloud (FOC) and returns Curio retrieval URLs.
 
-- **One command for files and folders.** `foc put <path>` stores a file as a raw piece. It packs a folder into a UnixFS CAR.
+- **One command for files and folders.** `fil put <path>` stores a file as a raw piece. It packs a folder into a UnixFS CAR.
 - **One copy.** Each upload has one copy on one provider. The CLI calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly and does not use synapse-sdk.
 - **Delegated signing.** A session key, approved by the wallet owner in the [pay.filecoin.cloud console](https://pay.filecoin.cloud/console/session-keys), signs uploads and removals. The owner's wallet pays for storage.
 - **Recoverable jobs.** Each `put` and `delete` is saved as an operation in SQLite before it changes anything outside the machine, so an interrupted job can be resumed without committing twice.
@@ -14,7 +14,7 @@ This document describes how the `foc` prototype in [`packages/foc-cli`](../packa
 
 ```mermaid
 flowchart LR
-  user([Human or agent]) --> cli[foc CLI]
+  user([Human or agent]) --> cli[fil CLI]
   cli -- session key signs EIP-712 --> curio[Curio provider<br/>PDP API]
   cli -- reads --> chain[(Filecoin chain<br/>FWSS, PDP, Pay,<br/>SessionKeyRegistry)]
   curio -- submits and pays gas --> chain
@@ -29,10 +29,10 @@ The CLI never sends a chain transaction itself. Curio submits the data set and p
 ## Modules
 
 ```text
-packages/foc-cli/
-├── bin/foc.js            entry shim: enables the compile cache, imports dist/main.js
+packages/fil-cli/
+├── bin/fil.js            entry shim: enables the compile cache, imports dist/main.js
 ├── scripts/build.ts      esbuild bundle: one entry, one chunk per handler
-├── skills/foc/SKILL.md   agent skill installed by `foc skills install`
+├── skills/fil/SKILL.md   agent skill installed by `fil skills install`
 └── src/
     ├── main.ts           cli.run()
     ├── cli.ts            defineCli: name, version, commands, aliases, skills, mapError
@@ -83,7 +83,7 @@ Startup on Node 26 (median of 20 runs after 5 warmups, warm compile cache, bare 
 
 ## Configuration
 
-[iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) stores `config.json` in the platform config directory (`foc`), or in `FOC_CONFIG_DIR`, with mode `0600`.
+[iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) stores `config.json` in the platform config directory (`fil`), or in `FIL_CONFIG_DIR`, with mode `0600`.
 
 ```jsonc
 {
@@ -102,19 +102,19 @@ Startup on Node 26 (median of 20 runs after 5 warmups, warm compile cache, bare 
 }
 ```
 
-**Network resolution:** `--network`, then `FOC_NETWORK`, then the config file, then `calibration`. clipact has no global flags, so `network` is a field of every command's input (the `account` fragment in `commands/shared.ts`), with `FOC_NETWORK` as its environment fallback and no schema default, so the config file still applies. Each network has its own session.
+**Network resolution:** `--network`, then `FIL_NETWORK`, then the config file, then `calibration`. clipact has no global flags, so `network` is a field of every command's input (the `account` fragment in `commands/shared.ts`), with `FIL_NETWORK` as its environment fallback and no schema default, so the config file still applies. Each network has its own session.
 
-**Credential resolution:** `FOC_SESSION_KEY` with `FOC_ROOT_ADDRESS`, then the saved session. Both are input fields too; `sessionKey` is a clipact secret, read only from the environment, rejected as a flag, and redacted in `--debug` and `schema`. A pending session is reported as `login_pending`, not as logged out.
+**Credential resolution:** `FIL_SESSION_KEY` with `FIL_ROOT_ADDRESS`, then the saved session. Both are input fields too; `sessionKey` is a clipact secret, read only from the environment, rejected as a flag, and redacted in `--debug` and `schema`. A pending session is reported as `login_pending`, not as logged out.
 
-Other overrides are process settings rather than command input: `FOC_CONFIG_DIR`, `FOC_STATE_DIR`, `FOC_RPC_URL`, `FOC_CONSOLE_URL`. `foc doctor` shows each resolved value and its source.
+Other overrides are process settings rather than command input: `FIL_CONFIG_DIR`, `FIL_STATE_DIR`, `FIL_RPC_URL`, `FIL_CONSOLE_URL`. `fil doctor` shows each resolved value and its source.
 
 ## Login
 
-The goal is one command with nothing to copy or paste. Filecoin Pin asks the user to copy a wallet address and a session key into environment variables, and needs the root private key to create a key. `foc` does neither.
+The goal is one command with nothing to copy or paste. Filecoin Pin asks the user to copy a wallet address and a session key into environment variables, and needs the root private key to create a key. `fil` does neither.
 
 ```mermaid
 sequenceDiagram
-  participant CLI as foc login
+  participant CLI as fil login
   participant Cfg as config.json
   participant Console as pay.filecoin.cloud
   participant Reg as SessionKeyRegistry
@@ -135,12 +135,12 @@ sequenceDiagram
 
 Details (`auth/login.ts`, `handlers/login.ts`):
 
-- **The key is saved first.** Running `foc login` again resumes a pending login with the same key and scopes. A fully approved session that already covers the requested scopes is reused. Anything else, or `--fresh`, generates a new key.
+- **The key is saved first.** Running `fil login` again resumes a pending login with the same key and scopes. A fully approved session that already covers the requested scopes is reused. Anything else, or `--fresh`, generates a new key.
 - **Finding the owner.** In `AuthorizationsUpdated`, `identity` (the owner) is indexed but `signer` is not. The CLI therefore scans events from `fromBlock` in windows of at most 2,000 blocks and matches the signer locally. The matching event names the owner, so the user never enters an address.
 - **Partial grants.** The console lets the owner untick scopes. After finding the owner, the CLI reads per-scope expiries. If any requested scope is missing, the session is still saved and the result is `permission_denied`, with the granted scopes as partial data and a `by: "user"` step to log in again.
-- **Human vs. agent.** When a human is at a terminal (clipact's `mode.interactive` and no detected agent), login opens the browser and waits (default 600 s; `ctx.signal` stops the wait). Otherwise it checks once and returns `login_pending` with two `next` steps: the approval link `by: "user"`, and `foc login` `by: "agent"` to check again. It never opens a browser for an agent.
+- **Human vs. agent.** When a human is at a terminal (clipact's `mode.interactive` and no detected agent), login opens the browser and waits (default 600 s; `ctx.signal` stops the wait). Otherwise it checks once and returns `login_pending` with two `next` steps: the approval link `by: "user"`, and `fil login` `by: "agent"` to check again. It never opens a browser for an agent.
 - **Console link contract.** The address is lowercased, because the console rejects bad mixed-case checksums. The scopes use console IDs. The network is required. The funding link is `/console?deposit=<decimal>&operator=fwss&network=<net>` and is added only when a deposit is needed.
-- **Funding stays with the owner.** The session key cannot deposit or approve. `foc status` and the `put` preflight return a prefilled funding link.
+- **Funding stays with the owner.** The session key cannot deposit or approve. `fil status` and the `put` preflight return a prefilled funding link.
 
 Default scopes are `createDataSet`, `addPieces`, and `schedulePieceRemovals`. `terminateService` is never requested by default.
 
@@ -195,7 +195,7 @@ Two synapse-core details matter here:
 
 ### Resume
 
-`runOperation` returns the saved outcome of a completed operation without running anything. Otherwise it acquires the operation lock, reports the operation to clipact with `ctx.checkpoint` (which prints its ID to stderr immediately, so it survives a SIGKILL), and runs the job from its checkpoint. A failure marks the operation `failed` and becomes an error with `operationId` and a `foc operations resume <id>` step; put and delete errors are never `retryable`, because repeating the original command starts a new paid operation. `foc operations resume <id>` then applies these rules:
+`runOperation` returns the saved outcome of a completed operation without running anything. Otherwise it acquires the operation lock, reports the operation to clipact with `ctx.checkpoint` (which prints its ID to stderr immediately, so it survives a SIGKILL), and runs the job from its checkpoint. A failure marks the operation `failed` and becomes an error with `operationId` and a `fil operations resume <id>` step; put and delete errors are never `retryable`, because repeating the original command starts a new paid operation. `fil operations resume <id>` then applies these rules:
 
 - **Commit signed** (`commit` saved): first read `clientNonces(payer, nonce)` from the FWSS view contract. FWSS stores `((firstAdded + count) << 128) | dataSetId` for every used add-pieces nonce, including the add half of create-and-add, so a non-zero value means the commit landed and gives both IDs; the job completes without sending anything. A zero value means it did not land, and the **same** `extraData` is sent again (or awaited, if its `statusUrl` was saved). FWSS rejects a second use of a nonce, so at most one commit takes effect even if the first submission lands late ([#1](https://github.com/hugomrdias/foc-cli/issues/1)).
 - **Commit rejected** (the provider reports a failed transaction): the saved `statusUrl` is cleared, so a resume checks the nonce and resends the same signature.
@@ -219,7 +219,7 @@ clipact aborts `ctx.signal` on the first SIGINT, SIGTERM, or SIGHUP. Handlers pa
 
 `get <ref|pieceCid>` always downloads the stored piece from `/piece/<pieceCid>`. That is the only form whose bytes can be checked against the PieceCID.
 
-- **Files.** The response is streamed through `Piece.hasher()` into `<output>.foc-partial`. The file is renamed to its final name only if the computed PieceCID matches. synapse-core's `downloadAndValidate` would buffer the whole piece in memory.
+- **Files.** The response is streamed through `Piece.hasher()` into `<output>.fil-partial`. The file is renamed to its final name only if the computed PieceCID matches. synapse-core's `downloadAndValidate` would buffer the whole piece in memory.
 - **Folders.** The CLI downloads and verifies the CAR the same way, then opens it with `CarIndexedReader`. It checks that the header root equals the saved `rootCid`, walks the DAG with `ipfs-unixfs-exporter`, and extracts into a temporary directory that is renamed into place. Entry names containing path separators, or resolving outside the output directory, are rejected.
 - **Unmanaged PieceCIDs.** The CLI finds a provider with `resolvePieceUrl`, then downloads and verifies the piece the same way.
 
@@ -233,13 +233,13 @@ Extraction checks every block's bytes against its CID, as `ipfs-car unpack --ver
 
 [ipfs-car](https://github.com/storacha/ipfs-car) 3.1.0 uses `@ipld/unixfs` with raw leaves, 1 MiB chunks, and width 1024, and switches to a sharded directory at more than 1,000 entries. The two packers were compared on 2026-09-29:
 
-| Input | foc | ipfs-car |
+| Input | fil | ipfs-car |
 | --- | --- | --- |
 | 480 MB single file in a folder | 0.6 s; CAR byte-identical to ipfs-car | 0.8 s |
 | Nested folders of small files, no shard | Same root CID | Same root CID |
 | Flat folder of 3,000 files | Different root CID | Different root CID |
 
-The difference for large directories is expected. `unixfs-v1-2025` shards by encoded block size (the rule Kubo and Boxo use for this profile), and ipfs-car shards by entry count. `foc` keeps the IPIP-499 profile so its CIDs match other implementations of that profile. The comparison did find the orphan-block issue above, and it suggested block verification on extraction.
+The difference for large directories is expected. `unixfs-v1-2025` shards by encoded block size (the rule Kubo and Boxo use for this profile), and ipfs-car shards by entry count. `fil` keeps the IPIP-499 profile so its CIDs match other implementations of that profile. The comparison did find the orphan-block issue above, and it suggested block verification on extraction.
 
 ## Storage: delete
 
@@ -257,7 +257,7 @@ The provider removes the piece at a later proving boundary. `ls` hides resources
 ## Local state
 
 ```text
-<FOC_STATE_DIR or platform data dir>/
+<FIL_STATE_DIR or platform data dir>/
 ├── state.db           SQLite (node:sqlite), WAL, migrations via PRAGMA user_version
 └── staging/<op_id>/   artifact.car for unfinished folder puts
 ```
@@ -271,7 +271,7 @@ All queries are limited to `(chainId, payer)`, so one database can serve several
 
 ## Output and errors
 
-clipact renders results. In machine mode (`--json`, `FOC_OUTPUT=json`, a detected agent, or a non-terminal stdout) stdout carries one compact JSON object; otherwise each command's `human()` formatter writes text. On-chain IDs and amounts are decimal strings. Progress goes to stderr: a status line for humans, a plain line at most every 15 s for agents. Exit code `0` means `ok: true`; everything else exits `1`.
+clipact renders results. In machine mode (`--json`, `FIL_OUTPUT=json`, a detected agent, or a non-terminal stdout) stdout carries one compact JSON object; otherwise each command's `human()` formatter writes text. On-chain IDs and amounts are decimal strings. Progress goes to stderr: a status line for humans, a plain line at most every 15 s for agents. Exit code `0` means `ok: true`; everything else exits `1`.
 
 Errors are clipact `CliError`s with a stable snake_case `code`, a `retryable` flag, optional `details`, and `next` steps. Each command lists its codes in its definition, and `schema` and help show them. Errors from viem or synapse-core that are not `CliError`s go through the lazily loaded `map-error.ts`, which maps RPC and HTTP failures to `service_unavailable` or `timeout`; clipact marks those retryable only for read-only and idempotent commands. Anything else is `internal_error`.
 
@@ -308,7 +308,7 @@ Tests use the Node test runner (`pnpm check`) and need no network:
 
 | Research | Prototype | Reason |
 | --- | --- | --- |
-| `foc files …` and `foc artifacts …` groups | Flat `put/get/ls/inspect/delete` routed by input type; `publish` and `rm` aliases | One command set for files and folders |
+| `fil files …` and `fil artifacts …` groups | Flat `put/get/ls/inspect/delete` routed by input type; `publish` and `rm` aliases | One command set for files and folders |
 | `auth login`, `auth status` | `login`, `logout`, `status` | Flat, like the storage commands |
 | Two copies by default | One copy | Prototype scope |
 | Exact file bytes staged as `input.bin` | Files read from the source; a PieceCID check on resume detects changes | Avoids copying large inputs; a change fails instead of storing different bytes |
