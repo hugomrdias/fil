@@ -211,6 +211,12 @@ test('put stores a file in a new data set and records the resource', async () =>
     `https://sp.example/piece/${result.resource.pieceCid}`
   )
   assert.deepEqual(calls.select, [FILE_DATA_SET_METADATA])
+  // On-chain namespace: changing it orphans existing data sets.
+  assert.deepEqual(FILE_DATA_SET_METADATA, { source: 'fil' })
+  assert.deepEqual(ARTIFACT_DATA_SET_METADATA, {
+    source: 'fil',
+    withIPFSIndexing: '',
+  })
   assert.equal(calls.submitted.length, 1)
   assert.deepEqual(ctx.started, [result.operationId])
   const op = getOperation(ctx.db, result.operationId)

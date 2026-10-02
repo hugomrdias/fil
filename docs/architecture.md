@@ -152,8 +152,8 @@ Before each mutation, `requireSession` rebuilds the key with `fromSecp256k1` and
 
 | Input | Stored bytes | Data set metadata | Piece metadata | URL |
 | --- | --- | --- | --- | --- |
-| File | exact file bytes | `source=foc` | `name` | `<serviceURL>/piece/<pieceCid>` |
-| Folder | UnixFS CAR | `source=foc`, `withIPFSIndexing` | `name`, `ipfsRootCID` | `<serviceURL>/ipfs/<rootCid>/` |
+| File | exact file bytes | `source=fil` | `name` | `<serviceURL>/piece/<pieceCid>` |
+| Folder | UnixFS CAR | `source=fil`, `withIPFSIndexing` | `name`, `ipfsRootCID` | `<serviceURL>/ipfs/<rootCid>/` |
 
 Files and folders use separate data sets because data sets are matched on their exact metadata keys, and only CARs should be IPFS-indexed.
 

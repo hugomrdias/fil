@@ -33,19 +33,15 @@ import type {
 } from './types.ts'
 import { type RetrievalUrls, resourceUrls, retrievalUrls } from './urls.ts'
 
-/**
- * Data-set metadata namespacing CLI uploads of raw files. `source` stays
- * `foc`, the CLI's former name: it is on-chain, and changing it would stop
- * new uploads from matching data sets created earlier.
- */
-export const FILE_DATA_SET_METADATA = { source: 'foc' }
+/** Data-set metadata namespacing CLI uploads of raw files. */
+export const FILE_DATA_SET_METADATA = { source: 'fil' }
 
 /**
  * Data-set metadata for artifacts. `withIPFSIndexing` asks Curio to index
  * the CAR so `/ipfs/<rootCid>` retrieval works.
  */
 export const ARTIFACT_DATA_SET_METADATA = {
-  source: 'foc',
+  source: 'fil',
   withIPFSIndexing: '',
 }
 
