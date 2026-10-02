@@ -26,7 +26,11 @@ import type { Placement, StorageBackend } from './types.ts'
 /** Low 128 bits of a `clientNonces` value: the data set ID. */
 const LOW_128 = (1n << 128n) - 1n
 
-/** Names of synapse-core errors for a provider-reported failed transaction. */
+/**
+ * Names of synapse-core errors for a provider-reported failed transaction.
+ * Matched by name: `WaitForCreateDataSetRejectedError` inherits a static
+ * `is()` that only matches the base `SynapseError`.
+ */
 const REJECTED_ERRORS = new Set([
   'WaitForAddPiecesRejectedError',
   'WaitForCreateDataSetRejectedError',
@@ -34,7 +38,9 @@ const REJECTED_ERRORS = new Set([
 
 /**
  * Create the synapse-core storage backend: one copy on one Curio provider,
- * signed by the session key and paid for by its root wallet.
+ * signed by the session key and paid for by its root wallet. Chain reads are
+ * cancelled by `app.transport`; provider calls that take no signal are
+ * wrapped with {@link abortable} on `app.signal`.
  *
  * @see https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core
  */
@@ -45,6 +51,21 @@ export function createSynapseBackend(
   const client = app.client
   const signer = sessionKey.client
   const payer = sessionKey.rootAddress
+  const signal = app.signal
+  const dataSets = new Map<
+    bigint,
+    ReturnType<typeof WarmStorage.getPdpDataSet>
+  >()
+
+  /** Read a data set once per invocation; placement and quote share it. */
+  function getDataSet(dataSetId: bigint) {
+    let dataSet = dataSets.get(dataSetId)
+    if (!dataSet) {
+      dataSet = WarmStorage.getPdpDataSet(client, { dataSetId })
+      dataSets.set(dataSetId, dataSet)
+    }
+    return dataSet
+  }
 
   /** Whether a provider answers its PDP ping. */
   async function isReachable(serviceURL: string): Promise<boolean> {
@@ -57,16 +78,14 @@ export function createSynapseBackend(
   }
 
   return {
-    async selectPlacement({ metadata, providerId, signal }) {
-      const input = await abortable(
+    async selectPlacement({ metadata, providerId }) {
+      const [input, provider] = await Promise.all([
         WarmStorage.fetchProviderSelectionInput(client, { address: payer }),
-        signal
-      )
+        providerId == null
+          ? undefined
+          : SPRegistry.getPDPProvider(client, { providerId }),
+      ])
       if (providerId != null) {
-        const provider = await abortable(
-          SPRegistry.getPDPProvider(client, { providerId }),
-          signal
-        )
         if (!provider) {
           throw notFound(`Provider ${providerId} has no active PDP offering.`)
         }
@@ -96,16 +115,16 @@ export function createSynapseBackend(
             message: 'No reachable storage provider is available.',
           })
         }
-        const { provider } = location
-        if (await abortable(isReachable(provider.pdp.serviceURL), signal)) {
+        const candidate = location.provider
+        if (await abortable(isReachable(candidate.pdp.serviceURL), signal)) {
           return withDataSet({
-            providerId: provider.id,
-            serviceURL: provider.pdp.serviceURL,
-            payee: provider.payee,
+            providerId: candidate.id,
+            serviceURL: candidate.pdp.serviceURL,
+            payee: candidate.payee,
             dataSetId: location.dataSetId ?? undefined,
           })
         }
-        excluded.push(provider.id)
+        excluded.push(candidate.id)
       }
     },
 
@@ -134,12 +153,12 @@ export function createSynapseBackend(
       }
     },
 
-    async hasPiece({ serviceURL, pieceCid, signal }) {
+    async hasPiece({ serviceURL, pieceCid }) {
       try {
         await SP.findPiece({
           serviceURL,
           pieceCid: Piece.from(pieceCid),
-          ...(signal ? { signal } : {}),
+          signal,
         })
         return true
       } catch (error) {
@@ -148,21 +167,16 @@ export function createSynapseBackend(
       }
     },
 
-    async upload({ serviceURL, path, size, pieceCid, signal }) {
+    async upload({ serviceURL, path, size, pieceCid }) {
       const cid = Piece.from(pieceCid)
       await SP.uploadPieceStreaming({
         serviceURL,
         data: Readable.toWeb(createReadStream(path)) as ReadableStream,
         size,
         pieceCid: cid,
-        ...(signal ? { signal } : {}),
+        signal,
       })
-      await SP.findPiece({
-        serviceURL,
-        pieceCid: cid,
-        poll: true,
-        ...(signal ? { signal } : {}),
-      })
+      await SP.findPiece({ serviceURL, pieceCid: cid, poll: true, signal })
     },
 
     async signCommit({ placement, pieceCid, metadata, pieceMetadata }) {
@@ -208,25 +222,31 @@ export function createSynapseBackend(
         { pieceCid: Piece.from(pieceCid), metadata: pieceMetadata },
       ]
       if (commit.created) {
-        const result = await SP.createDataSetAndAddPieces(signer, {
-          serviceURL: placement.serviceURL,
-          payee: placement.payee,
-          payer,
-          pieces,
-          extraData: commit.extraData,
-        })
+        const result = await abortable(
+          SP.createDataSetAndAddPieces(signer, {
+            serviceURL: placement.serviceURL,
+            payee: placement.payee,
+            payer,
+            pieces,
+            extraData: commit.extraData,
+          }),
+          signal
+        )
         return { transactionHash: result.txHash, statusUrl: result.statusUrl }
       }
       if (placement.dataSetId == null || placement.clientDataSetId == null) {
         throw new Error('Adding to a data set requires its IDs.')
       }
-      const result = await SP.addPieces(signer, {
-        serviceURL: placement.serviceURL,
-        dataSetId: placement.dataSetId,
-        clientDataSetId: placement.clientDataSetId,
-        pieces,
-        extraData: commit.extraData,
-      })
+      const result = await abortable(
+        SP.addPieces(signer, {
+          serviceURL: placement.serviceURL,
+          dataSetId: placement.dataSetId,
+          clientDataSetId: placement.clientDataSetId,
+          pieces,
+          extraData: commit.extraData,
+        }),
+        signal
+      )
       return { transactionHash: result.txHash, statusUrl: result.statusUrl }
     },
 
@@ -243,7 +263,7 @@ export function createSynapseBackend(
       return { dataSetId: value & LOW_128, pieceId: (value >> 128n) - 1n }
     },
 
-    async waitForCommit({ statusUrl, created, signal }) {
+    async waitForCommit({ statusUrl, created }) {
       try {
         if (created) {
           const result = await abortable(
@@ -276,18 +296,21 @@ export function createSynapseBackend(
     },
 
     async schedulePieceRemoval({ serviceURL, dataSetId, pieceId }) {
-      const dataSet = await WarmStorage.getPdpDataSet(client, { dataSetId })
+      const dataSet = await getDataSet(dataSetId)
       if (!dataSet) throw notFound(`Data set ${dataSetId} not found.`)
-      const result = await SP.schedulePieceDeletions(signer, {
-        serviceURL,
-        dataSetId,
-        clientDataSetId: dataSet.clientDataSetId,
-        pieceIds: [pieceId],
-      })
+      const result = await abortable(
+        SP.schedulePieceDeletions(signer, {
+          serviceURL,
+          dataSetId,
+          clientDataSetId: dataSet.clientDataSetId,
+          pieceIds: [pieceId],
+        }),
+        signal
+      )
       return { transactionHash: result.hash }
     },
 
-    async waitForTransaction(transactionHash, signal) {
+    async waitForTransaction(transactionHash) {
       const receipt = await abortable(
         waitForTransactionReceipt(client, { hash: transactionHash }),
         signal
@@ -299,9 +322,7 @@ export function createSynapseBackend(
   /** Attach the client data set ID when reusing a data set. */
   async function withDataSet(placement: Placement): Promise<Placement> {
     if (placement.dataSetId == null) return placement
-    const dataSet = await WarmStorage.getPdpDataSet(client, {
-      dataSetId: placement.dataSetId,
-    })
+    const dataSet = await getDataSet(placement.dataSetId)
     if (!dataSet) return { ...placement, dataSetId: undefined }
     return { ...placement, clientDataSetId: dataSet.clientDataSetId }
   }
@@ -309,7 +330,7 @@ export function createSynapseBackend(
   /** Inputs `getUploadCosts` needs for an existing data set. */
   async function existingDataSetCosts(dataSetId: bigint) {
     const [dataSet, leafCount] = await Promise.all([
-      WarmStorage.getPdpDataSet(client, { dataSetId }),
+      getDataSet(dataSetId),
       PDPVerifier.getDataSetLeafCount(client, { dataSetId }),
     ])
     if (!dataSet) return undefined

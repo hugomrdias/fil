@@ -17,7 +17,6 @@ import {
   listResources,
   type Resource,
   saveResource,
-  setResourceStatus,
 } from '../src/state/resources.ts'
 import { tempDir } from './helpers.ts'
 
@@ -74,7 +73,10 @@ test('resources round-trip and list newest first', async () => {
     0
   )
 
-  setResourceStatus(db, 'res_a', 'removal_pending')
+  saveResource(db, {
+    ...resource('res_a', '2026-01-01T00:00:00Z'),
+    status: 'removal_pending',
+  })
   assert.equal(listResources(db, { ...scope, limit: 10 }).items.length, 1)
   assert.equal(
     listResources(db, { ...scope, limit: 10, all: true }).items.length,

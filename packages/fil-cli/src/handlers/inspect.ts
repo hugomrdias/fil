@@ -11,7 +11,7 @@ const PROBE_TIMEOUT = 15_000
  * with a HEAD request.
  */
 export default defineHandler(inspect, async (ctx) => {
-  const app = appFor(ctx.input)
+  const app = appFor(ctx)
   const resource = findResource(app, ctx.input.ref)
   const urls = resourceUrls(resource)
   if (!ctx.input.check) return ctx.ok({ resource, urls })

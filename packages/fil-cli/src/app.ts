@@ -13,10 +13,11 @@ import {
   openConfig,
   resolveNetwork,
 } from './config.ts'
+import { abortable } from './errors.ts'
 import { openDatabase, stateDir } from './state/db.ts'
 
 /** Default pay.filecoin.cloud console origin. */
-export const DEFAULT_CONSOLE_URL = 'https://pay.filecoin.cloud'
+const DEFAULT_CONSOLE_URL = 'https://pay.filecoin.cloud'
 
 /**
  * Shared per-invocation context: resolved network, chain client, config, and
@@ -31,7 +32,9 @@ export type App = {
   credentials: { sessionKey?: string; rootAddress?: string }
   /** Console origin for session-key approval and funding links. */
   consoleUrl: string
-  /** RPC transport for the resolved chain. */
+  /** Aborted on SIGINT, SIGTERM, or SIGHUP; cancels chain and provider calls. */
+  signal: AbortSignal | undefined
+  /** RPC transport for the resolved chain, bound to `signal`. */
   transport: Transport
   /** Read-only chain client. */
   client: Client<Transport, FilecoinChain>
@@ -51,11 +54,24 @@ export type CreateAppOptions = {
   rootAddress?: string | undefined
   /** Process environment for state, config, RPC, and console overrides. */
   env?: NodeJS.ProcessEnv
+  /** The handler's signal; every RPC request rejects once it aborts. */
+  signal?: AbortSignal
 }
 
-/** Map a network name to its synapse-core chain definition. */
-export function chainFor(network: Network): FilecoinChain {
-  return network === 'mainnet' ? mainnet : calibration
+/**
+ * Bind `transport` to `signal`: each request gets the signal, so the HTTP
+ * transport cancels its fetch, and rejects as soon as the signal aborts.
+ * synapse-core and viem read actions take no signal of their own.
+ */
+function withSignal(transport: Transport, signal: AbortSignal): Transport {
+  return (options) => {
+    const inner = transport(options)
+    return {
+      ...inner,
+      request: (args, requestOptions) =>
+        abortable(inner.request(args, { ...requestOptions, signal }), signal),
+    }
+  }
 }
 
 /**
@@ -67,10 +83,9 @@ export function createApp(options: CreateAppOptions = {}): App {
   const env = options.env ?? process.env
   const config = openConfig(env)
   const network = resolveNetwork(options.network, config)
-  const chain = chainFor(network)
-  const transport = env.FIL_RPC_URL
-    ? http(env.FIL_RPC_URL)
-    : getTransport(chain)
+  const chain = network === 'mainnet' ? mainnet : calibration
+  const base = env.FIL_RPC_URL ? http(env.FIL_RPC_URL) : getTransport(chain)
+  const transport = options.signal ? withSignal(base, options.signal) : base
   const root = stateDir(env)
   let db: DatabaseSync | undefined
   return {
@@ -79,10 +94,11 @@ export function createApp(options: CreateAppOptions = {}): App {
     env,
     config,
     credentials: {
-      ...(options.sessionKey ? { sessionKey: options.sessionKey } : {}),
-      ...(options.rootAddress ? { rootAddress: options.rootAddress } : {}),
+      sessionKey: options.sessionKey,
+      rootAddress: options.rootAddress,
     },
     consoleUrl: env.FIL_CONSOLE_URL ?? DEFAULT_CONSOLE_URL,
+    signal: options.signal,
     transport,
     client: createPublicClient({ chain, transport }),
     db: () => {

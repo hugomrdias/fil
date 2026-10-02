@@ -3,6 +3,7 @@ import { getBlockNumber } from 'viem/actions'
 import { resolveCredentials } from '../auth/session.ts'
 import { doctor } from '../commands/doctor.ts'
 import { abortable } from '../errors.ts'
+import { firstLine } from '../map-error.ts'
 import { stateDir } from '../state/db.ts'
 import { appFor } from './context.ts'
 
@@ -15,7 +16,7 @@ const RPC_TIMEOUT = 10_000
  * prints the session key.
  */
 export default defineHandler(doctor, async (ctx) => {
-  const app = appFor(ctx.input)
+  const app = appFor(ctx)
   const env = app.env
   const checks: { name: string; ok: boolean; message: string }[] = []
 
@@ -44,17 +45,10 @@ export default defineHandler(doctor, async (ctx) => {
   }
 
   try {
+    // The app's transport already stops on ctx.signal; this adds a deadline.
     const block = await abortable(
-      Promise.race([
-        getBlockNumber(app.client, { cacheTime: 0 }),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error(`No answer within ${RPC_TIMEOUT / 1000} s`)),
-            RPC_TIMEOUT
-          ).unref()
-        ),
-      ]),
-      ctx.signal
+      getBlockNumber(app.client, { cacheTime: 0 }),
+      AbortSignal.timeout(RPC_TIMEOUT)
     )
     checks.push({
       name: 'rpc',
@@ -67,9 +61,11 @@ export default defineHandler(doctor, async (ctx) => {
       name: 'rpc',
       ok: false,
       message:
-        error instanceof Error
-          ? (error.message.split('\n')[0] ?? '')
-          : String(error),
+        error instanceof DOMException && error.name === 'TimeoutError'
+          ? `No answer within ${RPC_TIMEOUT / 1000} s`
+          : error instanceof Error
+            ? firstLine(error)
+            : String(error),
     })
   }
 

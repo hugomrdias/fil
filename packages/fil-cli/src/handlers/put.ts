@@ -1,13 +1,12 @@
-import { tmpdir } from 'node:os'
 import { defineHandler, isCliError } from 'clipact'
-import { formatUnits } from 'viem'
 import { PUT_SCOPES } from '../auth/scopes.ts'
 import { missingScopes, openSession } from '../auth/session.ts'
 import { put } from '../commands/put.ts'
-import { abortable, ErrorCodes } from '../errors.ts'
+import { ErrorCodes } from '../errors.ts'
 import { estimatePut, startPut } from '../storage/jobs.ts'
 import { createSynapseBackend } from '../storage/synapse.ts'
 import type { StorageBackend } from '../storage/types.ts'
+import { formatUsdfc } from '../usdfc.ts'
 import { appFor, jobContext } from './context.ts'
 
 /** How ready the session key is to sign a put. */
@@ -17,11 +16,6 @@ type Authorization =
   | 'login_pending'
   | 'scopes_missing'
 
-/** Format a USDFC base-unit amount. */
-function usdfc(value: bigint): string {
-  return formatUnits(value, 18)
-}
-
 /**
  * Store a file as a raw piece, or a directory as a UnixFS CAR, with one copy
  * on one provider. With `--dry-run`, report what would be stored, where, and
@@ -29,7 +23,7 @@ function usdfc(value: bigint): string {
  */
 export default defineHandler(put, async (ctx) => {
   const { input } = ctx
-  const app = appFor(input)
+  const app = appFor(ctx)
   const options = {
     path: input.path,
     name: input.name,
@@ -42,10 +36,7 @@ export default defineHandler(put, async (ctx) => {
     let missing: string[] | undefined
     try {
       const sessionKey = openSession(app)
-      missing = await abortable(
-        missingScopes(sessionKey, PUT_SCOPES),
-        ctx.signal
-      )
+      missing = await missingScopes(sessionKey, PUT_SCOPES)
       if (missing.length > 0) authorization = 'scopes_missing'
       backend = createSynapseBackend(app, sessionKey)
     } catch (error) {
@@ -56,12 +47,7 @@ export default defineHandler(put, async (ctx) => {
         authorization = 'login_pending'
       else throw error
     }
-    const estimate = await estimatePut({
-      ...options,
-      scratchDir: tmpdir(),
-      ...(backend ? { backend } : {}),
-      signal: ctx.signal,
-    })
+    const estimate = await estimatePut({ ...options, backend })
     const { placement, quote } = estimate
     return ctx.ok({
       dryRun: true,
@@ -90,10 +76,10 @@ export default defineHandler(put, async (ctx) => {
               cost: {
                 token: 'USDFC' as const,
                 ready: quote.ready,
-                depositNeeded: usdfc(quote.depositNeeded),
+                depositNeeded: formatUsdfc(quote.depositNeeded),
                 needsApproval: quote.needsApproval,
-                ratePerMonth: usdfc(quote.ratePerMonth),
-                lockup: usdfc(quote.lockup),
+                ratePerMonth: formatUsdfc(quote.ratePerMonth),
+                lockup: formatUsdfc(quote.lockup),
                 ...(quote.ready ? {} : { fundingUrl: quote.fundingUrl }),
               },
             }

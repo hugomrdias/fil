@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import * as Piece from '@filoz/synapse-core/piece'
 import { defineHandler } from 'clipact'
 import { get } from '../commands/get.ts'
-import { abortable, notFound } from '../errors.ts'
+import { notFound } from '../errors.ts'
 import { findResourcesByCid, type Resource } from '../state/resources.ts'
 import {
   downloadArtifact,
@@ -26,7 +26,7 @@ async function assertWritable(path: string, force: boolean): Promise<void> {
  */
 export default defineHandler(get, async (ctx) => {
   const { input } = ctx
-  const app = appFor(input)
+  const app = appFor(ctx)
   const { target } = input
   let resource: Resource | undefined
   if (target.startsWith('res_')) {
@@ -44,14 +44,12 @@ export default defineHandler(get, async (ctx) => {
         description: 'List managed resources',
       })
     }
-    const url = await abortable(
-      Piece.resolvePieceUrl({
-        client: app.client,
-        address: accountScope(app).payer as `0x${string}`,
-        pieceCid,
-      }),
-      ctx.signal
-    ).catch((error: unknown) => {
+    const url = await Piece.resolvePieceUrl({
+      client: app.client,
+      address: accountScope(app).payer as `0x${string}`,
+      pieceCid,
+      signal: ctx.signal,
+    }).catch((error: unknown) => {
       if (ctx.signal.aborted) throw error
       throw notFound(`No provider serves ${target}: ${String(error)}`)
     })

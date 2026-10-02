@@ -37,6 +37,6 @@ export function resourceUrls(resource: Resource): RetrievalUrls {
   return retrievalUrls({
     serviceURL: copy.serviceURL,
     pieceCid: resource.pieceCid,
-    ...(resource.rootCid ? { rootCid: resource.rootCid } : {}),
+    rootCid: resource.rootCid,
   })
 }

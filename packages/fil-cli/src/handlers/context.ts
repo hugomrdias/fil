@@ -6,10 +6,14 @@ import {
   requireSession,
   resolveCredentials,
 } from '../auth/session.ts'
-import { abortable, notFound, resumeStep } from '../errors.ts'
+import { notFound, resumeStep } from '../errors.ts'
 import type { Network } from '../network.ts'
 import { getOperation, type Operation } from '../state/operations.ts'
-import { getResource, type Resource } from '../state/resources.ts'
+import {
+  type AccountScope,
+  getResource,
+  type Resource,
+} from '../state/resources.ts'
 import type { JobContext } from '../storage/jobs.ts'
 import { createSynapseBackend } from '../storage/synapse.ts'
 
@@ -27,24 +31,22 @@ export type JobReporter = Pick<
   'signal' | 'progress' | 'checkpoint'>
 
 /**
- * Build the invocation context from a command's account input. Shared setup
- * is a plain function each handler calls; clipact has no middleware.
+ * Build the invocation context from a handler's account input and signal.
+ * Shared setup is a plain function each handler calls; clipact has no
+ * middleware.
  *
  * @see ../../../../docs/cli-framework-design.md#defining-commands
  */
-export function appFor(input: AccountInput): App {
-  return createApp({
-    network: input.network,
-    sessionKey: input.sessionKey,
-    rootAddress: input.rootAddress,
-  })
+export function appFor(ctx: { input: AccountInput; signal: AbortSignal }): App {
+  const { network, sessionKey, rootAddress } = ctx.input
+  return createApp({ network, sessionKey, rootAddress, signal: ctx.signal })
 }
 
 /**
  * Account scope for local state queries. Needs a session, or at least its
  * owner; reports a pending login or invalid credentials as such.
  */
-export function accountScope(app: App): { chainId: string; payer: string } {
+export function accountScope(app: App): AccountScope {
   const credentials = resolveCredentials(app)
   if (!credentials) throw notLoggedIn()
   return { chainId: app.chain.id.toString(), payer: credentials.rootAddress }
@@ -60,7 +62,7 @@ export async function jobContext(
   scopes: readonly ScopeId[],
   ctx: JobReporter
 ): Promise<JobContext> {
-  const sessionKey = await abortable(requireSession(app, scopes), ctx.signal)
+  const sessionKey = await requireSession(app, scopes)
   return {
     db: app.db(),
     backend: createSynapseBackend(app, sessionKey),
@@ -76,9 +78,8 @@ export async function jobContext(
 
 /** Resolve a managed resource in the current account scope. */
 export function findResource(app: App, ref: string): Resource {
-  const resource = getResource(app.db(), ref)
-  const { chainId, payer } = accountScope(app)
-  if (!resource || resource.chainId !== chainId || resource.payer !== payer) {
+  const resource = getResource(app.db(), ref, accountScope(app))
+  if (!resource) {
     throw notFound(`No managed resource ${ref}.`, {
       by: 'agent',
       command: 'fil ls',
@@ -90,9 +91,8 @@ export function findResource(app: App, ref: string): Resource {
 
 /** Resolve an operation in the current account scope. */
 export function findOperation(app: App, id: string): Operation {
-  const op = getOperation(app.db(), id)
-  const { chainId, payer } = accountScope(app)
-  if (!op || op.chainId !== chainId || op.payer !== payer) {
+  const op = getOperation(app.db(), id, accountScope(app))
+  if (!op) {
     throw notFound(`No operation ${id}.`, {
       by: 'agent',
       command: 'fil operations ls',

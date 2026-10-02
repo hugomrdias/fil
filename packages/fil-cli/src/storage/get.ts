@@ -27,16 +27,16 @@ export async function downloadPiece(
   options: DownloadPieceOptions
 ): Promise<{ size: number }> {
   const fetchFn = options.fetch ?? globalThis.fetch
-  const response = await fetchFn(options.url, {
-    ...(options.signal ? { signal: options.signal } : {}),
-  }).catch((error: unknown) => {
-    if (options.signal?.aborted) throw error
-    throw new CliError({
-      code: 'service_unavailable',
-      message: `Could not reach ${options.url}.`,
-      cause: error,
-    })
-  })
+  const response = await fetchFn(options.url, { signal: options.signal }).catch(
+    (error: unknown) => {
+      if (options.signal?.aborted) throw error
+      throw new CliError({
+        code: 'service_unavailable',
+        message: `Could not reach ${options.url}.`,
+        cause: error,
+      })
+    }
+  )
   if (response.status === 404) {
     await response.body?.cancel()
     throw notFound(`The provider does not have ${options.pieceCid}.`)
@@ -52,11 +52,9 @@ export async function downloadPiece(
   await mkdir(dirname(output), { recursive: true })
   const tmp = `${output}.fil-partial`
   const hasher = Piece.hasher()
-  let size = 0
   const hash = new Transform({
     transform(chunk: Uint8Array, _encoding, callback) {
       hasher.write(chunk)
-      size += chunk.length
       callback(null, chunk)
     },
   })
@@ -74,7 +72,7 @@ export async function downloadPiece(
       })
     }
     await rename(tmp, output)
-    return { size }
+    return { size: Number(hasher.count()) }
   } catch (error) {
     await rm(tmp, { force: true })
     throw error
@@ -94,7 +92,8 @@ export type DownloadArtifactOptions = {
 
 /**
  * Download an artifact's CAR through its exact piece, verify it against the
- * PieceCID and root CID, and extract the file tree into `output`.
+ * PieceCID and root CID, and extract the file tree into `output`. The
+ * PieceCID check covers every byte, so blocks are not hashed again.
  */
 export async function downloadArtifact(
   options: DownloadArtifactOptions
@@ -107,7 +106,9 @@ export async function downloadArtifact(
     const { size } = await downloadPiece({ ...options, output: carPath })
     const tmp = `${output}.fil-partial`
     await rm(tmp, { recursive: true, force: true })
-    const { rootCid, files } = await extractCar(carPath, tmp)
+    const { rootCid, files } = await extractCar(carPath, tmp, {
+      verifyBlocks: false,
+    })
     if (rootCid.toString() !== options.rootCid) {
       await rm(tmp, { recursive: true, force: true })
       throw new CliError({

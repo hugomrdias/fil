@@ -40,7 +40,7 @@ export const ErrorCodes = {
 } as const
 
 /** Errors a command that signs with the session key can return. */
-export const SESSION_ERRORS = [
+const SESSION_ERRORS = [
   ErrorCodes.authRequired,
   ErrorCodes.loginPending,
   ErrorCodes.sessionExpired,

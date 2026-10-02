@@ -8,15 +8,14 @@ import {
 import {
   type Address,
   type Client,
-  formatUnits,
   getAbiItem,
   isAddressEqual,
   type Transport,
 } from 'viem'
 import { getBlockNumber, getLogs } from 'viem/actions'
-import { abortable } from '../errors.ts'
 import type { Network } from '../network.ts'
-import { SCOPES, type ScopeId } from './scopes.ts'
+import { formatUsdfc } from '../usdfc.ts'
+import { SCOPES, type ScopeId, toPermissions } from './scopes.ts'
 
 /** Read client for the target chain. */
 type ChainClient = Client<Transport, FilecoinChain>
@@ -59,7 +58,7 @@ export type FundingUrlOptions = {
 export function buildFundingUrl(options: FundingUrlOptions): string {
   const url = new URL('/console', options.consoleUrl)
   if (options.deposit != null && options.deposit > 0n) {
-    url.searchParams.set('deposit', formatUnits(options.deposit, 18))
+    url.searchParams.set('deposit', formatUsdfc(options.deposit))
     url.searchParams.set('operator', 'fwss')
     url.searchParams.set('network', options.network)
   }
@@ -161,7 +160,7 @@ export async function readScopes(
   const expirations = await getExpirations(options.client, {
     address: options.root,
     sessionKeyAddress: options.signer,
-    permissions: options.scopes.map((scope) => SCOPES[scope]),
+    permissions: toPermissions(options.scopes),
   })
   return classifyScopes(options.scopes, expirations)
 }
@@ -177,18 +176,16 @@ export type CheckAuthorizationOptions = {
   signer: Address
   scopes: readonly ScopeId[]
   fromBlock: bigint
-  /** Known owner, which skips the event scan. */
-  root?: Address
 }
 
 /**
  * Check once whether the owner has acted on a pending session key: find the
- * owner (unless known), then read the requested scopes.
+ * owner, then read the requested scopes.
  */
 export async function checkAuthorization(
   options: CheckAuthorizationOptions
 ): Promise<AuthorizationState> {
-  const root = options.root ?? (await findAuthorizer(options))
+  const root = await findAuthorizer(options)
   if (!root) return { status: 'pending' }
   const grants = await readScopes({ ...options, root })
   const status =
@@ -203,37 +200,32 @@ export async function checkAuthorization(
 /** Options for {@link waitForAuthorization}. */
 export type WaitForAuthorizationOptions = CheckAuthorizationOptions & {
   timeoutMs: number
-  intervalMs?: number
-  /** Stops waiting; the pending RPC call is abandoned. */
+  /** Stops waiting; a client bound to it also cancels the pending check. */
   signal?: AbortSignal
-  /** Called after each pass that is still pending or failed transiently. */
-  onTick?: (info: { elapsedMs: number; error?: unknown }) => void
 }
+
+/** Milliseconds between authorization checks. */
+const POLL_INTERVAL = 3000
 
 /**
  * Poll {@link checkAuthorization} until the owner acts or `timeoutMs`
- * passes. RPC errors are reported through `onTick` and retried. Rejects
- * with the signal's reason when `signal` aborts.
+ * passes. RPC errors are retried. Rejects with the signal's reason when
+ * `signal` aborts.
  */
 export async function waitForAuthorization(
   options: WaitForAuthorizationOptions
 ): Promise<AuthorizationState> {
   const started = Date.now()
-  const interval = options.intervalMs ?? 3000
   for (;;) {
     try {
-      const state = await abortable(checkAuthorization(options), options.signal)
-      if (state.status !== 'pending' && state.status !== 'none') return state
-      // With a known owner and no live scopes the owner has not acted yet.
-      if (state.status === 'none' && !options.root) return state
-      options.onTick?.({ elapsedMs: Date.now() - started })
+      const state = await checkAuthorization(options)
+      if (state.status !== 'pending') return state
     } catch (error) {
       if (options.signal?.aborted) throw error
-      options.onTick?.({ elapsedMs: Date.now() - started, error })
     }
-    if (Date.now() - started + interval > options.timeoutMs) {
+    if (Date.now() - started + POLL_INTERVAL > options.timeoutMs) {
       return { status: 'pending' }
     }
-    await sleep(interval, undefined, { signal: options.signal })
+    await sleep(POLL_INTERVAL, undefined, { signal: options.signal })
   }
 }

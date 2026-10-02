@@ -25,7 +25,7 @@ function* causes(error: unknown): Generator<Error> {
 }
 
 /** First line of an error message, without viem's detail blocks. */
-function firstLine(error: Error): string {
+export function firstLine(error: Error): string {
   return error.message.split('\n')[0] ?? error.name
 }
 

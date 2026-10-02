@@ -1,8 +1,9 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { CliError } from 'clipact'
 import { ErrorCodes, notFound } from '../errors.ts'
-import { decodeCursor, encodeCursor, type Page } from './cursor.ts'
+import { decodeCursor, type Page, toPage } from './cursor.ts'
 import { createId } from './ids.ts'
+import type { AccountScope } from './resources.ts'
 
 /** Canonical saved command. */
 export type OperationAction = 'put' | 'delete'
@@ -64,7 +65,6 @@ export type Checkpoint = {
   statusUrl?: string
   transactionHash?: string
   pieceId?: string
-  confirmed?: boolean
 }
 
 /**
@@ -160,14 +160,21 @@ export function createOperation(
   return getOperation(db, id) as Operation
 }
 
-/** Get an operation by ID. */
+/** Get an operation by ID, only within `scope` when given. */
 export function getOperation(
   db: DatabaseSync,
-  id: string
+  id: string,
+  scope?: AccountScope
 ): Operation | undefined {
-  const row = db.prepare('SELECT * FROM operations WHERE id = ?').get(id) as
-    | OperationRow
-    | undefined
+  const row = (
+    scope
+      ? db
+          .prepare(
+            'SELECT * FROM operations WHERE id = ? AND chain_id = ? AND payer = ?'
+          )
+          .get(id, scope.chainId, scope.payer)
+      : db.prepare('SELECT * FROM operations WHERE id = ?').get(id)
+  ) as OperationRow | undefined
   return row ? fromRow(row) : undefined
 }
 
@@ -205,11 +212,7 @@ export function listOperations(
       ...(after ?? []),
       options.limit + 1
     ) as OperationRow[]
-  const items = rows.slice(0, options.limit).map(fromRow)
-  const last = items.at(-1)
-  return rows.length > options.limit && last
-    ? { items, nextCursor: encodeCursor(last.updatedAt, last.id) }
-    : { items }
+  return toPage(rows.map(fromRow), options.limit, (op) => [op.updatedAt, op.id])
 }
 
 /** Fields that {@link updateOperation} can change. */
@@ -236,20 +239,23 @@ export function updateOperation(
   const error =
     update.error === undefined ? (current.error ?? null) : update.error
   const pid = update.pid === undefined ? (current.pid ?? null) : update.pid
-  db.prepare(
-    `UPDATE operations
-     SET phase = ?, execution_status = ?, checkpoint = ?, error = ?, pid = ?, updated_at = ?
-     WHERE id = ?`
-  ).run(
-    update.phase ?? current.phase,
-    update.executionStatus ?? current.executionStatus,
-    JSON.stringify(checkpoint),
-    error,
-    pid,
-    new Date().toISOString(),
-    id
-  )
-  return getOperation(db, id) as Operation
+  const row = db
+    .prepare(
+      `UPDATE operations
+       SET phase = ?, execution_status = ?, checkpoint = ?, error = ?, pid = ?, updated_at = ?
+       WHERE id = ?
+       RETURNING *`
+    )
+    .get(
+      update.phase ?? current.phase,
+      update.executionStatus ?? current.executionStatus,
+      JSON.stringify(checkpoint),
+      error,
+      pid,
+      new Date().toISOString(),
+      id
+    ) as OperationRow
+  return fromRow(row)
 }
 
 /** Whether a process with `pid` is still running. */

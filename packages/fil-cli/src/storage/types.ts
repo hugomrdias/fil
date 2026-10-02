@@ -37,30 +37,26 @@ export type UploadQuote = {
 /**
  * Storage operations used by put and delete jobs. The synapse-core
  * implementation lives in `synapse.ts`; tests substitute a fake so
- * orchestration and resume logic run without a provider or chain.
+ * orchestration and resume logic run without a provider or chain. A backend
+ * is built for one invocation and cancels its own calls when that
+ * invocation's signal aborts.
  */
 export interface StorageBackend {
   /** Choose one provider, preferring an existing data set with `metadata`. */
   selectPlacement(options: {
     metadata: MetadataObject
-    providerId?: bigint
-    signal?: AbortSignal
+    providerId?: bigint | undefined
   }): Promise<Placement>
   /** Price an upload of `size` bytes and check the payer's readiness. */
   quote(options: { size: number; placement: Placement }): Promise<UploadQuote>
   /** Whether the provider already holds the piece. */
-  hasPiece(options: {
-    serviceURL: string
-    pieceCid: string
-    signal?: AbortSignal
-  }): Promise<boolean>
+  hasPiece(options: { serviceURL: string; pieceCid: string }): Promise<boolean>
   /** Upload bytes and wait until the provider has parked the piece. */
   upload(options: {
     serviceURL: string
     path: string
     size: number
     pieceCid: string
-    signal?: AbortSignal
   }): Promise<void>
   /**
    * Sign a commit without sending it: create-and-add when the placement has
@@ -93,7 +89,6 @@ export interface StorageBackend {
   waitForCommit(options: {
     statusUrl: string
     created: boolean
-    signal?: AbortSignal
   }): Promise<CommittedPiece>
   /** Sign and submit a piece removal. */
   schedulePieceRemoval(options: {
@@ -103,7 +98,6 @@ export interface StorageBackend {
   }): Promise<{ transactionHash: Hex }>
   /** Wait for a chain transaction and report whether it succeeded. */
   waitForTransaction(
-    transactionHash: Hex,
-    signal?: AbortSignal
+    transactionHash: Hex
   ): Promise<{ status: 'success' | 'reverted' }>
 }

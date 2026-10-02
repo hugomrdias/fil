@@ -15,7 +15,7 @@ import { DEFAULT_SCOPES, type ScopeId } from '../auth/scopes.ts'
 import { loginPending } from '../auth/session.ts'
 import { login } from '../commands/login.ts'
 import type { StoredSession } from '../config.ts'
-import { abortable, ErrorCodes, invalidInput } from '../errors.ts'
+import { ErrorCodes, invalidInput } from '../errors.ts'
 import { appFor } from './context.ts'
 
 /** Result of a completed login. */
@@ -89,7 +89,7 @@ export default defineHandler(login, async (ctx) => {
       'sessionKey'
     )
   }
-  const app = appFor(input)
+  const app = appFor(ctx)
   const scopes = input.scopes ?? DEFAULT_SCOPES
   const human = ctx.mode.interactive && ctx.mode.agent === false
   const wait = input.wait ?? human
@@ -98,15 +98,12 @@ export default defineHandler(login, async (ctx) => {
 
   // Reuse a valid session that already has every requested scope.
   if (session?.rootAddress && !input.fresh) {
-    const grants = await abortable(
-      readScopes({
-        client: app.client,
-        root: getAddress(session.rootAddress),
-        signer: getAddress(session.address),
-        scopes,
-      }),
-      ctx.signal
-    )
+    const grants = await readScopes({
+      client: app.client,
+      root: getAddress(session.rootAddress),
+      signer: getAddress(session.address),
+      scopes,
+    })
     if (grants.missing.length === 0) {
       return ctx.ok(
         finishLogin(app, session, {
@@ -125,10 +122,7 @@ export default defineHandler(login, async (ctx) => {
     scopes.every((scope) => session?.scopes.includes(scope))
   if (!session || session.rootAddress || input.fresh || !sameScopes) {
     const privateKey = generatePrivateKey()
-    const fromBlock = await abortable(
-      getBlockNumber(app.client, { cacheTime: 0 }),
-      ctx.signal
-    )
+    const fromBlock = await getBlockNumber(app.client, { cacheTime: 0 })
     session = {
       privateKey,
       address: privateKeyToAccount(privateKey).address,
@@ -154,7 +148,7 @@ export default defineHandler(login, async (ctx) => {
   }
 
   if (!wait) {
-    const state = await abortable(checkAuthorization(check), ctx.signal)
+    const state = await checkAuthorization(check)
     if (state.status === 'pending') throw loginPending(url)
     return ctx.ok(finishLogin(app, pending, state))
   }

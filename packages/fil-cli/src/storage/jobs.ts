@@ -1,12 +1,11 @@
 import { createReadStream } from 'node:fs'
-import { mkdtemp, rm, stat } from 'node:fs/promises'
+import { rm, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
 import * as Piece from '@filoz/synapse-core/piece'
 import { SIZE_CONSTANTS } from '@filoz/synapse-core/utils'
 import { CliError, isCliError } from 'clipact'
 import {
-  abortable,
   ErrorCodes,
   invalidInput,
   notFound,
@@ -24,7 +23,7 @@ import {
   updateOperation,
 } from '../state/operations.ts'
 import { getResource, type Resource, saveResource } from '../state/resources.ts'
-import { listEntries, packDirectory } from './pack.ts'
+import { packDirectory } from './pack.ts'
 import type {
   CommittedPiece,
   Placement,
@@ -128,9 +127,7 @@ export async function startPut(
       sourcePath: source.sourcePath,
       name: source.name,
       kind: source.kind,
-      ...(options.providerId == null
-        ? {}
-        : { providerId: options.providerId.toString() }),
+      providerId: options.providerId?.toString(),
     },
   })
   return await runOperation(ctx, op.id)
@@ -153,18 +150,15 @@ export type PutEstimate = {
 
 /** Options for {@link estimatePut}. */
 export type EstimatePutOptions = StartPutOptions & {
-  /** Where a directory is packed temporarily to measure it. */
-  scratchDir: string
   /** Prices the upload; omitted when not logged in. */
-  backend?: StorageBackend
-  signal?: AbortSignal
+  backend?: StorageBackend | undefined
 }
 
 /**
  * Describe a put without side effects on providers or the chain: content
  * inventory, stored size, and, with a backend, the provider it would use and
- * what it would cost. Directories are packed into a scratch directory that
- * is removed afterwards.
+ * what it would cost. Directories are packed only to measure the CAR;
+ * nothing is written to disk.
  */
 export async function estimatePut(
   options: EstimatePutOptions
@@ -179,35 +173,22 @@ export async function estimatePut(
       files: 1,
     }
   } else {
-    const scratch = await mkdtemp(join(options.scratchDir, 'dry-run-'))
-    try {
-      const { files } = await listEntries(source.sourcePath)
-      const packed = await packDirectory(
-        source.sourcePath,
-        join(scratch, 'artifact.car')
-      )
-      assertPieceSize(packed.size)
-      estimate = {
-        kind: 'artifact',
-        name: source.name,
-        size: packed.size,
-        files: files.length,
-        rootCid: packed.rootCid.toString(),
-      }
-    } finally {
-      await rm(scratch, { recursive: true, force: true })
+    const packed = await packDirectory(source.sourcePath)
+    assertPieceSize(packed.size)
+    estimate = {
+      kind: 'artifact',
+      name: source.name,
+      size: packed.size,
+      files: packed.files,
+      rootCid: packed.rootCid.toString(),
     }
   }
   if (!options.backend) return estimate
   const placement = await options.backend.selectPlacement({
     metadata: metadataFor(estimate.kind),
-    ...(options.providerId == null ? {} : { providerId: options.providerId }),
-    ...(options.signal ? { signal: options.signal } : {}),
+    providerId: options.providerId,
   })
-  const quote = await abortable(
-    options.backend.quote({ size: estimate.size, placement }),
-    options.signal
-  )
+  const quote = await options.backend.quote({ size: estimate.size, placement })
   return { ...estimate, placement, quote }
 }
 
@@ -254,12 +235,39 @@ export function savedOutcome(db: DatabaseSync, op: Operation): JobResult {
   if (!resource) {
     throw notFound(`Resource ${op.resourceRef} of ${op.id} no longer exists.`)
   }
+  return jobResult(op, resource)
+}
+
+/** Shape a finished operation and its resource for command output. */
+function jobResult(op: Operation, resource: Resource): JobResult {
   return {
     operationId: op.id,
     state: op.action === 'put' ? 'ready' : 'removal_pending',
     resource,
     urls: resourceUrls(resource),
   }
+}
+
+/**
+ * Save the resource and mark the operation completed in one transaction, so
+ * a stop at this point leaves a finished job, never a half-finished one.
+ */
+function complete(
+  ctx: JobContext,
+  op: Operation,
+  resource: Resource,
+  checkpoint: Checkpoint = {}
+): void {
+  transaction(ctx.db, () => {
+    saveResource(ctx.db, resource)
+    updateOperation(ctx.db, op.id, {
+      executionStatus: 'completed',
+      phase: 'done',
+      pid: null,
+      error: null,
+      checkpoint,
+    })
+  })
 }
 
 /** Reject sizes outside the PDP piece limits. */
@@ -282,9 +290,13 @@ function metadataFor(kind: 'file' | 'artifact') {
     : FILE_DATA_SET_METADATA
 }
 
-/** Compute the PieceCID of a file by streaming it. */
-async function pieceCidOf(path: string): Promise<string> {
-  return (await Piece.calculate(createReadStream(path))).toString()
+/**
+ * Compute the PieceCID of a file by streaming it. Aborting `signal` destroys
+ * the read stream, which stops the hashing.
+ */
+async function pieceCidOf(path: string, signal?: AbortSignal): Promise<string> {
+  const stream = createReadStream(path, { signal })
+  return (await Piece.calculate(stream)).toString()
 }
 
 /** Save checkpoint fields and return the updated operation. */
@@ -348,7 +360,7 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
   const size = (await stat(uploadPath)).size
   assertPieceSize(size)
   ctx.progress?.({ phase: 'hashing', message: 'Computing PieceCID' })
-  const pieceCid = await abortable(pieceCidOf(uploadPath), signal)
+  const pieceCid = await pieceCidOf(uploadPath, signal)
   if (op.checkpoint.pieceCid && op.checkpoint.pieceCid !== pieceCid) {
     throw new CliError({
       code: ErrorCodes.sourceChanged,
@@ -373,13 +385,9 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
     })
     placement = await ctx.backend.selectPlacement({
       metadata: metadataFor(kind),
-      ...(input.providerId ? { providerId: BigInt(input.providerId) } : {}),
-      ...(signal ? { signal } : {}),
+      providerId: input.providerId ? BigInt(input.providerId) : undefined,
     })
-    const quote = await abortable(
-      ctx.backend.quote({ size, placement }),
-      signal
-    )
+    const quote = await ctx.backend.quote({ size, placement })
     if (!quote.ready) throw insufficientFunds(quote)
     op = save(ctx, op, {
       providerId: placement.providerId.toString(),
@@ -399,7 +407,6 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
     const present = await ctx.backend.hasPiece({
       serviceURL: placement.serviceURL,
       pieceCid,
-      ...(signal ? { signal } : {}),
     })
     if (!present) {
       ctx.progress?.({
@@ -411,19 +418,17 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
         path: uploadPath,
         size,
         pieceCid,
-        ...(signal ? { signal } : {}),
       })
     }
     op = save(ctx, op, { stored: true })
   }
 
   const committed = await commit(ctx, op, placement, { pieceCid, name })
-  op = getOperation(ctx.db, op.id) ?? op
 
   const urls = retrievalUrls({
     serviceURL: placement.serviceURL,
     pieceCid,
-    ...(op.checkpoint.rootCid ? { rootCid: op.checkpoint.rootCid } : {}),
+    rootCid: op.checkpoint.rootCid,
   })
   const resource: Resource = {
     ref: op.resourceRef,
@@ -446,28 +451,16 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
     status: 'active',
     createdAt: new Date().toISOString(),
   }
-  // The resource and the completed operation are saved together, so a stop
-  // after this point leaves a finished job, never a half-finished one.
-  transaction(ctx.db, () => {
-    saveResource(ctx.db, resource)
-    updateOperation(ctx.db, op.id, {
-      executionStatus: 'completed',
-      phase: 'done',
-      pid: null,
-      error: null,
-      checkpoint: {
-        dataSetId: committed.dataSetId.toString(),
-        pieceId: committed.pieceId.toString(),
-        confirmed: true,
-      },
-    })
+  complete(ctx, op, resource, {
+    dataSetId: committed.dataSetId.toString(),
+    pieceId: committed.pieceId.toString(),
   })
   if (kind === 'artifact') {
     await rm(ctx.stagingDir(op.id), { recursive: true, force: true }).catch(
       () => undefined
     )
   }
-  return { operationId: op.id, state: 'ready', resource, urls }
+  return jobResult(op, resource)
 }
 
 /**
@@ -485,17 +478,13 @@ async function commit(
   placement: Placement,
   piece: { pieceCid: string; name: string }
 ): Promise<CommittedPiece> {
-  const signal = ctx.signal
   const pieceMetadata: Record<string, string> = {
     name: piece.name.slice(0, MAX_METADATA_VALUE),
     ...(op.checkpoint.rootCid ? { ipfsRootCID: op.checkpoint.rootCid } : {}),
   }
   const saved = op.checkpoint.commit
   if (saved) {
-    const landed = await abortable(
-      ctx.backend.findCommit({ nonce: BigInt(saved.nonce) }),
-      signal
-    )
+    const landed = await ctx.backend.findCommit({ nonce: BigInt(saved.nonce) })
     if (landed) return landed
   }
 
@@ -519,15 +508,12 @@ async function commit(
         ? 'Creating data set and adding piece'
         : 'Adding piece',
     })
-    const submission = await abortable(
-      ctx.backend.submitCommit({
-        placement,
-        pieceCid: piece.pieceCid,
-        commit: signed,
-        pieceMetadata,
-      }),
-      signal
-    )
+    const submission = await ctx.backend.submitCommit({
+      placement,
+      pieceCid: piece.pieceCid,
+      commit: signed,
+      pieceMetadata,
+    })
     op = save(ctx, op, {
       statusUrl: submission.statusUrl,
       transactionHash: submission.transactionHash,
@@ -542,7 +528,6 @@ async function commit(
     return await ctx.backend.waitForCommit({
       statusUrl: op.checkpoint.statusUrl as string,
       created: signed.created,
-      ...(signal ? { signal } : {}),
     })
   } catch (error) {
     if (isCliError(error) && error.code === ErrorCodes.commitRejected) {
@@ -600,12 +585,8 @@ export async function startRemove(
   ctx: JobContext,
   ref: string
 ): Promise<JobResult> {
-  const resource = getResource(ctx.db, ref)
-  if (
-    !resource ||
-    resource.chainId !== ctx.chainId ||
-    resource.payer !== ctx.payer
-  ) {
+  const resource = getResource(ctx.db, ref, ctx)
+  if (!resource) {
     throw notFound(`No managed resource ${ref} for this account.`, {
       by: 'agent',
       command: 'fil ls',
@@ -651,14 +632,11 @@ async function runRemove(ctx: JobContext, op: Operation): Promise<JobResult> {
       phase: 'removing',
       message: `Scheduling removal of piece ${pieceId}`,
     })
-    const { transactionHash } = await abortable(
-      ctx.backend.schedulePieceRemoval({
-        serviceURL,
-        dataSetId: BigInt(dataSetId),
-        pieceId: BigInt(pieceId),
-      }),
-      ctx.signal
-    )
+    const { transactionHash } = await ctx.backend.schedulePieceRemoval({
+      serviceURL,
+      dataSetId: BigInt(dataSetId),
+      pieceId: BigInt(pieceId),
+    })
     op = save(ctx, op, { transactionHash })
   }
   const hash = op.checkpoint.transactionHash as `0x${string}`
@@ -666,7 +644,7 @@ async function runRemove(ctx: JobContext, op: Operation): Promise<JobResult> {
     phase: 'removing',
     message: 'Waiting for the removal transaction',
   })
-  const receipt = await ctx.backend.waitForTransaction(hash, ctx.signal)
+  const receipt = await ctx.backend.waitForTransaction(hash)
   if (receipt.status !== 'success') {
     // The reverted transaction had no effect; a resume signs a new one.
     save(ctx, op, { transactionHash: undefined })
@@ -676,20 +654,6 @@ async function runRemove(ctx: JobContext, op: Operation): Promise<JobResult> {
     })
   }
   const updated: Resource = { ...resource, status: 'removal_pending' }
-  transaction(ctx.db, () => {
-    saveResource(ctx.db, updated)
-    updateOperation(ctx.db, op.id, {
-      executionStatus: 'completed',
-      phase: 'done',
-      pid: null,
-      error: null,
-      checkpoint: { confirmed: true },
-    })
-  })
-  return {
-    operationId: op.id,
-    state: 'removal_pending',
-    resource: updated,
-    urls: resourceUrls(updated),
-  }
+  complete(ctx, op, updated)
+  return jobResult(op, updated)
 }

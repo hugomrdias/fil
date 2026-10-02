@@ -1,7 +1,7 @@
 import { createReadStream, createWriteStream } from 'node:fs'
 import { lstat, mkdir, open, readdir, rename, rm } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
-import { Readable } from 'node:stream'
+import { Readable, Writable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { CarIndexedReader, CarWriter } from '@ipld/car'
 import { CliError } from 'clipact'
@@ -12,6 +12,7 @@ import {
   type ImporterOptions,
   importer,
 } from 'ipfs-unixfs-importer'
+import { equals } from 'multiformats/bytes'
 import { CID } from 'multiformats/cid'
 import * as Digest from 'multiformats/hashes/digest'
 import { sha256 } from 'multiformats/hashes/sha2'
@@ -23,7 +24,7 @@ import { ErrorCodes, invalidInput } from '../errors.ts'
  *
  * @see https://github.com/ipfs/specs/pull/499
  */
-export const IMPORTER_OPTIONS: ImporterOptions = { profile: 'unixfs-v1-2025' }
+const IMPORTER_OPTIONS: ImporterOptions = { profile: 'unixfs-v1-2025' }
 
 /** A file included in an artifact, relative to the packed directory. */
 export type PackEntry = { path: string; size: number }
@@ -79,22 +80,33 @@ function placeholderCid(): CID {
 /**
  * Pack a directory into a UnixFS CAR at `carPath`. Blocks stream to a
  * temporary file under a placeholder root; the header is patched with the
- * real root, then the file is renamed into place.
+ * real root, then the file is renamed into place. Without `carPath` the CAR
+ * is only measured: the placeholder root has the real root's length, so the
+ * size is exact without writing anything.
  *
  * @see https://github.com/filecoin-project/filecoin-pin/blob/master/documentation/behind-the-scenes-of-adding-a-file.md
  */
 export async function packDirectory(
   dir: string,
-  carPath: string
+  carPath?: string
 ): Promise<PackResult> {
   const root = resolve(dir)
   const name = basename(root)
   const { files, directories } = await listEntries(root)
-  await mkdir(dirname(carPath), { recursive: true })
-  const tmpPath = `${carPath}.tmp`
+  const tmpPath = carPath && `${carPath}.tmp`
+  if (carPath) await mkdir(dirname(carPath), { recursive: true })
+  let measured = 0
+  const sink = tmpPath
+    ? createWriteStream(tmpPath)
+    : new Writable({
+        write(chunk: Uint8Array, _encoding, callback) {
+          measured += chunk.length
+          callback()
+        },
+      })
 
   const { writer, out } = CarWriter.create([placeholderCid()])
-  const written = pipeline(Readable.from(out), createWriteStream(tmpPath))
+  const written = pipeline(Readable.from(out), sink)
   const seen = new Set<string>()
   const blockstore = {
     async put(cid: CID, bytes: Uint8Array) {
@@ -142,10 +154,13 @@ export async function packDirectory(
   } catch (error) {
     await writer.close().catch(() => undefined)
     await written.catch(() => undefined)
-    await rm(tmpPath, { force: true })
+    if (tmpPath) await rm(tmpPath, { force: true })
     throw error
   }
   if (!rootCid) throw new Error(`Packing ${dir} produced no root.`)
+  if (!(carPath && tmpPath)) {
+    return { rootCid, size: measured, files: files.length }
+  }
 
   const handle = await open(tmpPath, 'r+')
   try {
@@ -195,7 +210,7 @@ const IDENTITY_CODE = 0x00
  *
  * @see https://github.com/storacha/ipfs-car
  */
-export async function assertBlock(cid: CID, bytes: Uint8Array): Promise<void> {
+async function assertBlock(cid: CID, bytes: Uint8Array): Promise<void> {
   const { code, digest } = cid.multihash
   let actual: Uint8Array
   if (code === sha256.code) {
@@ -208,10 +223,7 @@ export async function assertBlock(cid: CID, bytes: Uint8Array): Promise<void> {
       message: `Unsupported multihash 0x${code.toString(16)} in block ${cid}.`,
     })
   }
-  if (
-    actual.length !== digest.length ||
-    !actual.every((byte, i) => byte === digest[i])
-  ) {
+  if (!equals(actual, digest)) {
     throw new CliError({
       code: ErrorCodes.verificationFailed,
       message: `Block ${cid} does not match its CID.`,
@@ -221,13 +233,15 @@ export async function assertBlock(cid: CID, bytes: Uint8Array): Promise<void> {
 
 /**
  * Extract a UnixFS CAR into `outDir`, verifying every block against its CID
- * and rejecting entries that would escape `outDir`. Returns the root CID read
- * from the CAR header.
+ * unless `verifyBlocks` is false, and rejecting entries that would escape
+ * `outDir`. Returns the root CID read from the CAR header.
  */
 export async function extractCar(
   carPath: string,
-  outDir: string
+  outDir: string,
+  options: { verifyBlocks?: boolean } = {}
 ): Promise<{ rootCid: CID; files: number }> {
+  const verifyBlocks = options.verifyBlocks ?? true
   const reader = await CarIndexedReader.fromFile(carPath)
   try {
     const [headerRoot] = await reader.getRoots()
@@ -238,7 +252,7 @@ export async function extractCar(
       async *get(cid: CID) {
         const block = await reader.get(cid as never)
         if (!block) throw new Error(`Block ${cid} missing from CAR.`)
-        await assertBlock(cid, block.bytes)
+        if (verifyBlocks) await assertBlock(cid, block.bytes)
         yield block.bytes
       },
     }

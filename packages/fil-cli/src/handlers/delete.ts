@@ -6,7 +6,7 @@ import { appFor, jobContext } from './context.ts'
 
 /** Schedule removal of a managed resource's stored copy. */
 export default defineHandler(remove, async (ctx) => {
-  const app = appFor(ctx.input)
+  const app = appFor(ctx)
   const job = await jobContext(app, RM_SCOPES, ctx)
   const result = await startRemove(job, ctx.input.ref)
   return ctx.ok(result)

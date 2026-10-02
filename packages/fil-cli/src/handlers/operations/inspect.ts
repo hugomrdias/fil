@@ -7,7 +7,7 @@ import { appFor, findOperation } from '../context.ts'
  * `extraData` is left out: it is long and only useful to `resume`.
  */
 export default defineHandler(inspect, (ctx) => {
-  const app = appFor(ctx.input)
+  const app = appFor(ctx)
   const op = findOperation(app, ctx.input.id)
   const { commit, ...checkpoint } = op.checkpoint
   return ctx.ok({

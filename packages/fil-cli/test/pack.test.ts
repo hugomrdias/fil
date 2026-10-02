@@ -32,6 +32,11 @@ test('packDirectory is deterministic and extractCar restores the tree', async ()
   assert.equal(a.rootCid.toString(), b.rootCid.toString())
   assert.equal(a.files, 2)
 
+  // Measuring without a path gives the written CAR's exact size and root.
+  const measured = await packDirectory(dir)
+  assert.equal(measured.size, a.size)
+  assert.equal(measured.rootCid.toString(), a.rootCid.toString())
+
   const out = join(root, 'out')
   const extracted = await extractCar(join(root, 'a.car'), out)
   assert.equal(extracted.rootCid.toString(), a.rootCid.toString())

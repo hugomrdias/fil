@@ -1,10 +1,10 @@
 import { spawn } from 'node:child_process'
 
 /**
- * Open `url` in the default browser without waiting for it. Returns `false`
- * when no opener could be started.
+ * Open `url` in the default browser without waiting for it. Opening is best
+ * effort; callers always print the URL as well.
  */
-export function openBrowser(url: string): boolean {
+export function openBrowser(url: string): void {
   const [command, args] =
     process.platform === 'darwin'
       ? ['open', [url]]
@@ -17,8 +17,7 @@ export function openBrowser(url: string): boolean {
       // Opening is best effort; the URL is always printed as well.
     })
     child.unref()
-    return true
   } catch {
-    return false
+    // Same as a failed spawn: the printed URL is the fallback.
   }
 }

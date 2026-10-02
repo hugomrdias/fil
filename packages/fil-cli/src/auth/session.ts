@@ -1,6 +1,6 @@
 import { fromSecp256k1 } from '@filoz/synapse-core/session-key'
 import { CliError } from 'clipact'
-import { type Address, getAddress, type Hex, isAddress, isHex } from 'viem'
+import { type Address, getAddress, type Hex, isAddress } from 'viem'
 import type { App } from '../app.ts'
 import { ErrorCodes, invalidInput } from '../errors.ts'
 import { buildAuthorizeUrl } from './login.ts'
@@ -25,7 +25,9 @@ export type SessionCredentials = {
 export function resolveCredentials(app: App): SessionCredentials | undefined {
   const { sessionKey, rootAddress } = app.credentials
   if (sessionKey || rootAddress) {
-    if (!(sessionKey && isHex(sessionKey) && sessionKey.length === 66)) {
+    // The input schema checks both formats; this checks they come together
+    // and that a mixed-case address has a valid checksum.
+    if (!sessionKey) {
       throw invalidInput(
         'FIL_SESSION_KEY must be a 32-byte hex private key.',
         'sessionKey'
@@ -38,7 +40,7 @@ export function resolveCredentials(app: App): SessionCredentials | undefined {
       )
     }
     return {
-      privateKey: sessionKey,
+      privateKey: sessionKey as Hex,
       rootAddress: getAddress(rootAddress),
       source: 'env',
     }

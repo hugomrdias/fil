@@ -95,7 +95,7 @@ export function openDatabase(dir: string): DatabaseSync {
 }
 
 /** Apply pending migrations inside a transaction. */
-export function migrate(db: DatabaseSync): void {
+function migrate(db: DatabaseSync): void {
   const row = db.prepare('PRAGMA user_version').get() as {
     user_version: number
   }

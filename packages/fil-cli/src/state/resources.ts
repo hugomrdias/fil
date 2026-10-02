@@ -1,5 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite'
-import { decodeCursor, encodeCursor, type Page } from './cursor.ts'
+import { decodeCursor, type Page, toPage } from './cursor.ts'
+
+/** The chain and payer that local records belong to. */
+export type AccountScope = { chainId: string; payer: string }
 
 /** One on-chain storage occurrence of a resource. IDs are decimal strings. */
 export type Copy = {
@@ -90,21 +93,28 @@ export function saveResource(db: DatabaseSync, resource: Resource): void {
   )
 }
 
-/** Get a resource by reference. */
+/** Get a resource by reference, only within `scope` when given. */
 export function getResource(
   db: DatabaseSync,
-  ref: string
+  ref: string,
+  scope?: AccountScope
 ): Resource | undefined {
-  const row = db.prepare('SELECT * FROM resources WHERE ref = ?').get(ref) as
-    | ResourceRow
-    | undefined
+  const row = (
+    scope
+      ? db
+          .prepare(
+            'SELECT * FROM resources WHERE ref = ? AND chain_id = ? AND payer = ?'
+          )
+          .get(ref, scope.chainId, scope.payer)
+      : db.prepare('SELECT * FROM resources WHERE ref = ?').get(ref)
+  ) as ResourceRow | undefined
   return row ? fromRow(row) : undefined
 }
 
 /** Find resources in an account scope whose PieceCID or root CID matches. */
 export function findResourcesByCid(
   db: DatabaseSync,
-  scope: { chainId: string; payer: string },
+  scope: AccountScope,
   cid: string
 ): Resource[] {
   const rows = db
@@ -148,18 +158,5 @@ export function listResources(
       ...(after ?? []),
       options.limit + 1
     ) as ResourceRow[]
-  const items = rows.slice(0, options.limit).map(fromRow)
-  const last = items.at(-1)
-  return rows.length > options.limit && last
-    ? { items, nextCursor: encodeCursor(last.createdAt, last.ref) }
-    : { items }
-}
-
-/** Update a resource's lifecycle status. */
-export function setResourceStatus(
-  db: DatabaseSync,
-  ref: string,
-  status: ResourceStatus
-): void {
-  db.prepare('UPDATE resources SET status = ? WHERE ref = ?').run(status, ref)
+  return toPage(rows.map(fromRow), options.limit, (r) => [r.createdAt, r.ref])
 }

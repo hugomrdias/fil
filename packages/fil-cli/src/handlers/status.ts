@@ -2,19 +2,15 @@ import * as Pay from '@filoz/synapse-core/pay'
 import { getExpirations } from '@filoz/synapse-core/session-key'
 import * as WarmStorage from '@filoz/synapse-core/warm-storage'
 import { defineHandler, isCliError } from 'clipact'
-import { formatUnits, type Hex } from 'viem'
+import type { Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { buildFundingUrl } from '../auth/login.ts'
 import { SCOPES } from '../auth/scopes.ts'
 import { resolveCredentials } from '../auth/session.ts'
 import { status } from '../commands/status.ts'
-import { abortable, ErrorCodes } from '../errors.ts'
+import { ErrorCodes } from '../errors.ts'
+import { formatUsdfc } from '../usdfc.ts'
 import { appFor } from './context.ts'
-
-/** Format a USDFC base-unit amount. */
-function usdfc(value: bigint): string {
-  return formatUnits(value, 18)
-}
 
 /** Nominal upload size used to check readiness: 1 MiB. */
 const PROBE_SIZE = 1n << 20n
@@ -24,7 +20,7 @@ const PROBE_SIZE = 1n << 20n
  * A missing or pending session is a state to report, not an error.
  */
 export default defineHandler(status, async (ctx) => {
-  const app = appFor(ctx.input)
+  const app = appFor(ctx)
   let credentials: ReturnType<typeof resolveCredentials>
   try {
     credentials = resolveCredentials(app)
@@ -48,22 +44,19 @@ export default defineHandler(status, async (ctx) => {
   }
   const root = credentials.rootAddress
   const signer = privateKeyToAccount(credentials.privateKey as Hex).address
-  const [expirations, summary, costs] = await abortable(
-    Promise.all([
-      getExpirations(app.client, {
-        address: root,
-        sessionKeyAddress: signer,
-        permissions: Object.values(SCOPES),
-      }),
-      Pay.getAccountSummary(app.client, { address: root }),
-      WarmStorage.getUploadCosts(app.client, {
-        clientAddress: root,
-        pieceSizes: [PROBE_SIZE],
-        isNewDataSet: true,
-      }),
-    ]),
-    ctx.signal
-  )
+  const [expirations, summary, costs] = await Promise.all([
+    getExpirations(app.client, {
+      address: root,
+      sessionKeyAddress: signer,
+      permissions: Object.values(SCOPES),
+    }),
+    Pay.getAccountSummary(app.client, { address: root }),
+    WarmStorage.getUploadCosts(app.client, {
+      clientAddress: root,
+      pieceSizes: [PROBE_SIZE],
+      isNewDataSet: true,
+    }),
+  ])
   const now = BigInt(Math.floor(Date.now() / 1000))
   const scopes = Object.fromEntries(
     Object.entries(SCOPES).map(([id, permission]) => {
@@ -89,12 +82,12 @@ export default defineHandler(status, async (ctx) => {
     },
     account: {
       token: 'USDFC',
-      funds: usdfc(summary.funds),
-      availableFunds: usdfc(summary.availableFunds),
-      debt: usdfc(summary.debt),
+      funds: formatUsdfc(summary.funds),
+      availableFunds: formatUsdfc(summary.availableFunds),
+      debt: formatUsdfc(summary.debt),
       ready: costs.ready,
       needsApproval: costs.needsFwssMaxApproval,
-      depositNeeded: usdfc(costs.depositNeeded),
+      depositNeeded: formatUsdfc(costs.depositNeeded),
       ...(costs.ready
         ? {}
         : {

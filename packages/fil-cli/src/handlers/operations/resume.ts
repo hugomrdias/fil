@@ -9,7 +9,7 @@ import { appFor, findOperation, jobContext } from '../context.ts'
  * returns its saved outcome without loading the session key.
  */
 export default defineHandler(resume, async (ctx) => {
-  const app = appFor(ctx.input)
+  const app = appFor(ctx)
   const op = findOperation(app, ctx.input.id)
   if (op.executionStatus === 'completed') {
     return ctx.ok(savedOutcome(app.db(), op))

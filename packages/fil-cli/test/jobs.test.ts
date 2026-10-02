@@ -447,11 +447,7 @@ test('estimatePut sizes a directory and prices it without side effects', async (
   await writeFile(join(dir, 'index.html'), '<h1>hello world</h1>')
   await writeFile(join(dir, 'assets', 'app.js'), 'console.log(1)'.repeat(20))
 
-  const estimate = await estimatePut({
-    path: dir,
-    scratchDir: ctx.root,
-    backend,
-  })
+  const estimate = await estimatePut({ path: dir, backend })
   assert.equal(estimate.kind, 'artifact')
   assert.equal(estimate.files, 2)
   assert.ok(estimate.rootCid)
@@ -460,7 +456,7 @@ test('estimatePut sizes a directory and prices it without side effects', async (
   assert.equal(estimate.placement?.providerId, 7n)
   assert.equal(calls.upload + calls.sign + calls.submitted.length, 0)
 
-  const offline = await estimatePut({ path: dir, scratchDir: ctx.root })
+  const offline = await estimatePut({ path: dir })
   assert.equal(offline.quote, undefined)
   assert.equal(offline.rootCid, estimate.rootCid)
 })

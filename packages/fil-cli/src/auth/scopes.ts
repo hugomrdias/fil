@@ -7,7 +7,7 @@ import {
 } from '@filoz/synapse-core/session-key'
 import type { ScopeId } from './scope-ids.ts'
 
-export { DEFAULT_SCOPES, SCOPE_IDS, type ScopeId } from './scope-ids.ts'
+export { DEFAULT_SCOPES, type ScopeId } from './scope-ids.ts'
 
 /**
  * Session-key scopes by the IDs the pay.filecoin.cloud console accepts in its

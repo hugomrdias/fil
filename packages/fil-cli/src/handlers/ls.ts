@@ -5,7 +5,7 @@ import { accountScope, appFor } from './context.ts'
 
 /** List managed resources, newest first, one page at a time. */
 export default defineHandler(ls, (ctx) => {
-  const app = appFor(ctx.input)
+  const app = appFor(ctx)
   const page = listResources(app.db(), {
     ...accountScope(app),
     limit: ctx.input.limit,

@@ -32,3 +32,20 @@ export function decodeCursor(cursor: string): [string, string] {
 
 /** One page of rows and the cursor of the next page, if any. */
 export type Page<T> = { items: T[]; nextCursor?: string }
+
+/**
+ * Build a page from rows fetched with `LIMIT limit + 1`; the extra row only
+ * shows that another page exists. `keyOf` gives the keyset position of the
+ * last item for {@link encodeCursor}.
+ */
+export function toPage<T>(
+  rows: T[],
+  limit: number,
+  keyOf: (item: T) => [string, string]
+): Page<T> {
+  const items = rows.slice(0, limit)
+  const last = items.at(-1)
+  return rows.length > limit && last
+    ? { items, nextCursor: encodeCursor(...keyOf(last)) }
+    : { items }
+}
