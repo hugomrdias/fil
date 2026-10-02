@@ -1,6 +1,6 @@
 # fil CLI architecture
 
-This document describes how the `fil` prototype in [`packages/fil-cli`](../packages/fil-cli) works: its modules, the login, put, get, and delete flows, local state, and the recovery model. The [interface research](foc-cli-interface-research.md) explains why the design looks like this. This document describes what was built and where it departs from that design.
+This document describes how the `fil` prototype in [`packages/fil-cli`](../packages/fil-cli) works: its modules, the login, put, get, and delete flows, local state, and the recovery model. The [interface research](fil-cli-interface-research.md) explains why the design looks like this. This document describes what was built and where it departs from that design.
 
 ## Overview
 

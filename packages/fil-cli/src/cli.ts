@@ -8,7 +8,7 @@ import { commands } from './commands/index.ts'
  * handler is imported when its command runs.
  *
  * @see ../../../docs/cli-framework-design.md
- * @see ../../../docs/foc-cli-interface-research.md
+ * @see ../../../docs/fil-cli-interface-research.md
  */
 export const cli = defineCli({
   name: 'fil',

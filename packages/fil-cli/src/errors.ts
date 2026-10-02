@@ -74,7 +74,7 @@ export function resumeStep(operationId: string): Next {
  * retryable, because repeating the original command starts a new paid
  * operation; resuming continues the saved one.
  *
- * @see ../../../docs/foc-cli-interface-research.md#the-agent-execution-contract
+ * @see ../../../docs/fil-cli-interface-research.md#the-agent-execution-contract
  */
 export function operationError(error: unknown, operationId: string): CliError {
   if (isCliError(error)) {

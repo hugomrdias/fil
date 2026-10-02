@@ -56,7 +56,7 @@ A pnpm and Turborepo monorepo; all packages are private.
 | Guide | Contents |
 | --- | --- |
 | [Architecture](docs/architecture.md) | Modules, login, put/get/rm flows, state, recovery, verification |
-| [FOC CLI interface research](docs/foc-cli-interface-research.md) | FOC command surface, resources, operations, CLI state, and artifact delivery design |
+| [Filecoin CLI interface research](docs/fil-cli-interface-research.md) | Command surface, resources, operations, CLI state, and artifact delivery design |
 | [CLI guidelines for agents](docs/agent-cli-guidelines.md) | Output, error, exit-code, discovery, and startup-performance conventions for agent-facing Node.js CLIs |
 | [CLI framework design](docs/cli-framework-design.md) | Design of `clipact`, the framework that implements the agent CLI guidelines |
 | [Development](docs/development.md) | Requirements, installation, validation |
