@@ -27,6 +27,8 @@ export type App = {
   chain: FilecoinChain
   env: NodeJS.ProcessEnv
   config: Config
+  /** Session key and owner given as input (`FOC_SESSION_KEY`, `FOC_ROOT_ADDRESS`). */
+  credentials: { sessionKey?: string; rootAddress?: string }
   /** Console origin for session-key approval and funding links. */
   consoleUrl: string
   /** RPC transport for the resolved chain. */
@@ -39,10 +41,15 @@ export type App = {
   stagingDir: (operationId: string) => string
 }
 
-/** Options for {@link createApp}. */
+/** Options for {@link createApp}: the shared account input of a command. */
 export type CreateAppOptions = {
-  /** Value of the global `--network` flag. */
-  network?: string
+  /** `--network` or `FOC_NETWORK`; falls back to the config file. */
+  network?: Network | undefined
+  /** `FOC_SESSION_KEY`, for CI without `foc login`. */
+  sessionKey?: string | undefined
+  /** `FOC_ROOT_ADDRESS`, the wallet that authorized `sessionKey`. */
+  rootAddress?: string | undefined
+  /** Process environment for state, config, RPC, and console overrides. */
   env?: NodeJS.ProcessEnv
 }
 
@@ -52,13 +59,14 @@ export function chainFor(network: Network): FilecoinChain {
 }
 
 /**
- * Build the invocation context. `FOC_RPC_URL` overrides the chain's default
- * fallback transport.
+ * Build the invocation context from a command's account input. Handlers call
+ * this directly; clipact has no middleware. `FOC_RPC_URL` overrides the
+ * chain's default fallback transport.
  */
 export function createApp(options: CreateAppOptions = {}): App {
   const env = options.env ?? process.env
   const config = openConfig(env)
-  const network = resolveNetwork(options.network, env, config)
+  const network = resolveNetwork(options.network, config)
   const chain = chainFor(network)
   const transport = env.FOC_RPC_URL
     ? http(env.FOC_RPC_URL)
@@ -70,6 +78,10 @@ export function createApp(options: CreateAppOptions = {}): App {
     chain,
     env,
     config,
+    credentials: {
+      ...(options.sessionKey ? { sessionKey: options.sessionKey } : {}),
+      ...(options.rootAddress ? { rootAddress: options.rootAddress } : {}),
+    },
     consoleUrl: env.FOC_CONSOLE_URL ?? DEFAULT_CONSOLE_URL,
     transport,
     client: createPublicClient({ chain, transport }),

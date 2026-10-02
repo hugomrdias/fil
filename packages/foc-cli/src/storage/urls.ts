@@ -1,4 +1,5 @@
 import { createPieceUrlPDP } from '@filoz/synapse-core/piece'
+import type { Resource } from '../state/resources.ts'
 
 /** Curio retrieval URLs for stored content. */
 export type RetrievalUrls = {
@@ -27,4 +28,15 @@ export function retrievalUrls(options: {
       ? { ipfs: new URL(`ipfs/${options.rootCid}/`, base).toString() }
       : {}),
   }
+}
+
+/** Curio retrieval URLs for a resource's first copy. */
+export function resourceUrls(resource: Resource): RetrievalUrls {
+  const [copy] = resource.copies
+  if (!copy) throw new Error(`Resource ${resource.ref} has no stored copies.`)
+  return retrievalUrls({
+    serviceURL: copy.serviceURL,
+    pieceCid: resource.pieceCid,
+    ...(resource.rootCid ? { rootCid: resource.rootCid } : {}),
+  })
 }

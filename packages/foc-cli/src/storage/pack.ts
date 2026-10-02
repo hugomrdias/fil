@@ -4,6 +4,7 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { CarIndexedReader, CarWriter } from '@ipld/car'
+import { CliError } from 'clipact'
 import { exporter } from 'ipfs-unixfs-exporter'
 import {
   type DirectoryCandidate,
@@ -14,7 +15,7 @@ import {
 import { CID } from 'multiformats/cid'
 import * as Digest from 'multiformats/hashes/digest'
 import { sha256 } from 'multiformats/hashes/sha2'
-import { ExitCode, FocError } from '../errors.ts'
+import { ErrorCodes, invalidInput } from '../errors.ts'
 
 /**
  * The single UnixFS profile used for every artifact: IPIP-499
@@ -45,11 +46,7 @@ export async function listEntries(
       const stats = await lstat(path)
       const rel = relative(root, path).split(sep).join('/')
       if (stats.isSymbolicLink()) {
-        throw new FocError(
-          'UNSUPPORTED_ENTRY',
-          `Symlinks are not supported: ${rel}`,
-          { exitCode: ExitCode.invalidInput }
-        )
+        throw invalidInput(`Symlinks are not supported: ${rel}`, 'path')
       }
       if (stats.isDirectory()) {
         directories.push(rel)
@@ -206,23 +203,19 @@ export async function assertBlock(cid: CID, bytes: Uint8Array): Promise<void> {
   } else if (code === IDENTITY_CODE) {
     actual = bytes
   } else {
-    throw new FocError(
-      'INTEGRITY_ERROR',
-      `Unsupported multihash 0x${code.toString(16)} in block ${cid}.`,
-      { exitCode: ExitCode.invalidInput }
-    )
+    throw new CliError({
+      code: ErrorCodes.verificationFailed,
+      message: `Unsupported multihash 0x${code.toString(16)} in block ${cid}.`,
+    })
   }
   if (
     actual.length !== digest.length ||
     !actual.every((byte, i) => byte === digest[i])
   ) {
-    throw new FocError(
-      'INTEGRITY_ERROR',
-      `Block ${cid} does not match its CID.`,
-      {
-        exitCode: ExitCode.transient,
-      }
-    )
+    throw new CliError({
+      code: ErrorCodes.verificationFailed,
+      message: `Block ${cid} does not match its CID.`,
+    })
   }
 }
 
@@ -253,22 +246,20 @@ export async function extractCar(
     let files = 0
     async function write(cid: CID, dest: string): Promise<void> {
       if (dest !== target && !dest.startsWith(target + sep)) {
-        throw new FocError(
-          'UNSAFE_PATH',
-          `Refusing to write outside ${outDir}: ${dest}`,
-          { exitCode: ExitCode.invalidInput }
-        )
+        throw new CliError({
+          code: ErrorCodes.unsafePath,
+          message: `Refusing to write outside ${outDir}: ${dest}`,
+        })
       }
       const node = await exporter(cid, blockstore as never)
       if (node.type === 'directory') {
         await mkdir(dest, { recursive: true })
         for await (const entry of node.entries()) {
           if (entry.name.includes('/') || entry.name.includes('\\')) {
-            throw new FocError(
-              'UNSAFE_PATH',
-              `Refusing entry name with a path separator: ${entry.name}`,
-              { exitCode: ExitCode.invalidInput }
-            )
+            throw new CliError({
+              code: ErrorCodes.unsafePath,
+              message: `Refusing entry name with a path separator: ${entry.name}`,
+            })
           }
           await write(entry.cid as unknown as CID, resolve(dest, entry.name))
         }

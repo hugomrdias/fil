@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from 'node:timers/promises'
 import { sessionKeyRegistry } from '@filoz/synapse-core/abis'
 import type { FilecoinChain } from '@filoz/synapse-core/chains'
 import {
@@ -13,7 +14,8 @@ import {
   type Transport,
 } from 'viem'
 import { getBlockNumber, getLogs } from 'viem/actions'
-import type { Network } from '../config.ts'
+import { abortable } from '../errors.ts'
+import type { Network } from '../network.ts'
 import { SCOPES, type ScopeId } from './scopes.ts'
 
 /** Read client for the target chain. */
@@ -202,13 +204,16 @@ export async function checkAuthorization(
 export type WaitForAuthorizationOptions = CheckAuthorizationOptions & {
   timeoutMs: number
   intervalMs?: number
+  /** Stops waiting; the pending RPC call is abandoned. */
+  signal?: AbortSignal
   /** Called after each pass that is still pending or failed transiently. */
   onTick?: (info: { elapsedMs: number; error?: unknown }) => void
 }
 
 /**
  * Poll {@link checkAuthorization} until the owner acts or `timeoutMs`
- * passes. RPC errors are reported through `onTick` and retried.
+ * passes. RPC errors are reported through `onTick` and retried. Rejects
+ * with the signal's reason when `signal` aborts.
  */
 export async function waitForAuthorization(
   options: WaitForAuthorizationOptions
@@ -217,17 +222,18 @@ export async function waitForAuthorization(
   const interval = options.intervalMs ?? 3000
   for (;;) {
     try {
-      const state = await checkAuthorization(options)
+      const state = await abortable(checkAuthorization(options), options.signal)
       if (state.status !== 'pending' && state.status !== 'none') return state
       // With a known owner and no live scopes the owner has not acted yet.
       if (state.status === 'none' && !options.root) return state
       options.onTick?.({ elapsedMs: Date.now() - started })
     } catch (error) {
+      if (options.signal?.aborted) throw error
       options.onTick?.({ elapsedMs: Date.now() - started, error })
     }
     if (Date.now() - started + interval > options.timeoutMs) {
       return { status: 'pending' }
     }
-    await new Promise((resolve) => setTimeout(resolve, interval))
+    await sleep(interval, undefined, { signal: options.signal })
   }
 }

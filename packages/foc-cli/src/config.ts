@@ -1,11 +1,11 @@
-import { z } from 'incur'
 import { Conf } from 'iso-conf'
+import * as z from 'zod'
+import { DEFAULT_NETWORK, NETWORKS, type Network } from './network.ts'
 
 /** Networks the CLI can target. */
-export const NetworkSchema = z.enum(['mainnet', 'calibration'])
+export const NetworkSchema = z.enum(NETWORKS)
 
-/** A supported network name. */
-export type Network = z.infer<typeof NetworkSchema>
+export type { Network } from './network.ts'
 
 /**
  * A session key saved by `foc login`. `rootAddress` is absent while the
@@ -28,7 +28,8 @@ export type StoredSession = z.infer<typeof SessionSchema>
 
 /** Persisted CLI configuration. */
 export const ConfigSchema = z.object({
-  network: NetworkSchema.default('calibration'),
+  /** Default network; `resolveNetwork` falls back to calibration. */
+  network: NetworkSchema.optional(),
   sessions: z
     .object({
       mainnet: SessionSchema.optional(),
@@ -56,14 +57,12 @@ export function openConfig(env: NodeJS.ProcessEnv = process.env): Config {
 }
 
 /**
- * Resolve the network: flag, then `FOC_NETWORK`, then the config file, then
- * calibration.
+ * Resolve the network: the command input (a `--network` flag or
+ * `FOC_NETWORK`, merged by clipact), then the config file, then calibration.
  */
 export function resolveNetwork(
-  flag: string | undefined,
-  env: NodeJS.ProcessEnv,
+  input: Network | undefined,
   config: Pick<Config, 'get'>
 ): Network {
-  const value = flag ?? env.FOC_NETWORK ?? config.get('network')
-  return NetworkSchema.parse(value ?? 'calibration')
+  return input ?? config.get('network') ?? DEFAULT_NETWORK
 }

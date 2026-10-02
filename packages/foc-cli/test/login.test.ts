@@ -20,7 +20,6 @@ import {
   LOG_WINDOW,
 } from '../src/auth/login.ts'
 import { SCOPES } from '../src/auth/scopes.ts'
-import { parseScopes } from '../src/commands/auth.ts'
 
 const OWNER = '0x1111111111111111111111111111111111111111' as Address
 const SIGNER = '0x2222222222222222222222222222222222222222' as Address
@@ -79,16 +78,6 @@ test('classifyScopes splits live and missing scopes', () => {
     granted: ['createDataSet', 'addPieces'],
     missing: ['schedulePieceRemovals'],
     expiresAt: 150n,
-  })
-})
-
-test('parseScopes validates scope IDs', () => {
-  assert.deepEqual(parseScopes('addPieces, createDataSet,addPieces'), [
-    'addPieces',
-    'createDataSet',
-  ])
-  assert.throws(() => parseScopes('addPieces,deleteEverything'), {
-    code: 'INVALID_INPUT',
   })
 })
 

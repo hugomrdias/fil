@@ -5,13 +5,32 @@ import * as PDPVerifier from '@filoz/synapse-core/pdp-verifier'
 import * as Piece from '@filoz/synapse-core/piece'
 import * as SP from '@filoz/synapse-core/sp'
 import * as SPRegistry from '@filoz/synapse-core/sp-registry'
+import {
+  signAddPieces,
+  signCreateDataSetAndAddPieces,
+} from '@filoz/synapse-core/typed-data'
+import {
+  datasetMetadataObjectToEntry,
+  pieceMetadataObjectToEntry,
+  randU256,
+} from '@filoz/synapse-core/utils'
 import * as WarmStorage from '@filoz/synapse-core/warm-storage'
-import { waitForTransactionReceipt } from 'viem/actions'
+import { CliError } from 'clipact'
+import { readContract, waitForTransactionReceipt } from 'viem/actions'
 import type { App } from '../app.ts'
 import { buildFundingUrl } from '../auth/login.ts'
 import type { SessionKey } from '../auth/session.ts'
-import { ExitCode, FocError } from '../errors.ts'
+import { abortable, ErrorCodes, notFound } from '../errors.ts'
 import type { Placement, StorageBackend } from './types.ts'
+
+/** Low 128 bits of a `clientNonces` value: the data set ID. */
+const LOW_128 = (1n << 128n) - 1n
+
+/** Names of synapse-core errors for a provider-reported failed transaction. */
+const REJECTED_ERRORS = new Set([
+  'WaitForAddPiecesRejectedError',
+  'WaitForCreateDataSetRejectedError',
+])
 
 /**
  * Create the synapse-core storage backend: one copy on one Curio provider,
@@ -38,19 +57,19 @@ export function createSynapseBackend(
   }
 
   return {
-    async selectPlacement({ metadata, providerId }) {
+    async selectPlacement({ metadata, providerId, signal }) {
+      const input = await abortable(
+        WarmStorage.fetchProviderSelectionInput(client, { address: payer }),
+        signal
+      )
       if (providerId != null) {
-        const provider = await SPRegistry.getPDPProvider(client, { providerId })
+        const provider = await abortable(
+          SPRegistry.getPDPProvider(client, { providerId }),
+          signal
+        )
         if (!provider) {
-          throw new FocError(
-            'PROVIDER_NOT_FOUND',
-            `Provider ${providerId} has no active PDP offering.`,
-            { exitCode: ExitCode.notFound }
-          )
+          throw notFound(`Provider ${providerId} has no active PDP offering.`)
         }
-        const input = await WarmStorage.fetchProviderSelectionInput(client, {
-          address: payer,
-        })
         const matches = WarmStorage.findMatchingDataSets(
           input.clientDataSets.filter((ds) => ds.providerId === providerId),
           metadata,
@@ -63,9 +82,6 @@ export function createSynapseBackend(
           dataSetId: matches[0]?.dataSetId,
         })
       }
-      const input = await WarmStorage.fetchProviderSelectionInput(client, {
-        address: payer,
-      })
       const excluded: bigint[] = []
       for (;;) {
         const [location] = WarmStorage.selectProviders({
@@ -75,14 +91,13 @@ export function createSynapseBackend(
           excludeProviderIds: excluded,
         })
         if (!location) {
-          throw new FocError(
-            'NO_PROVIDER',
-            'No reachable storage provider is available.',
-            { exitCode: ExitCode.transient, retryable: true }
-          )
+          throw new CliError({
+            code: 'service_unavailable',
+            message: 'No reachable storage provider is available.',
+          })
         }
         const { provider } = location
-        if (await isReachable(provider.pdp.serviceURL)) {
+        if (await abortable(isReachable(provider.pdp.serviceURL), signal)) {
           return withDataSet({
             providerId: provider.id,
             serviceURL: provider.pdp.serviceURL,
@@ -94,7 +109,7 @@ export function createSynapseBackend(
       }
     },
 
-    async assertFunded({ size, placement }) {
+    async quote({ size, placement }) {
       const existing =
         placement.dataSetId == null
           ? undefined
@@ -105,106 +120,164 @@ export function createSynapseBackend(
         isNewDataSet: existing == null,
         ...existing,
       })
-      if (!costs.ready) {
-        const url = buildFundingUrl({
+      return {
+        ready: costs.ready,
+        depositNeeded: costs.depositNeeded,
+        needsApproval: costs.needsFwssMaxApproval,
+        ratePerMonth: costs.rates.perMonth,
+        lockup: costs.lockups.total,
+        fundingUrl: buildFundingUrl({
           consoleUrl: app.consoleUrl,
           network: app.network,
           deposit: costs.depositNeeded,
-        })
-        throw new FocError(
-          'FUNDING_REQUIRED',
-          costs.needsFwssMaxApproval
-            ? 'The payer must deposit USDFC and approve Warm Storage before uploading.'
-            : 'The payer must deposit more USDFC before uploading.',
-          {
-            exitCode: ExitCode.actionRequired,
-            info: { fundingUrl: url },
-            next: [
-              { command: 'status', description: 'Check account readiness' },
-            ],
-          }
-        )
+        }),
       }
     },
 
-    async hasPiece({ serviceURL, pieceCid }) {
+    async hasPiece({ serviceURL, pieceCid, signal }) {
       try {
-        await SP.findPiece({ serviceURL, pieceCid: Piece.from(pieceCid) })
+        await SP.findPiece({
+          serviceURL,
+          pieceCid: Piece.from(pieceCid),
+          ...(signal ? { signal } : {}),
+        })
         return true
-      } catch {
+      } catch (error) {
+        if (signal?.aborted) throw error
         return false
       }
     },
 
-    async upload({ serviceURL, path, size, pieceCid, onProgress }) {
+    async upload({ serviceURL, path, size, pieceCid, signal }) {
       const cid = Piece.from(pieceCid)
       await SP.uploadPieceStreaming({
         serviceURL,
         data: Readable.toWeb(createReadStream(path)) as ReadableStream,
         size,
         pieceCid: cid,
-        onProgress,
+        ...(signal ? { signal } : {}),
       })
-      await SP.findPiece({ serviceURL, pieceCid: cid, poll: true })
+      await SP.findPiece({
+        serviceURL,
+        pieceCid: cid,
+        poll: true,
+        ...(signal ? { signal } : {}),
+      })
     },
 
-    async addPiece({ placement, pieceCid, pieceMetadata }) {
+    async signCommit({ placement, pieceCid, metadata, pieceMetadata }) {
+      const nonce = randU256()
+      const pieces = [
+        {
+          pieceCid: Piece.from(pieceCid),
+          metadata: pieceMetadataObjectToEntry(pieceMetadata),
+        },
+      ]
+      if (placement.dataSetId == null) {
+        const clientDataSetId = randU256()
+        const extraData = await signCreateDataSetAndAddPieces(signer, {
+          clientDataSetId,
+          nonce,
+          // FWSS verifies the signature against the registry payee.
+          payee: placement.payee,
+          // Without this the session key address would be the payer.
+          payer,
+          metadata: datasetMetadataObjectToEntry(metadata, { cdn: false }),
+          pieces,
+        })
+        return {
+          created: true,
+          nonce: nonce.toString(),
+          clientDataSetId: clientDataSetId.toString(),
+          extraData,
+        }
+      }
+      if (placement.clientDataSetId == null) {
+        throw new Error('Adding to a data set requires its client data set ID.')
+      }
+      const extraData = await signAddPieces(signer, {
+        clientDataSetId: placement.clientDataSetId,
+        nonce,
+        pieces,
+      })
+      return { created: false, nonce: nonce.toString(), extraData }
+    },
+
+    async submitCommit({ placement, pieceCid, commit, pieceMetadata }) {
+      const pieces = [
+        { pieceCid: Piece.from(pieceCid), metadata: pieceMetadata },
+      ]
+      if (commit.created) {
+        const result = await SP.createDataSetAndAddPieces(signer, {
+          serviceURL: placement.serviceURL,
+          payee: placement.payee,
+          payer,
+          pieces,
+          extraData: commit.extraData,
+        })
+        return { transactionHash: result.txHash, statusUrl: result.statusUrl }
+      }
       if (placement.dataSetId == null || placement.clientDataSetId == null) {
-        throw new Error('addPiece requires an existing data set.')
+        throw new Error('Adding to a data set requires its IDs.')
       }
       const result = await SP.addPieces(signer, {
         serviceURL: placement.serviceURL,
         dataSetId: placement.dataSetId,
         clientDataSetId: placement.clientDataSetId,
-        pieces: [{ pieceCid: Piece.from(pieceCid), metadata: pieceMetadata }],
+        pieces,
+        extraData: commit.extraData,
       })
       return { transactionHash: result.txHash, statusUrl: result.statusUrl }
     },
 
-    async createDataSetWithPiece({
-      placement,
-      pieceCid,
-      metadata,
-      pieceMetadata,
-    }) {
-      const result = await SP.createDataSetAndAddPieces(signer, {
-        serviceURL: placement.serviceURL,
-        // FWSS verifies the signature against the registry payee.
-        payee: placement.payee,
-        // Without this the session key address would be the payer.
-        payer,
-        metadata,
-        pieces: [{ pieceCid: Piece.from(pieceCid), metadata: pieceMetadata }],
+    async findCommit({ nonce }) {
+      // FWSS stores ((firstAdded + count) << 128) | dataSetId for each used
+      // add-pieces nonce, including the add half of create-and-add.
+      const value = await readContract(client, {
+        address: client.chain.contracts.fwssView.address,
+        abi: client.chain.contracts.fwssView.abi,
+        functionName: 'clientNonces',
+        args: [payer, nonce],
       })
-      return { transactionHash: result.txHash, statusUrl: result.statusUrl }
+      if (value === 0n) return undefined
+      return { dataSetId: value & LOW_128, pieceId: (value >> 128n) - 1n }
     },
 
-    async waitForCommit({ statusUrl, created }) {
-      if (created) {
-        const result = await SP.waitForCreateDataSetAddPieces({ statusUrl })
+    async waitForCommit({ statusUrl, created, signal }) {
+      try {
+        if (created) {
+          const result = await abortable(
+            SP.waitForCreateDataSetAddPieces({ statusUrl }),
+            signal
+          )
+          return {
+            dataSetId: result.dataSetId,
+            pieceId: firstId(result.piecesIds),
+          }
+        }
+        const result = await abortable(
+          SP.waitForAddPieces({ statusUrl }),
+          signal
+        )
         return {
           dataSetId: result.dataSetId,
-          pieceId: firstId(result.piecesIds),
+          pieceId: firstId(result.confirmedPieceIds),
         }
-      }
-      const result = await SP.waitForAddPieces({ statusUrl })
-      return {
-        dataSetId: result.dataSetId,
-        pieceId: firstId(result.confirmedPieceIds),
+      } catch (error) {
+        if (error instanceof Error && REJECTED_ERRORS.has(error.name)) {
+          throw new CliError({
+            code: ErrorCodes.commitRejected,
+            message: 'The provider reported the commit transaction as failed.',
+            cause: error,
+          })
+        }
+        throw error
       }
     },
 
     async schedulePieceRemoval({ serviceURL, dataSetId, pieceId }) {
       const dataSet = await WarmStorage.getPdpDataSet(client, { dataSetId })
-      if (!dataSet) {
-        throw new FocError(
-          'DATA_SET_NOT_FOUND',
-          `Data set ${dataSetId} not found.`,
-          {
-            exitCode: ExitCode.notFound,
-          }
-        )
-      }
+      if (!dataSet) throw notFound(`Data set ${dataSetId} not found.`)
       const result = await SP.schedulePieceDeletions(signer, {
         serviceURL,
         dataSetId,
@@ -214,8 +287,12 @@ export function createSynapseBackend(
       return { transactionHash: result.hash }
     },
 
-    async waitForTransaction(transactionHash) {
-      await waitForTransactionReceipt(client, { hash: transactionHash })
+    async waitForTransaction(transactionHash, signal) {
+      const receipt = await abortable(
+        waitForTransactionReceipt(client, { hash: transactionHash }),
+        signal
+      )
+      return { status: receipt.status }
     },
   }
 

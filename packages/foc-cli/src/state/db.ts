@@ -43,6 +43,34 @@ const MIGRATIONS = [
   CREATE INDEX operations_scope ON operations (chain_id, payer, updated_at);
   CREATE INDEX operations_status ON operations (execution_status, updated_at);
   `,
+  // Rename the `rm` action to `delete`, the research doc's verb. SQLite
+  // cannot change a CHECK constraint in place, so the table is rebuilt.
+  `
+  CREATE TABLE operations_next (
+    id TEXT PRIMARY KEY,
+    action TEXT NOT NULL CHECK (action IN ('put', 'delete')),
+    resource_ref TEXT NOT NULL,
+    chain_id TEXT NOT NULL,
+    payer TEXT NOT NULL,
+    execution_status TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    input TEXT NOT NULL DEFAULT '{}',
+    checkpoint TEXT NOT NULL DEFAULT '{}',
+    pid INTEGER,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  INSERT INTO operations_next
+    SELECT id, CASE action WHEN 'rm' THEN 'delete' ELSE action END,
+      resource_ref, chain_id, payer, execution_status, phase, input,
+      checkpoint, pid, error, created_at, updated_at
+    FROM operations;
+  DROP TABLE operations;
+  ALTER TABLE operations_next RENAME TO operations;
+  CREATE INDEX operations_scope ON operations (chain_id, payer, updated_at);
+  CREATE INDEX operations_status ON operations (execution_status, updated_at);
+  `,
 ]
 
 /**

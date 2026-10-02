@@ -71,16 +71,13 @@ importers:
     dependencies:
       '@filoz/synapse-core':
         specifier: ^0.10.0
-        version: 0.10.0(typescript@7.0.2)(viem@2.57.2(typescript@7.0.2)(zod@4.4.3))
+        version: 0.10.0(typescript@7.0.2)(viem@2.57.2(typescript@7.0.2)(zod@4.6.5))
       '@ipld/car':
         specifier: ^5.4.7
         version: 5.4.7
       env-paths:
         specifier: ^4.0.0
         version: 4.0.0
-      incur:
-        specifier: ^0.5.1
-        version: 0.5.1
       ipfs-unixfs-exporter:
         specifier: ^16.2.3
         version: 16.2.3
@@ -88,21 +85,30 @@ importers:
         specifier: ^16.1.5
         version: 16.1.5(supports-color@10.2.2)
       iso-conf:
-        specifier: ^0.4.1
-        version: 0.4.1
+        specifier: ^0.4.2
+        version: 0.4.2
       multiformats:
         specifier: ^14.0.5
         version: 14.0.5
       viem:
         specifier: ^2.56.9
-        version: 2.57.2(typescript@7.0.2)(zod@4.4.3)
+        version: 2.57.2(typescript@7.0.2)(zod@4.6.5)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 26.5.1
+      clipact:
+        specifier: workspace:*
+        version: link:../clipact
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
 packages:
 
@@ -168,9 +174,6 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
-
-  '@cfworker/json-schema@4.1.1':
-    resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
 
   '@chainsafe/is-ip@2.1.0':
     resolution: {integrity: sha512-KIjt+6IfysQ4GCv66xihEitBjvhU/bixbbbFxdJ1sqCp4uJ0wuZiYBPhksZoy4lfaF0k9cwNzY5upEW/VWdw3w==}
@@ -368,10 +371,6 @@ packages:
   '@libp2p/logger@6.2.13':
     resolution: {integrity: sha512-+tkZuRPoiFdh+frG//3hQ3goV1uMzRblpZ+mwtezgLXkRNqB5YKBLl+c/rtrurwAUqjCuI/yoEPJBiCizg2z6w==}
 
-  '@modelcontextprotocol/server@2.0.0-alpha.4':
-    resolution: {integrity: sha512-/KEo3ZJ50HlagHp0lz2vPgfBZFtXHu6zTBXT9XqPc+4O9i4+IbBVWKq/a9yAfv/ifp0u3+mRo8SUk5kMKzhN8A==}
-    engines: {node: '>=20'}
-
   '@multiformats/dns@1.0.15':
     resolution: {integrity: sha512-W0zAMABtAn+3chgFcPGvllKND7M6GblMAAFcJQTy+iMmGiyFErZYPzAh2b50Y3SFf340iFV7+ckVgZkGfUyxzA==}
 
@@ -393,10 +392,6 @@ packages:
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
 
-  '@scalar/openapi-types@0.8.0':
-    resolution: {integrity: sha512-WmaxVSfvY5K/TwcG2B2TU1WOe1As1uc2s7myswtP6dBlcjU3hM08SApxv/jmyGaCE8t4gO5BBhmHY4pDUfmr2g==}
-    engines: {node: '>=22'}
-
   '@scure/base@1.2.6':
     resolution: {integrity: sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg==}
 
@@ -411,9 +406,6 @@ packages:
 
   '@standard-schema/utils@0.3.0':
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
-
-  '@toon-format/toon@2.3.1':
-    resolution: {integrity: sha512-sWqEMeAJGMda9qRrfPKrX3C4c33CO9SJuvJzzrcBEn5sbDB+k6pSLkDsfN0rVnLQwR97MV3sDgVbcxQNsq8xVw==}
 
   '@turbo/darwin-64@2.10.13':
     resolution: {integrity: sha512-m5DBcpkxmcKpEJHHFUfqf9GLUjSmw3cDnBJM9nghPW3kjCNb5OyNKmzG7/yT5x5AwzOO+HMwKN+UI4iVKL87YA==}
@@ -695,11 +687,6 @@ packages:
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
 
-  incur@0.5.1:
-    resolution: {integrity: sha512-gEwPg0Rwf+Oi8pwySLumYgWk//Xiv2wRJhwsOwVskt7ZHrfwFTR7oQmANnyDqudRYhqK3I5/dp489kPehPjIww==}
-    engines: {node: '>=22'}
-    hasBin: true
-
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
 
@@ -741,8 +728,8 @@ packages:
   iso-base@4.4.0:
     resolution: {integrity: sha512-W4BJbRDBi66wcBFJ23ZlGnFOZ874CIut4y9PlsScMSYu7ckCX+MWNAaEoE0efTSYDoVEn1qy0FDVSjE8q0ieHw==}
 
-  iso-conf@0.4.1:
-    resolution: {integrity: sha512-Al5Oou497Ov2djVTMw0nZO2FN8fUYCuJ0Je5/nTlKKQ+gruQjGzOmZ7YK20YtGYEZQCHXPSmWputwHzV3Gy95A==}
+  iso-conf@0.4.2:
+    resolution: {integrity: sha512-vXGMZZOtm6jfq3CI1kcok48ETGcXy+ZZYFnz/OE9qOPvd7/UAvCuOCiekdG4Qxw+qMl9JvK591sH8/42zoDnHw==}
 
   iso-kv@3.2.0:
     resolution: {integrity: sha512-rMVXO7zDEecXOJEiDnbDqjZ7gSe7VqDn2FTkUFWeqkcYMmgMdmB7pDgUaZxiEyiL1+gO7RnbqEI2Ce3xIW4UBQ==}
@@ -1078,9 +1065,6 @@ packages:
     resolution: {integrity: sha512-yEFYrVhod+hdNyx7g5Bnkkb0G6si8HJurOoOEgC8B/O0uXLHlaey/65KRv6cuWBNhBgHKAROVpc7QyYqE5gFng==}
     engines: {node: '>=20'}
 
-  tokenx@1.6.0:
-    resolution: {integrity: sha512-CKTjk345ajvBAUp5xUI9a5KKN0zU0lBueVHQbCskH1Hp6WkUKsPW2qGCYNs0pxNyfzxfo+IIjdt2W4sMbw/qBw==}
-
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
@@ -1167,11 +1151,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  yaml@2.9.1:
-    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
-    engines: {node: '>= 14.6'}
-    hasBin: true
-
   yocto-queue@1.2.2:
     resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
     engines: {node: '>=12.20'}
@@ -1222,8 +1201,6 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.5.13':
     optional: true
-
-  '@cfworker/json-schema@4.1.1': {}
 
   '@chainsafe/is-ip@2.1.0': {}
 
@@ -1310,7 +1287,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@filoz/synapse-core@0.10.0(typescript@7.0.2)(viem@2.57.2(typescript@7.0.2)(zod@4.4.3))':
+  '@filoz/synapse-core@0.10.0(typescript@7.0.2)(viem@2.57.2(typescript@7.0.2)(zod@4.6.5))':
     dependencies:
       dnum: 2.17.0
       iso-web: 3.1.2
@@ -1319,7 +1296,7 @@ snapshots:
       p-locate: 7.0.0
       p-some: 7.0.0
       sync-multihash-sha2: 1.0.0
-      viem: 2.57.2(typescript@7.0.2)(zod@4.4.3)
+      viem: 2.57.2(typescript@7.0.2)(zod@4.6.5)
       zod: 4.4.3
     transitivePeerDependencies:
       - typescript
@@ -1368,10 +1345,6 @@ snapshots:
       multiformats: 14.0.5
       weald: 1.1.3
 
-  '@modelcontextprotocol/server@2.0.0-alpha.4':
-    dependencies:
-      zod: 4.6.5
-
   '@multiformats/dns@1.0.15':
     dependencies:
       '@dnsquery/dns-packet': 6.1.1
@@ -1400,8 +1373,6 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
-  '@scalar/openapi-types@0.8.0': {}
-
   '@scure/base@1.2.6': {}
 
   '@scure/bip32@1.7.0':
@@ -1418,8 +1389,6 @@ snapshots:
   '@standard-schema/spec@1.1.0': {}
 
   '@standard-schema/utils@0.3.0': {}
-
-  '@toon-format/toon@2.3.1': {}
 
   '@turbo/darwin-64@2.10.13':
     optional: true
@@ -1503,10 +1472,10 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  abitype@1.2.3(typescript@7.0.2)(zod@4.4.3):
+  abitype@1.2.3(typescript@7.0.2)(zod@4.6.5):
     optionalDependencies:
       typescript: 7.0.2
-      zod: 4.4.3
+      zod: 4.6.5
 
   abitype@1.3.0(typescript@7.0.2)(zod@4.4.3):
     optionalDependencies:
@@ -1649,16 +1618,6 @@ snapshots:
 
   ieee754@1.2.1: {}
 
-  incur@0.5.1:
-    dependencies:
-      '@cfworker/json-schema': 4.1.1
-      '@modelcontextprotocol/server': 2.0.0-alpha.4
-      '@scalar/openapi-types': 0.8.0
-      '@toon-format/toon': 2.3.1
-      tokenx: 1.6.0
-      yaml: 2.9.1
-      zod: 4.6.5
-
   inherits@2.0.4: {}
 
   interface-blockstore@6.0.2:
@@ -1743,11 +1702,10 @@ snapshots:
     dependencies:
       bigint-mod-arith: 3.3.1
 
-  iso-conf@0.4.1:
+  iso-conf@0.4.2:
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@standard-schema/utils': 0.3.0
-      atomically: 2.1.1
       dot-prop: 10.2.0
       env-paths: 4.0.0
       iso-base: 4.4.0
@@ -1864,7 +1822,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  ox@0.14.45(typescript@7.0.2)(zod@4.4.3):
+  ox@0.14.45(typescript@7.0.2)(zod@4.6.5):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -1872,7 +1830,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@7.0.2)(zod@4.4.3)
+      abitype: 1.2.3(typescript@7.0.2)(zod@4.6.5)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 7.0.2
@@ -1964,8 +1922,6 @@ snapshots:
 
   tagged-tag@1.0.0: {}
 
-  tokenx@1.6.0: {}
-
   tr46@0.0.3: {}
 
   turbo@2.10.13:
@@ -2042,15 +1998,15 @@ snapshots:
 
   varint@6.0.0: {}
 
-  viem@2.57.2(typescript@7.0.2)(zod@4.4.3):
+  viem@2.57.2(typescript@7.0.2)(zod@4.6.5):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@7.0.2)(zod@4.4.3)
+      abitype: 1.2.3(typescript@7.0.2)(zod@4.6.5)
       isows: 1.0.7(ws@8.21.0)
-      ox: 0.14.45(typescript@7.0.2)(zod@4.4.3)
+      ox: 0.14.45(typescript@7.0.2)(zod@4.6.5)
       ws: 8.21.0
     optionalDependencies:
       typescript: 7.0.2
@@ -2074,8 +2030,6 @@ snapshots:
   when-exit@2.1.5: {}
 
   ws@8.21.0: {}
-
-  yaml@2.9.1: {}
 
   yocto-queue@1.2.2: {}
 

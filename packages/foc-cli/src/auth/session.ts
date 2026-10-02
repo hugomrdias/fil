@@ -1,13 +1,15 @@
-import { fromSecp256k1, PermissionNames } from '@filoz/synapse-core/session-key'
+import { fromSecp256k1 } from '@filoz/synapse-core/session-key'
+import { CliError } from 'clipact'
 import { type Address, getAddress, type Hex, isAddress, isHex } from 'viem'
 import type { App } from '../app.ts'
-import { ExitCode, FocError } from '../errors.ts'
-import { type ScopeId, toPermissions } from './scopes.ts'
+import { ErrorCodes, invalidInput } from '../errors.ts'
+import { buildAuthorizeUrl } from './login.ts'
+import { isScopeId, SCOPES, type ScopeId, toPermissions } from './scopes.ts'
 
 /** A session key ready to sign, bound to its root wallet. */
 export type SessionKey = ReturnType<typeof fromSecp256k1>
 
-/** Credentials resolved from the environment or the config file. */
+/** Credentials resolved from command input or the config file. */
 export type SessionCredentials = {
   privateKey: Hex
   rootAddress: Address
@@ -15,44 +17,42 @@ export type SessionCredentials = {
 }
 
 /**
- * Resolve credentials: `FOC_SESSION_KEY` with `FOC_ROOT_ADDRESS`, then the
- * session saved by `foc login` for the current network. Returns `undefined`
- * when neither is available; throws when a login is still pending.
+ * Resolve credentials: `FOC_SESSION_KEY` with `FOC_ROOT_ADDRESS` (command
+ * input), then the session saved by `foc login` for the network. Returns
+ * `undefined` when neither is available; throws `login_pending` when a login
+ * still waits for approval.
  */
 export function resolveCredentials(app: App): SessionCredentials | undefined {
-  const envKey = app.env.FOC_SESSION_KEY
-  const envRoot = app.env.FOC_ROOT_ADDRESS
-  if (envKey || envRoot) {
-    if (!(envKey && isHex(envKey) && envKey.length === 66)) {
-      throw new FocError(
-        'INVALID_CREDENTIALS',
+  const { sessionKey, rootAddress } = app.credentials
+  if (sessionKey || rootAddress) {
+    if (!(sessionKey && isHex(sessionKey) && sessionKey.length === 66)) {
+      throw invalidInput(
         'FOC_SESSION_KEY must be a 32-byte hex private key.',
-        { exitCode: ExitCode.invalidInput }
+        'sessionKey'
       )
     }
-    if (!(envRoot && isAddress(envRoot))) {
-      throw new FocError(
-        'INVALID_CREDENTIALS',
-        'FOC_ROOT_ADDRESS must be set to the wallet that authorized FOC_SESSION_KEY.',
-        { exitCode: ExitCode.invalidInput }
+    if (!(rootAddress && isAddress(rootAddress))) {
+      throw invalidInput(
+        'FOC_ROOT_ADDRESS must be the wallet that authorized FOC_SESSION_KEY.',
+        'rootAddress'
       )
     }
     return {
-      privateKey: envKey,
-      rootAddress: getAddress(envRoot),
+      privateKey: sessionKey,
+      rootAddress: getAddress(rootAddress),
       source: 'env',
     }
   }
   const session = app.config.get(`sessions.${app.network}`)
   if (!session) return undefined
   if (!session.rootAddress) {
-    throw new FocError(
-      'LOGIN_PENDING',
-      'The session key is waiting for approval in the console.',
-      {
-        exitCode: ExitCode.actionRequired,
-        next: [{ command: 'login', description: 'Finish logging in' }],
-      }
+    throw loginPending(
+      buildAuthorizeUrl({
+        consoleUrl: app.consoleUrl,
+        address: session.address as Address,
+        scopes: session.scopes.filter(isScopeId),
+        network: app.network,
+      })
     )
   }
   return {
@@ -62,12 +62,64 @@ export function resolveCredentials(app: App): SessionCredentials | undefined {
   }
 }
 
-/** Error returned when no credentials are available. */
-export function notLoggedIn(): FocError {
-  return new FocError('NOT_LOGGED_IN', 'No session key for this network.', {
-    exitCode: ExitCode.actionRequired,
-    next: [{ command: 'login', description: 'Authorize a session key' }],
+/** Error returned while the wallet owner has not approved the session key. */
+export function loginPending(url: string): CliError {
+  return new CliError({
+    code: ErrorCodes.loginPending,
+    message: 'The session key is waiting for approval in the console.',
+    details: { url },
+    next: [
+      {
+        by: 'user',
+        description: `Open ${url} and approve the session key with your wallet`,
+      },
+      {
+        by: 'agent',
+        command: 'foc login',
+        description: 'Check again after the user approves',
+      },
+    ],
   })
+}
+
+/** Error returned when no credentials are available. */
+export function notLoggedIn(): CliError {
+  return new CliError({
+    code: ErrorCodes.authRequired,
+    message: 'No session key for this network.',
+    next: [
+      {
+        by: 'user',
+        command: 'foc login',
+        description:
+          'Authorize a session key in the pay.filecoin.cloud console, then retry',
+      },
+    ],
+  })
+}
+
+/** Build the signing session key from resolved credentials. */
+export function openSession(app: App): SessionKey {
+  const credentials = resolveCredentials(app)
+  if (!credentials) throw notLoggedIn()
+  return fromSecp256k1({
+    privateKey: credentials.privateKey,
+    root: credentials.rootAddress,
+    chain: app.chain,
+    transport: app.transport as Parameters<
+      typeof fromSecp256k1
+    >[0]['transport'],
+  })
+}
+
+/** Read the session key's expiries on chain and list scopes it lacks. */
+export async function missingScopes(
+  sessionKey: SessionKey,
+  scopes: readonly ScopeId[]
+): Promise<ScopeId[]> {
+  const permissions = toPermissions(scopes)
+  await sessionKey.syncExpirations(permissions)
+  return scopes.filter((scope) => !sessionKey.hasPermission(SCOPES[scope]))
 }
 
 /**
@@ -81,44 +133,21 @@ export async function requireSession(
   app: App,
   scopes: readonly ScopeId[]
 ): Promise<SessionKey> {
-  const credentials = resolveCredentials(app)
-  if (!credentials) throw notLoggedIn()
-  const sessionKey = fromSecp256k1({
-    privateKey: credentials.privateKey,
-    root: credentials.rootAddress,
-    chain: app.chain,
-    transport: app.transport as Parameters<
-      typeof fromSecp256k1
-    >[0]['transport'],
-  })
-  const permissions = toPermissions(scopes)
-  await sessionKey.syncExpirations(permissions)
-  if (!sessionKey.hasPermissions(permissions)) {
-    const missing = permissions
-      .filter((permission) => !sessionKey.hasPermission(permission))
-      .map((permission) => PermissionNames[permission] ?? permission)
-    throw new FocError(
-      'SESSION_EXPIRED',
-      `The session key is missing or expired for: ${missing.join(', ')}.`,
-      {
-        exitCode: ExitCode.actionRequired,
-        next: [
-          { command: 'login', description: 'Authorize a new session key' },
-        ],
-      }
-    )
+  const sessionKey = openSession(app)
+  const missing = await missingScopes(sessionKey, scopes)
+  if (missing.length > 0) {
+    throw new CliError({
+      code: ErrorCodes.sessionExpired,
+      message: `The session key is missing or expired for: ${missing.join(', ')}.`,
+      details: { missing },
+      next: [
+        {
+          by: 'user',
+          command: 'foc login --fresh',
+          description: 'Authorize a new session key with the needed scopes',
+        },
+      ],
+    })
   }
   return sessionKey
-}
-
-/**
- * Resolve the payer address for read-only commands without building a
- * signer. Returns `undefined` when not logged in.
- */
-export function currentPayer(app: App): Address | undefined {
-  try {
-    return resolveCredentials(app)?.rootAddress
-  } catch {
-    return undefined
-  }
 }

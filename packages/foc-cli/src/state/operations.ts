@@ -1,9 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite'
-import { ExitCode, FocError } from '../errors.ts'
+import { CliError } from 'clipact'
+import { ErrorCodes, notFound } from '../errors.ts'
+import { decodeCursor, encodeCursor, type Page } from './cursor.ts'
 import { createId } from './ids.ts'
 
 /** Canonical saved command. */
-export type OperationAction = 'put' | 'rm'
+export type OperationAction = 'put' | 'delete'
 
 /** Job execution state. */
 export type ExecutionStatus = 'pending' | 'running' | 'failed' | 'completed'
@@ -26,6 +28,20 @@ export type OperationInput = {
 }
 
 /**
+ * A commit signed before it is sent, so a resume can tell whether it landed
+ * and, if not, send the same signature again.
+ */
+export type SignedCommit = {
+  /** `true` when the commit also creates the data set. */
+  created: boolean
+  /** Add-pieces nonce; FWSS records it in `clientNonces` when the commit lands. */
+  nonce: string
+  /** Client data set ID of a new data set. */
+  clientDataSetId?: string
+  extraData: `0x${string}`
+}
+
+/**
  * Progress saved as an operation advances. Values that are bigints on chain
  * are decimal strings. Each field is written before the step that depends on
  * it, so a resumed job never repeats a confirmed mutation.
@@ -42,6 +58,8 @@ export type Checkpoint = {
   clientDataSetId?: string
   /** Set once the provider has parked the piece. */
   stored?: boolean
+  /** Signed commit, saved before it is sent. */
+  commit?: SignedCommit
   /** Provider status URL for the commit or removal submission. */
   statusUrl?: string
   transactionHash?: string
@@ -50,7 +68,7 @@ export type Checkpoint = {
 }
 
 /**
- * A saved `put` or `rm` job with enough progress to continue after an
+ * A saved `put` or `delete` job with enough progress to continue after an
  * interruption.
  *
  * @see ../../../../docs/foc-cli-interface-research.md#operations
@@ -158,24 +176,40 @@ export type ListOperationsOptions = {
   chainId: string
   payer: string
   limit: number
+  /** `nextCursor` of the previous page. */
+  cursor?: string | undefined
   /** Only jobs that have not completed. */
   incomplete?: boolean
 }
 
-/** List operations for an account scope, most recently updated first. */
+/**
+ * List operations for an account scope, most recently updated first, one
+ * page at a time.
+ */
 export function listOperations(
   db: DatabaseSync,
   options: ListOperationsOptions
-): Operation[] {
+): Page<Operation> {
+  const after = options.cursor ? decodeCursor(options.cursor) : undefined
   const rows = db
     .prepare(
       `SELECT * FROM operations
        WHERE chain_id = ? AND payer = ? ${options.incomplete ? "AND execution_status != 'completed'" : ''}
-       ORDER BY updated_at DESC
+       ${after ? 'AND (updated_at, id) < (?, ?)' : ''}
+       ORDER BY updated_at DESC, id DESC
        LIMIT ?`
     )
-    .all(options.chainId, options.payer, options.limit) as OperationRow[]
-  return rows.map(fromRow)
+    .all(
+      options.chainId,
+      options.payer,
+      ...(after ?? []),
+      options.limit + 1
+    ) as OperationRow[]
+  const items = rows.slice(0, options.limit).map(fromRow)
+  const last = items.at(-1)
+  return rows.length > options.limit && last
+    ? { items, nextCursor: encodeCursor(last.updatedAt, last.id) }
+    : { items }
 }
 
 /** Fields that {@link updateOperation} can change. */
@@ -197,11 +231,7 @@ export function updateOperation(
   update: OperationUpdate
 ): Operation {
   const current = getOperation(db, id)
-  if (!current) {
-    throw new FocError('OPERATION_NOT_FOUND', `Operation ${id} not found.`, {
-      exitCode: ExitCode.notFound,
-    })
-  }
+  if (!current) throw notFound(`Operation ${id} not found.`)
   const checkpoint = { ...current.checkpoint, ...update.checkpoint }
   const error =
     update.error === undefined ? (current.error ?? null) : update.error
@@ -233,29 +263,46 @@ function isAlive(pid: number): boolean {
 }
 
 /**
- * Take the execution lock for an operation. Fails when another live process
- * holds it. A `running` job whose process has exited is treated as
- * interrupted and can be taken over.
+ * Operations whose lock this process holds. A `running` row with this
+ * process's PID is only locked when its ID is here; otherwise the PID was
+ * reused after a crash and the job can be taken over.
+ */
+const held = new Set<string>()
+
+/** Error returned when another caller holds an operation. */
+function operationRunning(id: string, pid: number): CliError {
+  return new CliError({
+    code: ErrorCodes.operationRunning,
+    message:
+      pid === process.pid
+        ? `Operation ${id} is already running in this process.`
+        : `Operation ${id} is running in process ${pid}.`,
+    next: [
+      {
+        by: 'agent',
+        command: `foc operations inspect ${id}`,
+        description: 'Check its progress; resume it once it stops',
+      },
+    ],
+  })
+}
+
+/**
+ * Take the execution lock for an operation. Fails when another live process,
+ * or another call in this process, holds it. A `running` job whose process
+ * has exited is treated as interrupted and can be taken over. Release the
+ * lock with {@link releaseOperation}.
  */
 export function acquireOperation(db: DatabaseSync, id: string): Operation {
   const current = getOperation(db, id)
-  if (!current) {
-    throw new FocError('OPERATION_NOT_FOUND', `Operation ${id} not found.`, {
-      exitCode: ExitCode.notFound,
-    })
+  if (!current) throw notFound(`Operation ${id} not found.`)
+  if (current.executionStatus === 'running' && current.pid != null) {
+    const mine = current.pid === process.pid
+    if (mine ? held.has(id) : isAlive(current.pid)) {
+      throw operationRunning(id, current.pid)
+    }
   }
-  if (
-    current.executionStatus === 'running' &&
-    current.pid != null &&
-    current.pid !== process.pid &&
-    isAlive(current.pid)
-  ) {
-    throw new FocError(
-      'OPERATION_LOCKED',
-      `Operation ${id} is running in process ${current.pid}.`,
-      { exitCode: ExitCode.transient, retryable: true }
-    )
-  }
+  if (held.has(id)) throw operationRunning(id, process.pid)
   const result = db
     .prepare(
       `UPDATE operations
@@ -269,12 +316,12 @@ export function acquireOperation(db: DatabaseSync, id: string): Operation {
       current.executionStatus,
       current.pid ?? null
     )
-  if (result.changes !== 1) {
-    throw new FocError(
-      'OPERATION_LOCKED',
-      `Operation ${id} was taken by another process.`,
-      { exitCode: ExitCode.transient, retryable: true }
-    )
-  }
+  if (result.changes !== 1) throw operationRunning(id, current.pid ?? 0)
+  held.add(id)
   return getOperation(db, id) as Operation
+}
+
+/** Release a lock taken by {@link acquireOperation} in this process. */
+export function releaseOperation(id: string): void {
+  held.delete(id)
 }

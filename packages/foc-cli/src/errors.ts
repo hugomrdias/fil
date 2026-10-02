@@ -1,95 +1,149 @@
-import { Errors } from 'incur'
+import { CliError, isCliError, type Next } from 'clipact'
 
 /**
- * Process exit classes from the agent execution contract.
+ * Error codes `foc` returns besides clipact's built-ins. Codes are stable:
+ * agents and scripts branch on them.
+ *
+ * @see ../../../docs/agent-cli-guidelines.md#errors-next-steps-and-retries
+ */
+export const ErrorCodes = {
+  /** No session key for the network. */
+  authRequired: 'auth_required',
+  /** A session key waits for approval in the console. */
+  loginPending: 'login_pending',
+  /** The session key lacks a scope the command needs, or it expired. */
+  sessionExpired: 'session_expired',
+  /** The owner approved fewer scopes than requested. */
+  permissionDenied: 'permission_denied',
+  /** The payer cannot cover the upload. */
+  insufficientFunds: 'insufficient_funds',
+  /** No managed resource, operation, provider, or piece by that name. */
+  notFound: 'not_found',
+  /** `get` would overwrite an existing path. */
+  outputExists: 'output_exists',
+  /** Retrieved bytes or blocks do not match their CIDs. */
+  verificationFailed: 'verification_failed',
+  /** A retrieved archive tried to write outside the output directory. */
+  unsafePath: 'unsafe_path',
+  /** Another process is running the operation. */
+  operationRunning: 'operation_running',
+  /** A put or delete stopped; resume it. */
+  operationFailed: 'operation_failed',
+  /** A resumed put found its source file changed. */
+  sourceChanged: 'source_changed',
+  /** A resumed put lost its staged CAR. */
+  stagingMissing: 'staging_missing',
+  /** The provider rejected the commit transaction. */
+  commitRejected: 'commit_rejected',
+  /** The removal transaction reverted. */
+  removalReverted: 'removal_reverted',
+} as const
+
+/** Errors a command that signs with the session key can return. */
+export const SESSION_ERRORS = [
+  ErrorCodes.authRequired,
+  ErrorCodes.loginPending,
+  ErrorCodes.sessionExpired,
+]
+
+/** Errors any put or delete job can return, including when resumed. */
+export const JOB_ERRORS = [
+  ...SESSION_ERRORS,
+  ErrorCodes.notFound,
+  ErrorCodes.insufficientFunds,
+  ErrorCodes.operationRunning,
+  ErrorCodes.operationFailed,
+  ErrorCodes.sourceChanged,
+  ErrorCodes.stagingMissing,
+  ErrorCodes.commitRejected,
+  ErrorCodes.removalReverted,
+]
+
+/** The next step that continues an operation. */
+export function resumeStep(operationId: string): Next {
+  return {
+    by: 'agent',
+    command: `foc operations resume ${operationId}`,
+    description: 'Continue this operation with its saved input',
+  }
+}
+
+/**
+ * Attach an operation to an error from a put or delete: its ID in the result
+ * and a resume step after any user step. Put and delete errors are never
+ * retryable, because repeating the original command starts a new paid
+ * operation; resuming continues the saved one.
  *
  * @see ../../../docs/foc-cli-interface-research.md#the-agent-execution-contract
  */
-export const ExitCode = {
-  unexpected: 1,
-  invalidInput: 2,
-  actionRequired: 3,
-  notFound: 4,
-  transient: 5,
-  partial: 6,
-  pending: 7,
-} as const
-
-/** A suggested next command, rendered by incur as a call to action. */
-export type NextCommand = { command: string; description?: string }
-
-/** Options for {@link FocError}. */
-export type FocErrorOptions = {
-  exitCode?: number
-  retryable?: boolean
-  cause?: unknown
-  /** Commands the caller can run to resolve the error. */
-  next?: NextCommand[]
-  /** Structured facts that help the caller act, such as a console URL. */
-  info?: Record<string, unknown>
-}
-
-/**
- * Application error with a stable code, an exit class, and optional next
- * steps. Commands convert it into an incur error result with {@link guard}.
- */
-export class FocError extends Errors.IncurError {
-  readonly next: NextCommand[]
-  readonly info: Record<string, unknown> | undefined
-
-  constructor(code: string, message: string, options: FocErrorOptions = {}) {
-    super({
-      code,
-      message,
-      exitCode: options.exitCode ?? ExitCode.unexpected,
-      retryable: options.retryable ?? false,
-      cause: options.cause instanceof Error ? options.cause : undefined,
+export function operationError(error: unknown, operationId: string): CliError {
+  if (isCliError(error)) {
+    if (error.data?.operationId === operationId) return error
+    return new CliError({
+      code: error.code,
+      message: error.message,
+      retryable: false,
+      ...(error.retryAfterSeconds === undefined
+        ? {}
+        : { retryAfterSeconds: error.retryAfterSeconds }),
+      ...(error.details === undefined ? {} : { details: error.details }),
+      next: [...(error.next ?? []), resumeStep(operationId)],
+      data: { ...error.data, operationId },
+      cause: error.cause ?? error,
     })
-    this.name = 'FocError'
-    this.next = options.next ?? []
-    this.info = options.info
   }
+  const message = error instanceof Error ? error.message : String(error)
+  return new CliError({
+    code: ErrorCodes.operationFailed,
+    message: `Operation ${operationId} stopped: ${message}`,
+    retryable: false,
+    next: [resumeStep(operationId)],
+    data: { operationId },
+    cause: error,
+  })
 }
 
-/** Minimal slice of the incur run context used to report errors. */
-type ErrorContext = {
-  error: (options: {
-    code: string
-    message: string
-    exitCode?: number
-    retryable?: boolean
-    cta?: { commands: NextCommand[] }
-  }) => never
+/** An `invalid_input` error for a problem found after validation. */
+export function invalidInput(message: string, path?: string): CliError {
+  return new CliError({
+    code: 'invalid_input',
+    message,
+    ...(path ? { details: [{ path, message }] } : {}),
+  })
+}
+
+/** A `not_found` error with a step that lists what does exist. */
+export function notFound(message: string, next?: Next): CliError {
+  return new CliError({
+    code: ErrorCodes.notFound,
+    message,
+    ...(next ? { next: [next] } : {}),
+  })
 }
 
 /**
- * Run a command body and turn a thrown {@link FocError} into an incur error
- * result, keeping its code, exit class, and next steps. Other errors propagate
- * to incur, which reports them as `UNKNOWN`.
+ * Reject when `signal` aborts, for SDK calls that cannot be cancelled. The
+ * call keeps running in the background, but the handler returns so clipact
+ * can report the interruption.
  */
-export async function guard<T>(c: ErrorContext, fn: () => Promise<T>) {
-  try {
-    return await fn()
-  } catch (error) {
-    if (error instanceof FocError) {
-      const message = error.info
-        ? `${error.shortMessage} ${formatInfo(error.info)}`
-        : error.shortMessage
-      return c.error({
-        code: error.code,
-        message,
-        exitCode: error.exitCode ?? ExitCode.unexpected,
-        retryable: error.retryable,
-        ...(error.next.length > 0 ? { cta: { commands: error.next } } : {}),
-      })
-    }
-    throw error
-  }
-}
-
-/** Render error facts as `key=value` pairs appended to a message. */
-function formatInfo(info: Record<string, unknown>): string {
-  return Object.entries(info)
-    .map(([key, value]) => `${key}=${String(value)}`)
-    .join(' ')
+export function abortable<T>(
+  promise: Promise<T>,
+  signal: AbortSignal | undefined
+): Promise<T> {
+  if (!signal) return promise
+  signal.throwIfAborted()
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason)
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error)
+      }
+    )
+  })
 }

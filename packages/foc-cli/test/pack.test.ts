@@ -58,7 +58,7 @@ test('listEntries skips dotfiles and rejects symlinks', async () => {
   assert.deepEqual(entries.directories, ['assets', 'assets/img', 'empty'])
 
   await symlink('/etc/hosts', join(dir, 'hosts'))
-  await assert.rejects(listEntries(dir), { code: 'UNSUPPORTED_ENTRY' })
+  await assert.rejects(listEntries(dir), { code: 'invalid_input' })
 })
 
 /** Count the blocks in a CAR file. */
@@ -117,7 +117,7 @@ test('extractCar rejects a block that does not match its CID', async () => {
     await handle.close()
   }
   await assert.rejects(extractCar(car, join(root, 'out')), {
-    code: 'INTEGRITY_ERROR',
+    code: 'verification_failed',
   })
 })
 

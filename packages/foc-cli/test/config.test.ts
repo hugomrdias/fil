@@ -4,24 +4,12 @@ import { test } from 'node:test'
 import { openConfig, resolveNetwork } from '../src/config.ts'
 import { tempDir } from './helpers.ts'
 
-test('resolveNetwork prefers flag, then env, then config', async () => {
+test('resolveNetwork prefers input, then config, then calibration', async () => {
   const config = openConfig({ FOC_CONFIG_DIR: await tempDir() })
-  assert.equal(resolveNetwork(undefined, {}, config), 'calibration')
+  assert.equal(resolveNetwork(undefined, config), 'calibration')
   config.set('network', 'mainnet')
-  assert.equal(resolveNetwork(undefined, {}, config), 'mainnet')
-  assert.equal(
-    resolveNetwork(undefined, { FOC_NETWORK: 'calibration' }, config),
-    'calibration'
-  )
-  assert.equal(
-    resolveNetwork('mainnet', { FOC_NETWORK: 'calibration' }, config),
-    'mainnet'
-  )
-})
-
-test('resolveNetwork rejects unknown networks', async () => {
-  const config = openConfig({ FOC_CONFIG_DIR: await tempDir() })
-  assert.throws(() => resolveNetwork('devnet', {}, config))
+  assert.equal(resolveNetwork(undefined, config), 'mainnet')
+  assert.equal(resolveNetwork('calibration', config), 'calibration')
 })
 
 test('config file is private to the user', async () => {

@@ -5,6 +5,9 @@ import {
   SchedulePieceRemovalsPermission,
   TerminateServicePermission,
 } from '@filoz/synapse-core/session-key'
+import type { ScopeId } from './scope-ids.ts'
+
+export { DEFAULT_SCOPES, SCOPE_IDS, type ScopeId } from './scope-ids.ts'
 
 /**
  * Session-key scopes by the IDs the pay.filecoin.cloud console accepts in its
@@ -17,22 +20,12 @@ export const SCOPES = {
   addPieces: AddPiecesPermission,
   schedulePieceRemovals: SchedulePieceRemovalsPermission,
   terminateService: TerminateServicePermission,
-} as const satisfies Record<string, Permission>
-
-/** A console scope ID. */
-export type ScopeId = keyof typeof SCOPES
-
-/** Scopes requested by `foc login` unless `--scopes` is given. */
-export const DEFAULT_SCOPES: ScopeId[] = [
-  'createDataSet',
-  'addPieces',
-  'schedulePieceRemovals',
-]
+} as const satisfies Record<ScopeId, Permission>
 
 /** Scopes a `put` needs: it may create a data set or add to one. */
 export const PUT_SCOPES: ScopeId[] = ['createDataSet', 'addPieces']
 
-/** Scopes an `rm` needs. */
+/** Scopes a `delete` needs. */
 export const RM_SCOPES: ScopeId[] = ['schedulePieceRemovals']
 
 /** Whether `value` is a known scope ID. */

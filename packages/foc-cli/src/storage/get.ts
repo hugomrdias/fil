@@ -4,7 +4,8 @@ import { dirname, join, resolve } from 'node:path'
 import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import * as Piece from '@filoz/synapse-core/piece'
-import { ExitCode, FocError } from '../errors.ts'
+import { CliError } from 'clipact'
+import { ErrorCodes, notFound } from '../errors.ts'
 import { extractCar } from './pack.ts'
 
 /** Options for {@link downloadPiece}. */
@@ -14,6 +15,7 @@ export type DownloadPieceOptions = {
   /** Final file path; written only after the PieceCID matches. */
   output: string
   fetch?: typeof globalThis.fetch
+  signal?: AbortSignal
 }
 
 /**
@@ -25,28 +27,26 @@ export async function downloadPiece(
   options: DownloadPieceOptions
 ): Promise<{ size: number }> {
   const fetchFn = options.fetch ?? globalThis.fetch
-  const response = await fetchFn(options.url).catch((error: unknown) => {
-    throw new FocError('RETRIEVAL_FAILED', `Could not reach ${options.url}.`, {
-      exitCode: ExitCode.transient,
-      retryable: true,
+  const response = await fetchFn(options.url, {
+    ...(options.signal ? { signal: options.signal } : {}),
+  }).catch((error: unknown) => {
+    if (options.signal?.aborted) throw error
+    throw new CliError({
+      code: 'service_unavailable',
+      message: `Could not reach ${options.url}.`,
       cause: error,
     })
   })
   if (response.status === 404) {
-    throw new FocError(
-      'NOT_FOUND',
-      `The provider does not have ${options.pieceCid}.`,
-      {
-        exitCode: ExitCode.notFound,
-      }
-    )
+    await response.body?.cancel()
+    throw notFound(`The provider does not have ${options.pieceCid}.`)
   }
   if (!(response.ok && response.body)) {
-    throw new FocError(
-      'RETRIEVAL_FAILED',
-      `Retrieval from ${options.url} failed with HTTP ${response.status}.`,
-      { exitCode: ExitCode.transient, retryable: true }
-    )
+    await response.body?.cancel()
+    throw new CliError({
+      code: 'service_unavailable',
+      message: `Retrieval from ${options.url} failed with HTTP ${response.status}.`,
+    })
   }
   const output = resolve(options.output)
   await mkdir(dirname(output), { recursive: true })
@@ -68,11 +68,10 @@ export async function downloadPiece(
     )
     const actual = hasher.finalize().toString()
     if (actual !== options.pieceCid) {
-      throw new FocError(
-        'INTEGRITY_ERROR',
-        `Downloaded bytes hash to ${actual}, expected ${options.pieceCid}.`,
-        { exitCode: ExitCode.transient, retryable: true }
-      )
+      throw new CliError({
+        code: ErrorCodes.verificationFailed,
+        message: `Downloaded bytes hash to ${actual}, expected ${options.pieceCid}.`,
+      })
     }
     await rename(tmp, output)
     return { size }
@@ -90,6 +89,7 @@ export type DownloadArtifactOptions = {
   /** Directory to extract into; must be empty or absent. */
   output: string
   fetch?: typeof globalThis.fetch
+  signal?: AbortSignal
 }
 
 /**
@@ -101,11 +101,7 @@ export async function downloadArtifact(
 ): Promise<{ size: number; files: number }> {
   const output = resolve(options.output)
   const existing = await stat(output).catch(() => undefined)
-  if (existing) {
-    throw new FocError('OUTPUT_EXISTS', `${options.output} already exists.`, {
-      exitCode: ExitCode.invalidInput,
-    })
-  }
+  if (existing) throw outputExists(options.output)
   const carPath = join(dirname(output), `.${options.pieceCid}.car`)
   try {
     const { size } = await downloadPiece({ ...options, output: carPath })
@@ -114,15 +110,29 @@ export async function downloadArtifact(
     const { rootCid, files } = await extractCar(carPath, tmp)
     if (rootCid.toString() !== options.rootCid) {
       await rm(tmp, { recursive: true, force: true })
-      throw new FocError(
-        'INTEGRITY_ERROR',
-        `CAR root is ${rootCid}, expected ${options.rootCid}.`,
-        { exitCode: ExitCode.transient }
-      )
+      throw new CliError({
+        code: ErrorCodes.verificationFailed,
+        message: `CAR root is ${rootCid}, expected ${options.rootCid}.`,
+      })
     }
     await rename(tmp, output)
     return { size, files }
   } finally {
     await rm(carPath, { force: true })
   }
+}
+
+/** Error returned when `get` would overwrite an existing path. */
+export function outputExists(path: string): CliError {
+  return new CliError({
+    code: ErrorCodes.outputExists,
+    message: `${path} already exists.`,
+    next: [
+      {
+        by: 'agent',
+        description:
+          'Choose another path with --output, or pass --force for a file',
+      },
+    ],
+  })
 }
