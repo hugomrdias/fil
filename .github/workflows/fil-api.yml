@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
-      name: production
+      name: fil-api-production
       url: ${{ env.PRODUCTION_URL }}
     concurrency:
       group: fil-api-production

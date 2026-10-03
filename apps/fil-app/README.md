@@ -46,4 +46,4 @@ The app deploys as a static-assets Worker (`wrangler.jsonc`, SPA fallback) at ht
 | Pull request opened or updated | Builds, creates a `wrangler preview --name pr-<number>`, probes it and comments the URL on the PR |
 | Pull request closed | `wrangler preview delete` |
 
-The workflow uses the same `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets as fil-api.
+The production deploy uses its own `fil-app-production` GitHub environment. The workflow uses the same `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets as fil-api.
