@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi'
+import { parseRetrievalCid } from '../cid.ts'
 import { NETWORK_NAMES } from '../networks.ts'
 import { isInt8 } from '../pagination.ts'
 
@@ -29,6 +30,27 @@ export const Address = z
 export const AddressOut = z.string().openapi({
   example: '0x480c51fe9fc90e01fa742c51300cc29e151a71cd',
 })
+
+/**
+ * PieceCID v2 or IPFS root CID, classified and normalized with
+ * {@link parseRetrievalCid}.
+ */
+export const RetrievalCidInput = z
+  .string()
+  .transform((value, ctx) => {
+    try {
+      return parseRetrievalCid(value)
+    } catch (error) {
+      ctx.addIssue({ code: 'custom', message: (error as Error).message })
+      return z.NEVER
+    }
+  })
+  .openapi({
+    type: 'string',
+    description: 'PieceCID v2 or IPFS root CID',
+    example:
+      'bafkzcibfq263oaytvzyzerkprzkwx5l3ek3dwyngge4sim2o3ahsk7shfendo7jvdm7a',
+  })
 
 /** Unsigned integer encoded as a decimal string (ids, uint256 amounts). */
 export const Uint = z.string().openapi({

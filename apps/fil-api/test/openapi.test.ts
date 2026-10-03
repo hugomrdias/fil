@@ -26,6 +26,7 @@ describe('openapi', () => {
         '/{network}/rails/{railId}/settlements',
         '/{network}/session-keys',
         '/{network}/session-keys/history',
+        '/get/{cid}',
       ].sort()
     )
     const params = doc.paths['/{network}/pieces']?.get?.parameters?.map(

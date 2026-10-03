@@ -14,6 +14,7 @@ import { requestTelemetry } from './middleware/telemetry.ts'
 import { NETWORK_NAMES } from './networks.ts'
 import { validationHook } from './routes/hook.ts'
 import { networkRoutes } from './routes/network.ts'
+import { retrievalRoutes } from './routes/retrieval.ts'
 import { activeSpan, recordError } from './tracing.ts'
 import type { AppEnv } from './types.ts'
 
@@ -65,6 +66,7 @@ export function createApp(options: AppOptions = {}) {
       name: 'fil-api',
       version: VERSION,
       networks: NETWORK_NAMES,
+      get: '/get/{cid}',
       openapi: '/openapi.json',
       docs: '/docs',
       mcp: '/mcp',
@@ -107,6 +109,7 @@ export function createApp(options: AppOptions = {}) {
             { name: 'Pieces' },
             { name: 'Rails' },
             { name: 'Session keys' },
+            { name: 'Retrieval' },
           ],
         }),
       }
@@ -151,6 +154,7 @@ export function createApp(options: AppOptions = {}) {
   })
 
   app.route('/', networkRoutes(dbFactory))
+  app.route('/', retrievalRoutes(dbFactory))
 
   app.notFound((c) => c.json(errorBody('not_found', 'Route not found'), 404))
 
