@@ -1,6 +1,6 @@
-# FOC CLI interface research
+# Filecoin CLI interface research
 
-Research date: 2026-09-28. Scope: agent-generated files and shareable artifacts. Status: design recommendation, not an implemented or benchmarked CLI. `foc` is a working executable name; every command below is proposed.
+Research date: 2026-09-28. Scope: agent-generated files and shareable artifacts. Status: design recommendation, not an implemented or benchmarked CLI. `fil` is a working executable name; every command below is proposed.
 
 ## Recommendation
 
@@ -8,56 +8,56 @@ Build an artifact publishing CLI over Synapse, with a stable machine contract an
 
 Use familiar file operations for raw storage, and a higher-level publishing operation for named files, folders, and static artifacts. Keep provider selection, data sets, payment rails, and EIP-712 out of the ordinary publishing path. Make that information available through inspection and advanced commands.
 
-Both resource groups use canonical `put`, `get`, and `delete` commands: `foc files` for raw bytes and `foc artifacts` for IPFS files and folders. `foc publish` is a convenience alias for `foc artifacts put`, with identical behavior and results.
+Both resource groups use canonical `put`, `get`, and `delete` commands: `fil files` for raw bytes and `fil artifacts` for IPFS files and folders. `fil publish` is a convenience alias for `fil artifacts put`, with identical behavior and results.
 
 For folder publishing, reuse [Filecoin Pin](https://github.com/filecoin-project/filecoin-pin)'s UnixFS/CAR approach and make Curio's native IPFS retrieval a first-class delivery path. It already provides an interoperable directory representation. Validate the library integration and browser gateway before committing to packaging details. Do not commit to a new proprietary file-tree format before testing this route.
 
 Provide both a useful workflow and a dependable execution contract. A large command tree generated directly from contracts would expose too much machinery for the primary task.
 
-This document covers FOC-specific design. Generic conventions for agent-facing Node.js CLIs (output and error contract, exit codes, agent detection, schema discovery, non-interactive behavior, harness integration, evaluation, and startup performance) are in [CLI guidelines for agents](agent-cli-guidelines.md); `foc` follows them.
+This document covers the design specific to the Filecoin CLI. Generic conventions for agent-facing Node.js CLIs (output and error contract, exit codes, agent detection, schema discovery, non-interactive behavior, harness integration, evaluation, and startup performance) are in [CLI guidelines for agents](agent-cli-guidelines.md); `fil` follows them.
 
 ## Proposed user interface
 
 ```sh
 # One-time human setup; auth and funding are distinct operations
-foc auth login
-foc auth status --json
-foc doctor --json
-foc skills install --json
+fil auth login
+fil auth status --json
+fil doctor --json
+fil skills install --json
 
 # Artifacts: publish, retrieve, inspect, and delete IPFS files or folders
-foc artifacts put ./report.pdf --json --non-interactive
-foc artifacts put ./dist --entry index.html --json --non-interactive
-foc artifacts get <artifact-ref> --output ./downloaded-report
-foc artifacts get ipfs://<root-cid>/images/chart.png --output ./chart.png
-foc artifacts delete <artifact-ref> --json --non-interactive
-foc artifacts inspect <artifact-ref> --json
-foc artifacts ls --limit 20 --json
-foc artifacts verify <artifact-ref> --json
-foc artifacts put --help
-foc schema artifacts put
+fil artifacts put ./report.pdf --json --non-interactive
+fil artifacts put ./dist --entry index.html --json --non-interactive
+fil artifacts get <artifact-ref> --output ./downloaded-report
+fil artifacts get ipfs://<root-cid>/images/chart.png --output ./chart.png
+fil artifacts delete <artifact-ref> --json --non-interactive
+fil artifacts inspect <artifact-ref> --json
+fil artifacts ls --limit 20 --json
+fil artifacts verify <artifact-ref> --json
+fil artifacts put --help
+fil schema artifacts put
 
 # Convenience alias for artifacts put
-foc publish ./dist --entry index.html --json --non-interactive
-foc publish --help
-foc schema publish
+fil publish ./dist --entry index.html --json --non-interactive
+fil publish --help
+fil schema publish
 
 # Raw bytes remain independently useful
-foc files put ./data.bin --json --non-interactive
-foc files get <file-ref> --output ./data.bin
-foc files delete <file-ref> --json --non-interactive
-foc files inspect <file-ref> --json
-foc files ls --limit 20 --json
+fil files put ./data.bin --json --non-interactive
+fil files get <file-ref> --output ./data.bin
+fil files delete <file-ref> --json --non-interactive
+fil files inspect <file-ref> --json
+fil files ls --limit 20 --json
 
 # Find, inspect, and recover operations for files and artifacts
-foc operations ls --incomplete --limit 20 --json
-foc operations inspect <operation-id> --json
-foc operations resume <operation-id> --json --non-interactive
+fil operations ls --incomplete --limit 20 --json
+fil operations inspect <operation-id> --json
+fil operations resume <operation-id> --json --non-interactive
 ```
 
 `artifacts put` packages content, stores the requested copies, waits for the required commitment state, obtains a suitable browser/download URL, and checks that URL. Default copy count should follow the SDK's two-copy golden path. Publishing is explicitly a public workflow; it does not send the URL to anyone.
 
-`publish` resolves to the same `artifacts put` operation. Both accept the same arguments and flags, return the same artifact reference, content URI, shareable URL, and result schema, and use the same authorization, exit codes, and retry semantics. Help identifies the alias, and `foc schema publish` returns the canonical `artifacts put` schema. Save the canonical action `artifacts.put` for either spelling; continue an existing job with `operations resume`.
+`publish` resolves to the same `artifacts put` operation. Both accept the same arguments and flags, return the same artifact reference, content URI, shareable URL, and result schema, and use the same authorization, exit codes, and retry semantics. Help identifies the alias, and `fil schema publish` returns the canonical `artifacts put` schema. Save the canonical action `artifacts.put` for either spelling; continue an existing job with `operations resume`.
 
 `files put` stores exact bytes and returns a file reference and PieceCID. It does not manufacture folder semantics or promise browser rendering. Raw stored bytes should not be described as private merely because no share page was created.
 
@@ -146,16 +146,16 @@ Each new put or delete invocation creates a new operation. Retries use `operatio
 
 ```sh
 # Recent jobs for the current network and payer
-foc operations ls --limit 20 --json
-foc operations ls --incomplete --json
-foc operations ls --resource artifacts --action put --incomplete --json
+fil operations ls --limit 20 --json
+fil operations ls --incomplete --json
+fil operations ls --resource artifacts --action put --incomplete --json
 
 # Read saved state, or reconcile it without submitting new work
-foc operations inspect op_abc123 --json
-foc operations inspect op_abc123 --refresh --json
+fil operations inspect op_abc123 --json
+fil operations inspect op_abc123 --refresh --json
 
 # Continue the existing job
-foc operations resume op_abc123 --json --non-interactive
+fil operations resume op_abc123 --json --non-interactive
 ```
 
 `ls` reads local state, newest update first, with 20 results by default and `nextCursor` pagination. Summaries include ID, action, resource reference, phase, execution status, and last update. `--incomplete` includes every job that has not completed; it does not promise automatic recovery. `inspect --refresh` checks providers and the chain without submitting transactions or restarting work.
@@ -165,7 +165,7 @@ foc operations resume op_abc123 --json --non-interactive
 `put` and `delete` each run in one call: save the operation before external mutations, execute it, and return the result with its operation ID. The same flow applies to agents and interactive use.
 
 ```sh
-foc artifacts put ./dist --json --non-interactive
+fil artifacts put ./dist --json --non-interactive
 ```
 
 Use `resume` only when continuing unfinished work. If a timeout or crash prevents the caller from receiving the operation ID, find the job with `operations ls --incomplete` and inspect its input or target before resuming. Do not automatically pick the newest job or repeat the original command.
@@ -180,10 +180,10 @@ Return a working link with partial status if copies are incomplete, or pending p
 
 ## CLI state
 
-Keep durable CLI state in the platform's application state directory. `FOC_STATE_DIR` overrides this location for CI and agent harnesses using a persistent volume. Keep the directory outside published input trees.
+Keep durable CLI state in the platform's application state directory. `FIL_STATE_DIR` overrides this location for CI and agent harnesses using a persistent volume. Keep the directory outside published input trees.
 
 ```text
-<foc-state-directory>/
+<fil-state-directory>/
 ├── state.db
 └── staging/
     ├── <file-operation-id>/
@@ -223,16 +223,16 @@ Account/network preferences belong in CLI configuration; private and session key
 
 ## The agent execution contract
 
-`foc` applies the [CLI guidelines for agents](agent-cli-guidelines.md): one JSON result object on stdout (success and error), human-readable diagnostics on stderr, exit codes `0` and `1` only, structured `retryable` and `next` fields, agent-aware help, no prompts in noninteractive mode, and offline `foc schema <command>` discovery. FOC adds these specifics:
+`fil` applies the [CLI guidelines for agents](agent-cli-guidelines.md): one JSON result object on stdout (success and error), human-readable diagnostics on stderr, exit codes `0` and `1` only, structured `retryable` and `next` fields, agent-aware help, no prompts in noninteractive mode, and offline `fil schema <command>` discovery. The Filecoin CLI adds these specifics:
 
-| Concern | FOC-specific contract |
+| Concern | Filecoin CLI contract |
 | --- | --- |
 | Secrets | No wallet material, private keys, or session keys in any output, error, or log. |
 | Authorization | Missing authorization, an expired session key, or insufficient funding returns an error with a `next` step for the user. Noninteractive execution is not itself spending authorization. |
 | Compactness | Never put file bytes, full storage histories, or verbose transaction traces in ordinary results. |
 | Pipes | A binary stdout download cannot also emit JSON to that stream; reject conflicting modes. Stdin publishing requires a name and a durable spool if restart recovery is promised. |
 | Errors | Include the operation ID in every put/delete error. Avoid a single generic “upload failed.” |
-| Retries | Put and delete errors are never `retryable`, because repeating the original command creates a new paid operation. Recovery is a `next` step running `foc operations resume <id>`. Reads can be `retryable`. |
+| Retries | Put and delete errors are never `retryable`, because repeating the original command creates a new paid operation. Recovery is a `next` step running `fil operations resume <id>`. Reads can be `retryable`. |
 | Numeric precision | Serialize chain IDs and amounts as decimal strings; represent monetary quantities with explicit token/unit fields. |
 | Configuration | Named account/network profiles. Include the resolved network and payer in resource and operation inspection. |
 | Raw output | `--output url` prints only a verified ready URL. JSON is the recommended agent mode. |
@@ -288,7 +288,7 @@ Illustrative pending result, following the guidelines' error shape:
     "retryable": false
   },
   "next": [
-    { "by": "agent", "command": "foc operations resume op_example --json", "description": "Continue publication checks for this operation" }
+    { "by": "agent", "command": "fil operations resume op_example --json", "description": "Continue publication checks for this operation" }
   ]
 }
 ```
@@ -352,7 +352,7 @@ Store-and-serve has ongoing costs. Report current storage obligations and egress
 
 ## Harness integration
 
-Start with one compact Agent Skill covering publishing, retrieval, inspection, and recovery; see [Agent Skills](agent-cli-guidelines.md#agent-skills) for packaging and `foc skills install`. The skill should teach a few essential facts: use structured output; return the actual URL from the result; distinguish pending/partial/ready; resume an existing operation after interruption; never paste credentials.
+Start with one compact Agent Skill covering publishing, retrieval, inspection, and recovery; see [Agent Skills](agent-cli-guidelines.md#agent-skills) for packaging and `fil skills install`. The skill should teach a few essential facts: use structured output; return the actual URL from the result; distinguish pending/partial/ready; resume an existing operation after interruption; never paste credentials.
 
 For a local MCP adapter, expose a small set such as `put_artifact`, `inspect_artifact`, `list_artifacts`, `get_artifact`, `delete_artifact`, and `list_operations`/`inspect_operation`/`resume_operation`. `put_artifact` maps to the same operation as `artifacts put` and its `publish` alias; expose one creation tool rather than duplicate tools for the alias. Deletion requires separately authorized removal permissions. Resource links can point to published artifacts; client rendering support varies, so a resource link does not guarantee an inline preview.
 
