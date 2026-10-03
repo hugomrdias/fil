@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CACHE_CONTROL } from '../src/routes/network.ts'
-import { rows, testApp } from './helpers.ts'
+import { fakeLimiter, rows, testApp } from './helpers.ts'
 
 describe('rest routes', () => {
   it('serves the index without the database', async () => {
@@ -145,6 +145,42 @@ describe('rest routes', () => {
     const route = await request('/nope')
     expect(route.status).toBe(404)
     expect(await route.json()).toMatchObject({ error: { code: 'not_found' } })
+  })
+
+  it('reports unknown networks before other validation errors', async () => {
+    const { request } = testApp()
+    const res = await request('/filecoin/data-sets?owner=nope')
+    expect(res.status).toBe(404)
+    expect(await res.json()).toMatchObject({
+      error: { code: 'unknown_network' },
+    })
+  })
+
+  it.each(['/sitemap.xml', '/filecoin/nope', '/wp-admin/install.php'])(
+    'skips network middleware and rate limits for %s',
+    async (path) => {
+      const { request, fake } = testApp(undefined, {
+        RATE_LIMIT_API: fakeLimiter(false),
+      })
+      const res = await request(path)
+      expect(res.status).toBe(404)
+      expect(await res.json()).toMatchObject({ error: { code: 'not_found' } })
+      expect(fake.closed).toBe(0)
+    }
+  )
+
+  it('uses the Cloudflare Ray ID as the request id', async () => {
+    const { request } = testApp(() => [rows.provider])
+    const res = await request('/calibration/providers', {
+      headers: { 'cf-ray': 'a44c2706e8c0b23b', 'x-request-id': 'spoofed' },
+    })
+    expect(res.headers.get('x-request-id')).toBe('a44c2706e8c0b23b')
+  })
+
+  it('ignores client request ids without a Ray ID', async () => {
+    const { request } = testApp()
+    const res = await request('/', { headers: { 'x-request-id': 'spoofed' } })
+    expect(res.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/)
   })
 
   it('returns 503 for a network without a database binding', async () => {

@@ -1,11 +1,6 @@
-import type { DbFactory, DbStats } from './db.ts'
+import { type DbFactory, type DbStats, openNetworkDb } from './db.ts'
 import { log } from './log.ts'
-import {
-  type Bindings,
-  NETWORK_NAMES,
-  type NetworkName,
-  openNetworkDb,
-} from './networks.ts'
+import { type Bindings, NETWORK_NAMES, type NetworkName } from './networks.ts'
 import { getStatus } from './queries/status.ts'
 
 /** Health of one network's indexer database. */
