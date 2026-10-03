@@ -61,12 +61,32 @@ Scripts:
 
 ## Deploy
 
-1. Create a Hyperdrive config for each network:
+[`.github/workflows/fil-api.yml`](../../.github/workflows/fil-api.yml) deploys automatically:
+
+| Trigger | Result |
+| --- | --- |
+| Push to `main` | Runs typecheck, tests and lint, then `wrangler deploy` to https://fil-api.hugomrdias.dev and probes `/health` |
+| Pull request opened or updated | `wrangler preview --name pr-<number>` creates a [Worker Preview](https://developers.cloudflare.com/workers/previews/) on `workers.dev`, probes `/health` and comments its URL on the PR |
+| Pull request closed | `wrangler preview delete` removes the preview |
+
+The workflow only runs when `apps/fil-api`, the lockfile, `pnpm-workspace.yaml`, `turbo.json` or the workflow itself changes. Pull requests from forks get no preview, because they can't read the secrets.
+
+Previews don't inherit production bindings, so the `previews` block in `wrangler.jsonc` repeats both Hyperdrive bindings. Previews read the same read-only databases as production but use separate rate-limit namespaces.
+
+### Setup
+
+1. Create a Cloudflare API token from the **Edit Cloudflare Workers** template. Scope it to your account and the `hugomrdias.dev` zone.
+2. Add the repository secrets:
+   ```bash
+   gh secret set CLOUDFLARE_API_TOKEN
+   gh secret set CLOUDFLARE_ACCOUNT_ID
+   ```
+3. Create a Hyperdrive config for each network and put the ids in `wrangler.jsonc`, in both the top-level `hyperdrive` list and `previews.hyperdrive`:
    ```bash
    wrangler hyperdrive create fil-api-calibration --connection-string="postgresql://user:password@host:5432/indexers"
    ```
-2. Put the returned ids into `wrangler.jsonc`.
-3. Run `pnpm --filter fil-api deploy`.
+
+To deploy manually, run `pnpm --filter fil-api deploy`.
 
 Each network needs its own Hyperdrive binding. Run `pnpm cf-typegen` after changing bindings. A network without a binding returns `503 network_unavailable`.
 
