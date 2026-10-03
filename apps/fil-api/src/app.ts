@@ -5,7 +5,7 @@ import { cors } from 'hono/cors'
 import { requestId } from 'hono/request-id'
 import { timing } from 'hono/timing'
 import { type DbFactory, hyperdriveDb } from './db.ts'
-import { ApiError } from './errors.ts'
+import { errorBody, toErrorResponse } from './errors.ts'
 import { checkHealth } from './health.ts'
 import { log } from './log.ts'
 import { buildMcpServer } from './mcp/server.ts'
@@ -38,10 +38,6 @@ export function createApp(options: AppOptions = {}) {
   app.use(requestId())
   app.use(timing({ total: true, crossOrigin: true }))
   app.use(requestLogger)
-  app.use(async (c, next) => {
-    c.set('dbFactory', dbFactory)
-    await next()
-  })
   app.use(
     cors({
       origin: '*',
@@ -86,24 +82,37 @@ export function createApp(options: AppOptions = {}) {
     return c.json(health, health.ok ? 200 : 503)
   })
 
-  app.doc31('/openapi.json', (c) => ({
-    openapi: '3.1.0',
-    info: {
-      title: 'fil-api',
-      version: VERSION,
-      description:
-        'Read-only Filecoin Onchain Cloud data: storage providers, data sets, pieces, Filecoin Pay rails and session keys.',
-    },
-    servers: [{ url: new URL(c.req.url).origin }],
-    tags: [
-      { name: 'Status' },
-      { name: 'Providers' },
-      { name: 'Data sets' },
-      { name: 'Pieces' },
-      { name: 'Rails' },
-      { name: 'Session keys' },
-    ],
-  }))
+  // The document only depends on the origin, so generate it once per isolate
+  // and origin instead of on every request.
+  let openapi: { origin: string; doc: unknown } | undefined
+  app.get('/openapi.json', (c) => {
+    const origin = new URL(c.req.url).origin
+    if (openapi?.origin !== origin) {
+      openapi = {
+        origin,
+        doc: app.getOpenAPI31Document({
+          openapi: '3.1.0',
+          info: {
+            title: 'fil-api',
+            version: VERSION,
+            description:
+              'Read-only Filecoin Onchain Cloud data: storage providers, data sets, pieces, Filecoin Pay rails and session keys.',
+          },
+          servers: [{ url: origin }],
+          tags: [
+            { name: 'Status' },
+            { name: 'Providers' },
+            { name: 'Data sets' },
+            { name: 'Pieces' },
+            { name: 'Rails' },
+            { name: 'Session keys' },
+          ],
+        }),
+      }
+    }
+    c.header('Cache-Control', 'public, max-age=300')
+    return c.json(openapi.doc)
+  })
   app.get('/docs', Scalar({ url: '/openapi.json', pageTitle: 'fil-api' }))
 
   app.on(['GET', 'DELETE'], '/mcp', (c) => {
@@ -126,6 +135,7 @@ export function createApp(options: AppOptions = {}) {
       dbFactory,
       dbStats: c.var.dbStats,
       version: VERSION,
+      requestId: c.var.requestId,
     })
     const transport = new StreamableHTTPTransport({
       sessionIdGenerator: undefined,
@@ -139,30 +149,22 @@ export function createApp(options: AppOptions = {}) {
     }
   })
 
-  app.route('/', networkRoutes())
+  app.route('/', networkRoutes(dbFactory))
 
-  app.notFound((c) =>
-    c.json({ error: { code: 'not_found', message: 'Route not found' } }, 404)
-  )
+  app.notFound((c) => c.json(errorBody('not_found', 'Route not found'), 404))
 
   app.onError((error, c) => {
-    if (error instanceof ApiError) {
-      return c.json(
-        { error: { code: error.code, message: error.message } },
-        error.status
-      )
+    const { status, body, unexpected } = toErrorResponse(error)
+    if (unexpected) {
+      log('error', {
+        message: 'unhandled error',
+        requestId: c.var.requestId,
+        path: c.req.path,
+        error: error.message,
+        stack: error.stack,
+      })
     }
-    log('error', {
-      message: 'unhandled error',
-      requestId: c.var.requestId,
-      path: c.req.path,
-      error: error.message,
-      stack: error.stack,
-    })
-    return c.json(
-      { error: { code: 'internal_error', message: 'Internal server error' } },
-      500
-    )
+    return c.json(body, status)
   })
 
   return app

@@ -3,7 +3,7 @@ import { ApiError } from '../errors.ts'
 import type { AppEnv } from '../types.ts'
 
 /** Rate limiter binding names declared in `wrangler.jsonc`. */
-export type RateLimitBinding = 'RATE_LIMIT_API' | 'RATE_LIMIT_MCP'
+type RateLimitBinding = 'RATE_LIMIT_API' | 'RATE_LIMIT_MCP'
 
 /**
  * Limit requests per client IP with a Workers Rate Limiting binding.

@@ -1,10 +1,12 @@
 import { z } from '@hono/zod-openapi'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
-import type { DbFactory, DbStats } from '../db.ts'
-import { ApiError, networkUnavailable, notFound } from '../errors.ts'
+import type { Db, DbFactory, DbStats } from '../db.ts'
+import { networkUnavailable, toErrorResponse } from '../errors.ts'
+import { log } from '../log.ts'
 import {
   type Bindings,
+  type Network,
   type NetworkDb,
   type NetworkName,
   openNetworkDb,
@@ -31,6 +33,7 @@ export interface McpContext {
   dbFactory: DbFactory
   dbStats: DbStats
   version: string
+  requestId?: string
 }
 
 /** MCP server plus a function that closes the database clients it opened. */
@@ -39,11 +42,137 @@ export interface McpHandle {
   closeDbs: () => Promise<void>
 }
 
-const base = {
-  network: NetworkSchema.describe('Filecoin network: calibration or mainnet'),
+/** Tool input schema: a `network` plus tool-specific fields. */
+type ToolSchema = z.ZodObject<{ network: typeof NetworkSchema }>
+
+/** A read-only tool, defined once and registered on each request's server. */
+interface ToolDef {
+  name: string
+  description: string
+  inputSchema: ToolSchema
+  run: (
+    db: Db,
+    network: Network,
+    args: Record<string, unknown>
+  ) => Promise<unknown>
 }
+
+/** Build a tool input schema from tool-specific fields. */
+function input<S extends z.ZodRawShape>(shape: S) {
+  return z.object({
+    network: NetworkSchema.describe('Filecoin network: calibration or mainnet'),
+    ...shape,
+  })
+}
+
+/** Define a tool; `run` receives the parsed input without `network`. */
+function defineTool<S extends ToolSchema>(
+  name: string,
+  description: string,
+  inputSchema: S,
+  run: (
+    db: Db,
+    network: Network,
+    args: Omit<z.output<S>, 'network'>
+  ) => Promise<unknown>
+): ToolDef {
+  return { name, description, inputSchema, run: run as ToolDef['run'] }
+}
+
 const page = PageQuery.shape
 const bool = z.boolean()
+
+/** Tool definitions, built once per isolate. */
+const TOOLS: ToolDef[] = [
+  defineTool(
+    'get_status',
+    'Indexer status: chain id and latest, safe and finalized indexed blocks.',
+    input({}),
+    async (db, network) => ({ data: await getStatus(db, network) })
+  ),
+  defineTool(
+    'list_providers',
+    'List storage providers registered in the ServiceProviderRegistry.',
+    input({ ...filters.providers(bool), ...page }),
+    (db, network, q) => listProviders(db, network.schemas, q)
+  ),
+  defineTool(
+    'get_provider',
+    'Get one storage provider by id.',
+    input({ providerId: UintInput }),
+    async (db, network, q) => ({
+      data: await getProvider(db, network.schemas, q.providerId),
+    })
+  ),
+  defineTool(
+    'list_data_sets',
+    'List Warm Storage data sets, filtered by owner (paying client), provider, deleted or CDN.',
+    input({ ...filters.dataSets(bool), ...page }),
+    (db, network, q) => listDataSets(db, network.schemas, q)
+  ),
+  defineTool(
+    'get_data_set',
+    'Get one data set by id.',
+    input({ dataSetId: UintInput }),
+    async (db, network, q) => ({
+      data: await getDataSet(db, network.schemas, q.dataSetId),
+    })
+  ),
+  defineTool(
+    'list_data_set_pieces',
+    'List pieces in one data set, newest first.',
+    input({ dataSetId: UintInput, ...filters.dataSetPieces(bool), ...page }),
+    (db, network, q) => listDataSetPieces(db, network.schemas, q)
+  ),
+  defineTool(
+    'get_piece',
+    'Get one piece by data set id and piece id.',
+    input({ dataSetId: UintInput, pieceId: UintInput }),
+    async (db, network, q) => ({
+      data: await getPiece(db, network.schemas, q.dataSetId, q.pieceId),
+    })
+  ),
+  defineTool(
+    'list_pieces',
+    'Find pieces across data sets by owner (paying client), PieceCID or provider. Requires at least one of owner, cid or provider_id.',
+    input({ ...filters.pieces(bool), ...page }).refine(hasPieceSelector, {
+      message: PIECE_SELECTOR_MESSAGE,
+    }),
+    (db, network, q) => listPieces(db, network.schemas, q)
+  ),
+  defineTool(
+    'list_rails',
+    'List Filecoin Pay payment rails with current rate, lockup, state and settlement totals.',
+    input({ ...filters.rails, ...page }),
+    (db, network, q) => listRails(db, network.schemas, q)
+  ),
+  defineTool(
+    'get_rail',
+    'Get one payment rail by id with its current state.',
+    input({ railId: UintInput }),
+    async (db, network, q) => ({
+      data: await getRail(db, network.schemas, q.railId),
+    })
+  ),
+  defineTool(
+    'list_rail_settlements',
+    'List settlements of one payment rail, newest first.',
+    input({ railId: UintInput, ...page }),
+    (db, network, q) => listRailSettlements(db, network.schemas, q)
+  ),
+  defineTool(
+    'list_session_keys',
+    'List session keys with the latest expiry of each permission per (identity, signer).',
+    input({ ...filters.sessionKeys(bool), ...page }),
+    (db, network, q) => listSessionKeys(db, network.schemas, q)
+  ),
+  defineTool(
+    'list_session_key_events',
+    'List raw session key authorization events, newest first.',
+    input({ ...filters.sessionKeyEvents, ...page }),
+    (db, network, q) => listSessionKeyEvents(db, network.schemas, q)
+  ),
+]
 
 /**
  * Build a stateless MCP server exposing read-only Filecoin onchain data
@@ -73,186 +202,47 @@ export function buildMcpServer(ctx: McpContext): McpHandle {
     return n
   }
 
-  /** Register a read-only tool whose handler returns JSON. */
-  function tool<S extends z.ZodRawShape>(
-    name: string,
-    description: string,
-    shape: S,
-    run: (args: z.output<z.ZodObject<S>>) => Promise<unknown>
-  ) {
+  for (const tool of TOOLS) {
     server.registerTool(
-      name,
+      tool.name,
       {
-        description,
-        inputSchema: z.object(shape),
+        description: tool.description,
+        inputSchema: tool.inputSchema,
         annotations: { readOnlyHint: true, openWorldHint: true },
       },
       // biome-ignore lint/suspicious/noExplicitAny: SDK infers args from the schema
-      (async (args: any): Promise<CallToolResult> => {
+      (async ({ network, ...args }: any): Promise<CallToolResult> => {
         try {
-          const result = await run(args)
+          const n = use(network)
+          const result = await tool.run(n.db, n.network, args)
           return {
             content: [{ type: 'text', text: JSON.stringify(result) }],
             structuredContent: result as Record<string, unknown>,
           }
         } catch (error) {
-          if (error instanceof ApiError) {
-            return {
-              isError: true,
-              content: [
-                { type: 'text', text: `${error.code}: ${error.message}` },
-              ],
-            }
+          const { body, unexpected } = toErrorResponse(error)
+          if (unexpected) {
+            log('error', {
+              message: 'unhandled tool error',
+              requestId: ctx.requestId,
+              tool: tool.name,
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+            })
           }
-          throw error
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: `${body.error.code}: ${body.error.message}`,
+              },
+            ],
+          }
         }
       }) as never
     )
   }
-
-  tool(
-    'get_status',
-    'Indexer status: chain id and latest, safe and finalized indexed blocks.',
-    base,
-    async ({ network }) => {
-      const n = use(network)
-      return { data: await getStatus(n.db, n.network) }
-    }
-  )
-
-  tool(
-    'list_providers',
-    'List storage providers registered in the ServiceProviderRegistry.',
-    { ...base, ...filters.providers(bool), ...page },
-    ({ network, ...q }) => {
-      const n = use(network)
-      return listProviders(n.db, n.network.schemas, q)
-    }
-  )
-
-  tool(
-    'get_provider',
-    'Get one storage provider by id.',
-    { ...base, providerId: UintInput },
-    async ({ network, providerId }) => {
-      const n = use(network)
-      const data = await getProvider(n.db, n.network.schemas, providerId)
-      if (!data) throw notFound('Provider', providerId)
-      return { data }
-    }
-  )
-
-  tool(
-    'list_data_sets',
-    'List Warm Storage data sets, filtered by owner (paying client), provider, deleted or CDN.',
-    { ...base, ...filters.dataSets(bool), ...page },
-    ({ network, ...q }) => {
-      const n = use(network)
-      return listDataSets(n.db, n.network.schemas, q)
-    }
-  )
-
-  tool(
-    'get_data_set',
-    'Get one data set by id.',
-    { ...base, dataSetId: UintInput },
-    async ({ network, dataSetId }) => {
-      const n = use(network)
-      const data = await getDataSet(n.db, n.network.schemas, dataSetId)
-      if (!data) throw notFound('Data set', dataSetId)
-      return { data }
-    }
-  )
-
-  tool(
-    'list_data_set_pieces',
-    'List pieces in one data set, newest first.',
-    { ...base, dataSetId: UintInput, ...filters.dataSetPieces(bool), ...page },
-    ({ network, ...q }) => {
-      const n = use(network)
-      return listDataSetPieces(n.db, n.network.schemas, q)
-    }
-  )
-
-  tool(
-    'get_piece',
-    'Get one piece by data set id and piece id.',
-    { ...base, dataSetId: UintInput, pieceId: UintInput },
-    async ({ network, dataSetId, pieceId }) => {
-      const n = use(network)
-      const data = await getPiece(n.db, n.network.schemas, dataSetId, pieceId)
-      if (!data) throw notFound('Piece', `${dataSetId}/${pieceId}`)
-      return { data }
-    }
-  )
-
-  tool(
-    'list_pieces',
-    'Find pieces across data sets by owner (paying client), PieceCID or provider. Requires at least one of owner, cid or provider_id.',
-    { ...base, ...filters.pieces(bool), ...page },
-    ({ network, ...q }) => {
-      if (!hasPieceSelector(q)) {
-        throw new ApiError(400, 'invalid_request', PIECE_SELECTOR_MESSAGE)
-      }
-      const n = use(network)
-      return listPieces(n.db, n.network.schemas, q)
-    }
-  )
-
-  tool(
-    'list_rails',
-    'List Filecoin Pay payment rails with current rate, lockup, state and settlement totals.',
-    { ...base, ...filters.rails(), ...page },
-    ({ network, ...q }) => {
-      const n = use(network)
-      return listRails(n.db, n.network.schemas, q)
-    }
-  )
-
-  tool(
-    'get_rail',
-    'Get one payment rail by id with its current state.',
-    { ...base, railId: UintInput },
-    async ({ network, railId }) => {
-      const n = use(network)
-      const data = await getRail(n.db, n.network.schemas, railId)
-      if (!data) throw notFound('Rail', railId)
-      return { data }
-    }
-  )
-
-  tool(
-    'list_rail_settlements',
-    'List settlements of one payment rail, newest first.',
-    { ...base, railId: UintInput, ...page },
-    ({ network, ...q }) => {
-      const n = use(network)
-      return listRailSettlements(n.db, n.network.schemas, q)
-    }
-  )
-
-  tool(
-    'list_session_keys',
-    'List session keys with the latest expiry of each permission per (identity, signer).',
-    { ...base, ...filters.sessionKeys(bool), ...page },
-    ({ network, ...q }) => {
-      const n = use(network)
-      return listSessionKeys(n.db, n.network.schemas, {
-        ...q,
-        now: Math.floor(Date.now() / 1000),
-      })
-    }
-  )
-
-  tool(
-    'list_session_key_events',
-    'List raw session key authorization events, newest first.',
-    { ...base, ...filters.sessionKeyEvents(), ...page },
-    ({ network, ...q }) => {
-      const n = use(network)
-      return listSessionKeyEvents(n.db, n.network.schemas, q)
-    }
-  )
 
   return {
     server,

@@ -1,8 +1,9 @@
 import { type Db, ident, type Row, Where } from '../db.ts'
+import { notFound } from '../errors.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { DataSet } from '../schemas/resources.ts'
-import { bool, json, req, str } from './map.ts'
+import { addr, bool, json, req, str } from './map.ts'
 
 /**
  * Filters for {@link listDataSets}, named like the API query parameters so
@@ -27,11 +28,11 @@ function table(schemas: Schemas) {
 }
 
 /** Map a `data_sets` row to the API shape. */
-export function mapDataSet(row: Row): DataSet {
+function mapDataSet(row: Row): DataSet {
   return {
     dataSetId: req(row.data_set_id),
     providerId: str(row.provider_id),
-    owner: str(row.payer),
+    owner: addr(row.payer),
     source: str(row.source) || null,
     metadata: json(row.metadata),
     withCdn: bool(row.with_cdn),
@@ -50,7 +51,7 @@ export async function listDataSets(
   params: ListDataSetsParams
 ): Promise<Page<DataSet>> {
   const where = new Where()
-    .maybe(params.owner?.toLowerCase(), (p) => `payer = ${p}`)
+    .maybe(params.owner, (p) => `payer = ${p}`)
     .maybe(params.provider_id, (p) => `provider_id = ${p}::bigint`)
     .maybe(params.deleted, (p) => `deleted = ${p}`)
     .maybe(params.with_cdn, (p) => `with_cdn = ${p}`)
@@ -67,15 +68,16 @@ export async function listDataSets(
   return toPage(rows, params.limit, mapDataSet, (r) => [req(r.data_set_id)])
 }
 
-/** Get one data set by id. */
+/** Get one data set by id; throws 404 when it does not exist. */
 export async function getDataSet(
   db: Db,
   schemas: Schemas,
   dataSetId: string
-): Promise<DataSet | undefined> {
+): Promise<DataSet> {
   const rows = await db.query(
     `select ${COLUMNS} from ${table(schemas)} where data_set_id = $1::bigint`,
     [dataSetId]
   )
-  return rows[0] && mapDataSet(rows[0])
+  if (!rows[0]) throw notFound('Data set', dataSetId)
+  return mapDataSet(rows[0])
 }

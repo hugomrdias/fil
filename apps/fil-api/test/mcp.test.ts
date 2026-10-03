@@ -106,6 +106,38 @@ describe('mcp', () => {
     expect(pieces.result.isError).toBe(true)
   })
 
+  it('hides unexpected tool errors', async () => {
+    const { request } = testApp(() => {
+      throw new Error('relation "secret" does not exist')
+    })
+    const body = (await (
+      await request(
+        '/mcp',
+        rpc('tools/call', {
+          name: 'list_providers',
+          arguments: { network: 'calibration' },
+        })
+      )
+    ).json()) as RpcResult<{ isError: boolean; content: { text: string }[] }>
+    expect(body.result.isError).toBe(true)
+    expect(body.result.content[0]?.text).toBe(
+      'internal_error: Internal server error'
+    )
+  })
+
+  it('keeps transport HTTP errors instead of turning them into 500s', async () => {
+    const { request } = testApp()
+    const res = await request('/mcp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain', Accept: 'application/json' },
+      body: 'not json',
+    })
+    expect(res.status).toBe(415)
+    expect(await res.json()).toMatchObject({
+      error: { code: 'invalid_request' },
+    })
+  })
+
   it('rejects GET since the server is stateless', async () => {
     const { request } = testApp()
     expect((await request('/mcp')).status).toBe(405)

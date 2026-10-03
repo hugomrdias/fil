@@ -1,8 +1,9 @@
 import { type Db, ident, type Row, Where } from '../db.ts'
+import { notFound } from '../errors.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { Provider } from '../schemas/resources.ts'
-import { bool, req, str } from './map.ts'
+import { bool, req, reqAddr, str } from './map.ts'
 
 /** Filters for {@link listProviders}. */
 export interface ListProvidersParams {
@@ -23,11 +24,10 @@ function table(schemas: Schemas) {
 }
 
 /** Map a `providers` row to the API shape. */
-export function mapProvider(row: Row): Provider {
+function mapProvider(row: Row): Provider {
   return {
     providerId: req(row.provider_id),
-    // Some registry rows store checksummed addresses; normalize like the rest.
-    address: req(row.provider_address).toLowerCase(),
+    address: reqAddr(row.provider_address),
     name: str(row.name),
     serviceUrl: str(row.service_url),
     active: bool(row.provider_active),
@@ -62,15 +62,16 @@ export async function listProviders(
   return toPage(rows, params.limit, mapProvider, (r) => [req(r.provider_id)])
 }
 
-/** Get one storage provider by id. */
+/** Get one storage provider by id; throws 404 when it does not exist. */
 export async function getProvider(
   db: Db,
   schemas: Schemas,
   providerId: string
-): Promise<Provider | undefined> {
+): Promise<Provider> {
   const rows = await db.query(
     `select ${COLUMNS} from ${table(schemas)} where provider_id = $1::bigint`,
     [providerId]
   )
-  return rows[0] && mapProvider(rows[0])
+  if (!rows[0]) throw notFound('Provider', providerId)
+  return mapProvider(rows[0])
 }

@@ -5,8 +5,9 @@ import { RailStateSchema } from './resources.ts'
 type Bool = typeof BooleanQuery | z.ZodBoolean
 
 /**
- * Filter fields shared by REST query strings and MCP tool input. REST passes
- * {@link BooleanQuery}; MCP passes `z.boolean()`.
+ * Filter fields shared by REST query strings and MCP tool input. Factories
+ * take the boolean schema: REST passes {@link BooleanQuery}, MCP
+ * `z.boolean()`.
  */
 export const filters = {
   providers: <B extends Bool>(bool: B) => ({
@@ -29,22 +30,22 @@ export const filters = {
     provider_id: UintInput.optional().describe('Storage provider id'),
     removed: bool.optional().describe('Removed pieces'),
   }),
-  rails: () => ({
+  rails: {
     payer: Address.optional().describe('Payer address'),
     payee: Address.optional().describe('Payee address'),
     operator: Address.optional().describe('Operator contract address'),
     token: Address.optional().describe('Payment token address'),
     state: RailStateSchema.optional(),
-  }),
+  },
   sessionKeys: <B extends Bool>(bool: B) => ({
     identity: Address.optional().describe('Identity that authorized the key'),
     signer: Address.optional().describe('Session key signer address'),
     active: bool.optional().describe('Keys with any unexpired permission'),
   }),
-  sessionKeyEvents: () => ({
+  sessionKeyEvents: {
     identity: Address.optional().describe('Identity that authorized the key'),
     signer: Address.optional().describe('Session key signer address'),
-  }),
+  },
 }
 
 /** Require at least one selector for a cross-data-set piece lookup. */
@@ -83,7 +84,7 @@ export const ListPiecesQuery = PageQuery.extend(
 ).refine(hasPieceSelector, { message: PIECE_SELECTOR_MESSAGE })
 
 /** `GET /{network}/rails` query. */
-export const ListRailsQuery = PageQuery.extend(filters.rails())
+export const ListRailsQuery = PageQuery.extend(filters.rails)
 
 /** `GET /{network}/session-keys` query. */
 export const ListSessionKeysQuery = PageQuery.extend(
@@ -92,5 +93,5 @@ export const ListSessionKeysQuery = PageQuery.extend(
 
 /** `GET /{network}/session-keys/history` query. */
 export const ListSessionKeyEventsQuery = PageQuery.extend(
-  filters.sessionKeyEvents()
+  filters.sessionKeyEvents
 )
