@@ -435,7 +435,7 @@ function PermissionList(props: { permissions: SessionKey['permissions'] }) {
               : 'rounded-md border px-1.5 text-xs text-muted-foreground line-through'
           }
           key={permission.permission}
-          title={`Expires ${formatTimestamp(Number(permission.expiry))}`}
+          title={`Expires ${formatTimestamp(permission.expiry)}`}
         >
           {permission.name ?? permissionLabel(permission.permission)}
         </span>
@@ -469,9 +469,7 @@ export function sessionKeyColumns(network: Network): Column<SessionKey>[] {
     c.accessor('expiry', {
       header: 'Expires',
       cell: (info) =>
-        info.getValue() === '0'
-          ? '—'
-          : formatTimestamp(Number(info.getValue())),
+        info.getValue() === '0' ? '—' : formatTimestamp(info.getValue()),
     }),
     c.accessor('permissions', {
       header: 'Permissions',
@@ -521,7 +519,7 @@ export function sessionKeyEventColumns(
           <StatusBadge tone="danger">Revoked</StatusBadge>
         ) : (
           <StatusBadge tone="success">
-            Authorized until {formatTimestamp(Number(info.getValue()))}
+            Authorized until {formatTimestamp(info.getValue())}
           </StatusBadge>
         ),
     }),

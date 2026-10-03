@@ -256,14 +256,6 @@ function MyDataSetPage() {
             label: 'PDP rail',
             value: <RailLink id={d.pdpRailId.toString()} network={network} />,
           },
-          {
-            label: 'Client data set id',
-            value: d.clientDataSetId.toString(),
-          },
-          {
-            label: 'Has pieces',
-            value: <FlagBadge value={d.hasActivePieces} />,
-          },
           { label: 'Metadata', value: <MetadataView metadata={d.metadata} /> },
         ]}
       />
@@ -293,9 +285,14 @@ function MyDataSetPage() {
         </Card>
       ) : null}
       <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="px-1 font-medium">Pieces</h2>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 basis-64 flex-col gap-1 px-1">
+            <h2 className="font-medium">Pieces</h2>
+            <p className="text-sm text-muted-foreground">
+              New uploads may take a moment to appear.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
             <SignerBadge permissions={[SchedulePieceRemovalsPermission]} />
             <Button
               disabled={selected.size === 0 || remove.isPending}
@@ -313,10 +310,6 @@ function MyDataSetPage() {
             </Button>
           </div>
         </div>
-        <p className="px-1 text-sm text-muted-foreground">
-          Pieces come from the indexer. New uploads show as indexing until it
-          catches up.
-        </p>
         <DataTable
           columns={columns}
           data={rows}
