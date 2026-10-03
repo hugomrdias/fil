@@ -1,4 +1,5 @@
 import { AddPiecesPermission } from '@filoz/synapse-core/session-key'
+import { SIZE_CONSTANTS } from '@filoz/synapse-core/utils'
 import type { PdpDataSet } from '@filoz/synapse-core/warm-storage'
 import { FileIcon, UploadIcon, XIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -10,7 +11,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
-import { type UploadStage, useUpload, useUploadCosts } from '@/hooks-synapse'
+import {
+  type UploadStage,
+  type UseUploadResult,
+  useUpload,
+  useUploadCosts,
+} from '@/hooks-synapse'
 import { formatBytes, shortId } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -28,11 +34,11 @@ const STAGE_LABEL: Record<UploadStage, string> = {
  * Drop zone and progress list for uploading files to a data set.
  *
  * @param props.dataSet - Target data set.
- * @param props.onDone - Called after pieces are added.
+ * @param props.onDone - Called with the result after pieces are added.
  */
 export function UploadPanel(props: {
   dataSet: PdpDataSet
-  onDone?: () => void
+  onDone?: (result: UseUploadResult) => void
 }) {
   const { address, network, signerFor } = useDashboard()
   const input = useRef<HTMLInputElement>(null)
@@ -55,6 +61,11 @@ export function UploadPanel(props: {
       props.dataSet.provider &&
       BigInt(file.size) > props.dataSet.provider.pdp.maxPieceSizeInBytes
   )
+  // synapse-core rejects these inside the upload stream, where the browser
+  // only reports a generic network error, so catch them up front.
+  const tooSmall = files.some(
+    ({ file }) => file.size < SIZE_CONSTANTS.MIN_UPLOAD_SIZE
+  )
   const busy = upload.isPending
 
   const addFiles = (list: FileList | null) => {
@@ -71,7 +82,7 @@ export function UploadPanel(props: {
     <div className="flex flex-col gap-4">
       <button
         className={cn(
-          'flex flex-col items-center justify-center gap-2 border border-dashed p-8 text-center text-sm text-muted-foreground transition-colors hover:bg-muted/40',
+          'flex flex-col items-center justify-center gap-2 rounded-3xl border border-dashed p-10 text-center text-sm text-muted-foreground transition-colors duration-150 hover:bg-muted/40',
           dragging && 'border-primary bg-accent'
         )}
         disabled={busy}
@@ -104,10 +115,10 @@ export function UploadPanel(props: {
       />
 
       {upload.files.length > 0 ? (
-        <ul className="flex flex-col divide-y border">
+        <ul className="flex flex-col divide-y overflow-hidden rounded-3xl border">
           {upload.files.map((file, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: files keep their order
-            <li className="flex flex-col gap-2 p-3" key={index}>
+            <li className="flex flex-col gap-2 px-4 py-3" key={index}>
               <div className="flex items-center justify-between gap-2 text-sm">
                 <span className="flex min-w-0 items-center gap-2">
                   <FileIcon className="size-4 shrink-0" />
@@ -143,10 +154,10 @@ export function UploadPanel(props: {
           ))}
         </ul>
       ) : files.length > 0 ? (
-        <ul className="flex flex-col divide-y border">
+        <ul className="flex flex-col divide-y overflow-hidden rounded-3xl border">
           {files.map(({ id, file }) => (
             <li
-              className="flex items-center justify-between gap-2 p-3 text-sm"
+              className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
               key={id}
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -177,6 +188,15 @@ export function UploadPanel(props: {
           <AlertDescription>
             This provider accepts pieces up to{' '}
             {formatBytes(props.dataSet.provider?.pdp.maxPieceSizeInBytes)}.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      {tooSmall ? (
+        <Alert variant="destructive">
+          <AlertTitle>File too small</AlertTitle>
+          <AlertDescription>
+            Pieces must be at least {SIZE_CONSTANTS.MIN_UPLOAD_SIZE} bytes.
+            Remove the smaller files to upload the rest.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -231,7 +251,11 @@ export function UploadPanel(props: {
           ) : null}
           <Button
             disabled={
-              files.length === 0 || busy || tooBig || !props.dataSet.provider
+              files.length === 0 ||
+              busy ||
+              tooBig ||
+              tooSmall ||
+              !props.dataSet.provider
             }
             onClick={() =>
               upload.mutate(
@@ -257,7 +281,7 @@ export function UploadPanel(props: {
                     setFiles((prev) =>
                       prev.filter(({ file }) => retry.has(file))
                     )
-                    props.onDone?.()
+                    props.onDone?.(result)
                   },
                   onError: toasts.mutation.onError,
                 }

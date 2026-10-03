@@ -26,7 +26,7 @@ export function EmptyState(props: {
   children?: ReactNode
 }) {
   return (
-    <Empty className="border">
+    <Empty className="rounded-3xl border">
       <EmptyHeader>
         {props.icon ? (
           <EmptyMedia variant="icon">{props.icon}</EmptyMedia>

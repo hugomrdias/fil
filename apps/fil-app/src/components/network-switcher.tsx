@@ -1,5 +1,4 @@
 import { useLocation, useNavigate } from '@tanstack/react-router'
-import { GlobeIcon } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -14,14 +13,37 @@ import {
   type Network,
   switchNetworkPath,
 } from '@/lib/networks'
+import { cn } from '@/lib/utils'
+
+/**
+ * Dot that tells networks apart at a glance: green for mainnet, violet
+ * for the calibration testnet.
+ *
+ * @param props.network - Filecoin network.
+ */
+export function NetworkDot(props: { network: Network }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'size-2 shrink-0 rounded-full',
+        props.network === 'mainnet' ? 'bg-success' : 'bg-violet-500'
+      )}
+    />
+  )
+}
 
 /**
  * Explorer network picker that swaps the leading path segment and keeps the
  * rest of the path.
  *
  * @param props.network - Current network.
+ * @param props.className - Extra trigger classes.
  */
-export function NetworkSwitcher(props: { network: Network }) {
+export function NetworkSwitcher(props: {
+  network: Network
+  className?: string
+}) {
   const location = useLocation()
   const navigate = useNavigate()
   return (
@@ -37,21 +59,14 @@ export function NetworkSwitcher(props: { network: Network }) {
       }}
       value={props.network}
     >
-      <SelectTrigger aria-label="Network" size="sm">
-        <GlobeIcon />
+      <SelectTrigger aria-label="Network" className={props.className}>
+        <NetworkDot network={props.network} />
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {NETWORKS.map((network) => (
           <SelectItem key={network} value={network}>
-            <span
-              aria-hidden
-              className={
-                network === 'mainnet'
-                  ? 'size-2 rounded-full bg-success'
-                  : 'size-2 rounded-full bg-violet-500'
-              }
-            />
+            <NetworkDot network={network} />
             {NETWORK_LABELS[network]}
           </SelectItem>
         ))}

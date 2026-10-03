@@ -32,12 +32,15 @@ describe('networks', () => {
     assert.equal(switchNetworkPath('/', 'calibration'), '/calibration')
   })
 
-  it('links transactions to filfox', () => {
+  it('links to the chain default explorer (Blockscout)', () => {
     assert.equal(
       txUrl('mainnet', '0xabc'),
-      'https://filfox.info/en/message/0xabc'
+      'https://filecoin.blockscout.com/tx/0xabc'
     )
-    assert.match(txUrl('calibration', '0xabc'), /calibration\.filfox\.info/)
+    assert.equal(
+      txUrl('calibration', '0xabc'),
+      'https://filecoin-testnet.blockscout.com/tx/0xabc'
+    )
   })
 
   it('labels session key permissions', () => {

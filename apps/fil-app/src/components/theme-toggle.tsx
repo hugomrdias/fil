@@ -9,15 +9,26 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { type ThemePreference, useTheme } from '@/lib/theme'
 
-/** Light/dark/system theme picker. */
-export function ThemeToggle() {
+/**
+ * Light/dark/system theme picker.
+ *
+ * @param props.className - Extra trigger classes.
+ */
+export function ThemeToggle(props: { className?: string }) {
   const { theme, setTheme } = useTheme()
   const Icon =
     theme === 'light' ? SunIcon : theme === 'dark' ? MoonIcon : MonitorIcon
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button aria-label="Theme" size="icon" variant="ghost" />}
+        render={
+          <Button
+            aria-label="Theme"
+            className={props.className}
+            size="icon"
+            variant="ghost"
+          />
+        }
       >
         <Icon />
       </DropdownMenuTrigger>

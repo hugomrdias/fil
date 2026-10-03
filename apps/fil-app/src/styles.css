@@ -27,6 +27,8 @@
   --font-heading: var(--font-sans);
   --font-sans: "Inter Variable", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Strong ease-out for UI that enters or responds to input. */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -156,5 +158,34 @@
   }
   ::selection {
     @apply bg-brand-500/30;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/*
+ * Progress through the current 30 s Filecoin epoch. The negative delay set
+ * inline keeps every bar in phase with the chain clock.
+ */
+@theme {
+  --animate-epoch: epoch-progress 30s linear infinite;
+
+  @keyframes epoch-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-epoch {
+    animation: none;
+    transform: scaleX(1);
+    opacity: 0.4;
   }
 }

@@ -1,5 +1,9 @@
 import { SchedulePieceRemovalsPermission } from '@filoz/synapse-core/session-key'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ExternalLinkIcon, TrashIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -15,7 +19,7 @@ import { Details, MetadataView } from '@/components/details'
 import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
 import { SignerBadge } from '@/components/signer-badge'
-import { FlagBadge } from '@/components/status-badge'
+import { FlagBadge, StatusBadge } from '@/components/status-badge'
 import { txToasts } from '@/components/tx-toast'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,15 +33,59 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { UploadPanel } from '@/components/upload-panel'
-import { useDeletePieces, usePdpDataSet } from '@/hooks-synapse'
+import {
+  type UseUploadResult,
+  useDeletePieces,
+  usePdpDataSet,
+} from '@/hooks-synapse'
 import type { Piece } from '@/lib/api/client'
 import { apiKey, dataSetPiecesInfinite } from '@/lib/api/queries'
+import type { Network } from '@/lib/networks'
 import { assertId, useFlatPages } from '@/lib/route-helpers'
 
 export const Route = createFileRoute('/dashboard/data-sets/$id')({
   beforeLoad: ({ params }) => assertId(params.id),
   component: MyDataSetPage,
 })
+
+/**
+ * Cache key for pieces this session added to a data set that the indexer
+ * may not have caught up with yet. Kept outside the `fil-api` prefix so
+ * refetches never clear it.
+ *
+ * @param network - Filecoin network.
+ * @param dataSetId - Data set id.
+ */
+function recentPiecesKey(network: Network, dataSetId: string) {
+  return ['fil-app', 'recent-pieces', network, dataSetId] as const
+}
+
+/**
+ * Pieces confirmed by an upload, shaped like fil-api pieces with no
+ * indexer fields yet.
+ *
+ * @param dataSetId - Data set id.
+ * @param result - Upload result.
+ */
+function toRecentPieces(dataSetId: string, result: UseUploadResult): Piece[] {
+  return result.pieces.flatMap((piece) =>
+    piece.pieceId === undefined
+      ? []
+      : [
+          {
+            dataSetId,
+            pieceId: piece.pieceId.toString(),
+            cid: piece.pieceCid.toString(),
+            rawSize: String(piece.size),
+            metadata: piece.metadata,
+            removed: false,
+            addedAtBlock: null,
+            removedAtBlock: null,
+            updatedAtBlock: null,
+          },
+        ]
+  )
+}
 
 /** Manage one data set: pieces, batch delete, upload and terminate. */
 function MyDataSetPage() {
@@ -49,7 +97,22 @@ function MyDataSetPage() {
     ...dataSetPiecesInfinite(network, id, 'false'),
     refetchInterval: 30_000,
   })
-  const rows = useFlatPages(pieces.data)
+  const indexed = useFlatPages(pieces.data)
+  const recentKey = recentPiecesKey(network, id)
+  const recent = useQuery({
+    queryKey: recentKey,
+    queryFn: (): Piece[] => [],
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+  }).data
+  // Uploaded pieces stay on top until the indexer returns them.
+  const rows = useMemo(() => {
+    const indexedIds = new Set(indexed.map((piece) => piece.pieceId))
+    const pending = (recent ?? []).filter(
+      (piece) => !indexedIds.has(piece.pieceId)
+    )
+    return pending.length > 0 ? [...pending, ...indexed] : indexed
+  }, [indexed, recent])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const remove = useDeletePieces({
     sessionKey: signerFor([SchedulePieceRemovalsPermission]),
@@ -59,17 +122,33 @@ function MyDataSetPage() {
     }),
   })
 
+  const d = dataSet.data
   const baseColumns = useMemo(
     () => [
-      ...pieceColumns(network).filter(
-        (col) => !('accessorKey' in col && col.accessorKey === 'removed')
+      ...pieceColumns(network, {
+        providerId: d?.providerId.toString() ?? null,
+        owner: d?.payer,
+        cdn: d?.cdn,
+        serviceUrl: d?.provider?.pdp.serviceURL,
+      }).filter(
+        (col) =>
+          !(
+            'accessorKey' in col &&
+            (col.accessorKey === 'removed' ||
+              col.accessorKey === 'addedAtBlock')
+          )
       ),
+      columnHelper<Piece>().accessor('addedAtBlock', {
+        header: 'Added at block',
+        cell: (info) =>
+          info.getValue() ?? <StatusBadge tone="info">Indexing</StatusBadge>,
+      }),
       columnHelper<Piece>().accessor('metadata', {
         header: 'Metadata',
         cell: (info) => <MetadataView metadata={info.getValue()} />,
       }),
     ],
-    [network]
+    [network, d]
   )
   const columns = useMemo<Column<Piece>[]>(
     () => [
@@ -112,7 +191,6 @@ function MyDataSetPage() {
   if (dataSet.isPending) {
     return <Skeleton className="h-64" />
   }
-  const d = dataSet.data
   if (!d) {
     return (
       <EmptyState
@@ -201,18 +279,22 @@ function MyDataSetPage() {
           <CardContent>
             <UploadPanel
               dataSet={d}
-              onDone={() =>
+              onDone={(result) => {
+                queryClient.setQueryData<Piece[]>(recentKey, (prev = []) => [
+                  ...toRecentPieces(id, result).reverse(),
+                  ...prev,
+                ])
                 queryClient.invalidateQueries({
                   queryKey: apiKey(network, 'data-set-pieces', id),
                 })
-              }
+              }}
             />
           </CardContent>
         </Card>
       ) : null}
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold">Pieces</h2>
+          <h2 className="px-1 font-medium">Pieces</h2>
           <div className="flex items-center gap-3">
             <SignerBadge permissions={[SchedulePieceRemovalsPermission]} />
             <Button
@@ -231,15 +313,16 @@ function MyDataSetPage() {
             </Button>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Piece lists come from the indexer and can lag the chain by a few
-          minutes.
+        <p className="px-1 text-sm text-muted-foreground">
+          Pieces come from the indexer. New uploads show as indexing until it
+          catches up.
         </p>
         <DataTable
           columns={columns}
           data={rows}
           empty="No pieces yet."
           getRowId={(row) => row.pieceId}
+          loading={pieces.isPending && rows.length === 0}
           query={pieces}
         />
       </section>

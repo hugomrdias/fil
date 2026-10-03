@@ -55,9 +55,23 @@ export interface UseUploadResult {
   /** Provider add-pieces confirmation. */
   added: SP.waitForAddPieces.OutputType
   /** Pieces added to the data set, in file order. */
-  pieces: { file: string; pieceCid: PieceCID }[]
+  pieces: UploadedPiece[]
   /** Files that failed to upload and were not added; retry them. */
   failed: { file: File; error: Error }[]
+}
+
+/** A piece confirmed on-chain by {@link useUpload}. */
+export interface UploadedPiece {
+  /** Source file name. */
+  file: string
+  /** File size in bytes (the piece's raw size). */
+  size: number
+  /** PieceCID. */
+  pieceCid: PieceCID
+  /** Piece id in the data set, from the confirmed add-pieces transaction. */
+  pieceId: bigint | undefined
+  /** Metadata stored with the piece. */
+  metadata: MetadataObject
 }
 
 /** Props for {@link useUpload}. */
@@ -171,6 +185,14 @@ export function useUpload(props?: UseUploadProps) {
           )
         )
       setStage('adding')
+      const toAdd = uploaded.map(({ file, pieceCid }) => ({
+        file,
+        pieceCid,
+        metadata: metadata?.(file) ?? {
+          name: file.name,
+          ...(file.type ? { type: file.type } : {}),
+        },
+      }))
       try {
         const client = await getSignerClient(config, {
           account: connection.address,
@@ -181,15 +203,13 @@ export function useUpload(props?: UseUploadProps) {
           serviceURL,
           dataSetId: dataSet.dataSetId,
           clientDataSetId: dataSet.clientDataSetId,
-          pieces: uploaded.map(({ file, pieceCid }) => ({
+          pieces: toAdd.map(({ pieceCid, metadata }) => ({
             pieceCid,
-            metadata: metadata?.(file) ?? {
-              name: file.name,
-              ...(file.type ? { type: file.type } : {}),
-            },
+            metadata,
           })),
         })
         props?.onHash?.(txHash)
+        // Polls the provider until the add-pieces transaction is confirmed.
         const added = await SP.waitForAddPieces({ statusUrl })
         setStage('done')
         await Promise.all([
@@ -200,9 +220,13 @@ export function useUpload(props?: UseUploadProps) {
         ])
         return {
           added,
-          pieces: uploaded.map(({ file, pieceCid }) => ({
+          // The provider confirms piece ids in submission order.
+          pieces: toAdd.map(({ file, pieceCid, metadata }, index) => ({
             file: file.name,
+            size: file.size,
             pieceCid,
+            pieceId: added.confirmedPieceIds[index],
+            metadata,
           })),
           failed,
         }

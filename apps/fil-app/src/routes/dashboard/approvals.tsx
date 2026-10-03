@@ -250,7 +250,11 @@ function ApprovalsPage() {
           },
           {
             label: 'Max lockup period',
-            value: a ? formatEpochs(a.maxLockupPeriod) : '…',
+            value: a
+              ? a.maxLockupPeriod >= maxUint256 / 2n
+                ? 'Unlimited'
+                : formatEpochs(a.maxLockupPeriod)
+              : '…',
           },
         ]}
         title="Warm Storage operator"

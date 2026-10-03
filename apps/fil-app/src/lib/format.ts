@@ -139,6 +139,21 @@ export function epochToDate(
 }
 
 /**
+ * Chain epoch at a wall-clock time, and how far into it that time is.
+ *
+ * @param genesisTimestamp - Chain genesis in Unix seconds.
+ * @param nowMs - Wall-clock time in milliseconds.
+ * @returns The epoch and the seconds elapsed within it.
+ */
+export function epochAt(genesisTimestamp: number, nowMs: number) {
+  const seconds = nowMs / 1000 - genesisTimestamp
+  return {
+    epoch: Math.floor(seconds / EPOCH_SECONDS),
+    elapsed: seconds % EPOCH_SECONDS,
+  }
+}
+
+/**
  * Human duration for a number of epochs, e.g. `30 days` or `2 hours`.
  *
  * @param epochs - Number of epochs.

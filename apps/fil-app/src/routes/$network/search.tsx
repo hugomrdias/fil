@@ -3,8 +3,8 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { SearchXIcon } from 'lucide-react'
 import { z } from 'zod'
 import { EmptyState } from '@/components/empty-state'
+import { HeroSearch } from '@/components/hero-search'
 import { PageHeader } from '@/components/page-header'
-import { SearchBox } from '@/components/search-box'
 import {
   Card,
   CardDescription,
@@ -73,7 +73,7 @@ function SearchResults() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={`Results for “${q}”`} />
-      <SearchBox defaultValue={q} key={q} network={network} />
+      <HeroSearch className="max-w-2xl" network={network} />
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-3">
           <Skeleton className="h-20" />

@@ -44,18 +44,26 @@ function DataSetPage() {
     chainId: CHAINS[network].id,
   })
   const pieces = useInfiniteQuery(dataSetPiecesInfinite(network, id, removed))
-  const columns = useMemo(() => pieceColumns(network), [network])
+  const columns = useMemo(
+    () =>
+      pieceColumns(network, {
+        providerId: dataSet.providerId,
+        owner: dataSet.owner,
+        cdn: dataSet.withCdn,
+      }),
+    [network, dataSet.providerId, dataSet.owner, dataSet.withCdn]
+  )
   const chainData = onChain.data
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         description="Warm Storage data set proven with PDP."
+        status={<DataSetStatus dataSet={dataSet} />}
         title={`Data set #${id}`}
       />
       <Details
         items={[
-          { label: 'Status', value: <DataSetStatus dataSet={dataSet} /> },
           {
             label: 'Owner',
             value: <Address network={network} value={dataSet.owner} />,
@@ -131,7 +139,7 @@ function DataSetPage() {
       />
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-base font-semibold">Pieces</h2>
+          <h2 className="px-1 font-medium">Pieces</h2>
           <FilterBar>
             <SelectFilter
               label="Removed"

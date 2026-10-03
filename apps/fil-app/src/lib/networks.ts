@@ -45,16 +45,17 @@ export function networkForChainId(chainId: number | undefined) {
 }
 
 /**
- * Block explorer base URL for a network (Filfox when available).
+ * Default block explorer base URL for a network (Blockscout).
  *
  * @param network - Filecoin network.
+ * @see https://viem.sh/docs/chains/introduction#blockexplorers
  */
 function explorerUrl(network: Network) {
-  const explorers = (CHAINS[network].blockExplorers ?? {}) as Record<
-    string,
-    { url: string } | undefined
-  >
-  return (explorers.Filfox ?? explorers.default)?.url ?? 'https://filfox.info'
+  const url = CHAINS[network].blockExplorers?.default.url
+  if (!url) {
+    throw new Error(`No block explorer configured for ${network}`)
+  }
+  return url
 }
 
 /**
@@ -64,7 +65,7 @@ function explorerUrl(network: Network) {
  * @param hash - Transaction hash.
  */
 export function txUrl(network: Network, hash: string) {
-  return `${explorerUrl(network)}/en/message/${hash}`
+  return `${explorerUrl(network)}/tx/${hash}`
 }
 
 /**
@@ -74,7 +75,7 @@ export function txUrl(network: Network, hash: string) {
  * @param address - 0x address.
  */
 export function addressUrl(network: Network, address: string) {
-  return `${explorerUrl(network)}/en/address/${address}`
+  return `${explorerUrl(network)}/address/${address}`
 }
 
 /**

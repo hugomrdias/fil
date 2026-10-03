@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   EPOCHS_PER_DAY,
+  epochAt,
   epochToDate,
   formatBps,
   formatBytes,
@@ -16,6 +17,14 @@ import {
 } from '../src/lib/format.ts'
 
 describe('format', () => {
+  it('finds the epoch at a wall-clock time', () => {
+    assert.deepEqual(epochAt(1000, 1_000_000 + 95_000), {
+      epoch: 3,
+      elapsed: 5,
+    })
+    assert.deepEqual(epochAt(1000, 1_000_000), { epoch: 0, elapsed: 0 })
+  })
+
   it('coerces api integers to bigint', () => {
     assert.equal(toBigInt('42'), 42n)
     assert.equal(toBigInt(null), 0n)

@@ -1,146 +1,147 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
 import { ArrowRightIcon } from 'lucide-react'
 import { useMemo } from 'react'
+import { Address } from '@/components/address'
+import { ChainPulse } from '@/components/chain-pulse'
 import {
-  dataSetColumns,
+  DataSetLink,
+  DataSetStatus,
+  ProviderLink,
   providerColumns,
-  railColumns,
+  RailLink,
 } from '@/components/columns'
 import { DataTable } from '@/components/data-table'
-import { StatCard } from '@/components/page-header'
-import { SearchBox } from '@/components/search-box'
-import { Button } from '@/components/ui/button'
+import { Feed, FeedRow } from '@/components/feed'
+import { HeroSearch } from '@/components/hero-search'
+import { RailStateBadge } from '@/components/status-badge'
+import { TokenAmount } from '@/components/token-amount'
 import {
   dataSetsInfinite,
   providersInfinite,
   railsInfinite,
-  statusQuery,
 } from '@/lib/api/queries'
-import { formatRelative } from '@/lib/format'
-import { NETWORK_LABELS, type Network } from '@/lib/networks'
+import { epochToDate, formatRelative, ratePerDay } from '@/lib/format'
+import { CHAINS, NETWORK_LABELS } from '@/lib/networks'
 import { useFlatPages } from '@/lib/route-helpers'
 
 export const Route = createFileRoute('/$network/')({
   component: ExplorerHome,
 })
 
-/**
- * Section heading with a "View all" link.
- *
- * @param props.title - Section title.
- * @param props.to - Target list route.
- * @param props.network - Filecoin network.
- */
-function Section(props: {
-  title: string
-  to: '/$network/data-sets' | '/$network/rails' | '/$network/providers'
-  network: Network
-  children: React.ReactNode
-}) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">{props.title}</h2>
-        <Button
-          nativeButton={false}
-          render={<Link params={{ network: props.network }} to={props.to} />}
-          size="sm"
-          variant="ghost"
-        >
-          View all
-          <ArrowRightIcon />
-        </Button>
-      </div>
-      {props.children}
-    </section>
-  )
-}
-
-/** Explorer landing page: search, indexer status and recent activity. */
+/** Explorer landing page: search, chain heartbeat and recent activity. */
 function ExplorerHome() {
   const { network } = Route.useParams()
-  const status = useQuery(statusQuery(network))
-  const dataSets = useInfiniteQuery(dataSetsInfinite(network, {}, 10))
-  const rails = useInfiniteQuery(railsInfinite(network, {}, 10))
+  const genesis = CHAINS[network].genesisTimestamp
+  const dataSets = useInfiniteQuery(dataSetsInfinite(network, {}, 6))
+  const rails = useInfiniteQuery(railsInfinite(network, {}, 6))
   const providers = useInfiniteQuery(
     providersInfinite(network, { approved: 'true' }, 10)
   )
-  const dataSetCols = useMemo(() => dataSetColumns(network), [network])
-  const railCols = useMemo(() => railColumns(network), [network])
   const providerCols = useMemo(() => providerColumns(network), [network])
   const dataSetRows = useFlatPages(dataSets.data)
   const railRows = useFlatPages(rails.data)
   const providerRows = useFlatPages(providers.data)
-  const indexers = status.data?.indexers ?? []
 
   return (
-    <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-5 border bg-gradient-to-br from-brand-500/10 via-transparent to-transparent p-6 sm:p-10">
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-primary">
-            Filecoin Onchain Cloud · {NETWORK_LABELS[network]}
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Explore storage and payments
+    <div className="flex flex-col gap-12 sm:gap-16">
+      <section className="flex max-w-3xl flex-col gap-7 pt-4 sm:pt-12">
+        <div className="flex flex-col gap-3">
+          <h1 className="text-4xl font-semibold tracking-tighter text-balance sm:text-5xl">
+            Search Filecoin Onchain Cloud
           </h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Browse PDP data sets, pieces and storage providers, Filecoin Pay
-            rails and settlements, and session key authorizations.
+          <p className="max-w-xl text-base text-pretty text-muted-foreground sm:text-lg">
+            Data sets, pieces, storage providers, payment rails and session keys
+            on {NETWORK_LABELS[network]}.
           </p>
         </div>
-        <SearchBox network={network} />
+        <div className="flex flex-col gap-4">
+          <HeroSearch network={network} />
+          <ChainPulse className="px-1" key={network} network={network} />
+        </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          hint={status.data ? NETWORK_LABELS[network] : 'Loading…'}
-          label="Chain id"
-          value={status.data?.chainId ?? '—'}
-        />
-        {indexers.map((indexer) => (
-          <StatCard
-            hint={
-              indexer.latest
-                ? `Latest ${formatRelative(new Date(indexer.latest.timestamp * 1000))} · finalized ${indexer.finalized?.blockNumber ?? '—'}`
-                : 'No checkpoint yet'
-            }
-            key={indexer.schema}
-            label={`Indexer · ${indexer.schema}`}
-            value={indexer.latest?.blockNumber.toLocaleString() ?? '—'}
-          />
-        ))}
-      </section>
-
-      <Section
-        network={network}
-        title="Recent data sets"
-        to="/$network/data-sets"
-      >
-        <DataTable
-          columns={dataSetCols}
-          data={dataSetRows}
+      <div className="grid gap-8 lg:grid-cols-2 lg:gap-6">
+        <Feed
+          empty="No data sets yet."
           loading={dataSets.isPending}
-        />
-      </Section>
-      <Section network={network} title="Recent rails" to="/$network/rails">
-        <DataTable
-          columns={railCols}
-          data={railRows}
+          network={network}
+          title="Latest data sets"
+          to="/$network/data-sets"
+        >
+          {dataSetRows.map((dataSet) => (
+            <FeedRow
+              detail={
+                <>
+                  <ProviderLink id={dataSet.providerId} network={network} />
+                  <ArrowRightIcon
+                    aria-label="stores for"
+                    className="size-3.5"
+                  />
+                  <Address network={network} noCopy value={dataSet.owner} />
+                </>
+              }
+              key={dataSet.dataSetId}
+              time={
+                dataSet.createdAtBlock
+                  ? formatRelative(epochToDate(dataSet.createdAtBlock, genesis))
+                  : undefined
+              }
+              title={
+                <>
+                  <DataSetLink id={dataSet.dataSetId} network={network} />
+                  <DataSetStatus dataSet={dataSet} />
+                </>
+              }
+            />
+          ))}
+        </Feed>
+        <Feed
+          empty="No rails yet."
           loading={rails.isPending}
-        />
-      </Section>
-      <Section
-        network={network}
-        title="Approved providers"
-        to="/$network/providers"
-      >
+          network={network}
+          title="Latest rails"
+          to="/$network/rails"
+        >
+          {railRows.map((rail) => (
+            <FeedRow
+              detail={
+                <>
+                  <Address network={network} noCopy value={rail.payer} />
+                  <ArrowRightIcon aria-label="pays" className="size-3.5" />
+                  <Address network={network} noCopy value={rail.payee} />
+                </>
+              }
+              key={rail.railId}
+              meta={
+                <TokenAmount
+                  digits={2}
+                  network={network}
+                  suffix="/day"
+                  token={rail.token}
+                  value={ratePerDay(rail.paymentRate)}
+                />
+              }
+              time={formatRelative(new Date(rail.createdAt * 1000))}
+              title={
+                <>
+                  <RailLink id={rail.railId} network={network} />
+                  <RailStateBadge state={rail.state} />
+                </>
+              }
+            />
+          ))}
+        </Feed>
+      </div>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="px-1 font-medium">Approved providers</h2>
         <DataTable
           columns={providerCols}
           data={providerRows}
           loading={providers.isPending}
         />
-      </Section>
+      </section>
     </div>
   )
 }

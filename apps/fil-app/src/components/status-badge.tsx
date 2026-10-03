@@ -3,16 +3,18 @@ import { cn } from '@/lib/utils'
 /** Visual tone of a status badge. */
 export type StatusTone = 'success' | 'warning' | 'danger' | 'neutral' | 'info'
 
-const DOT: Record<StatusTone, string> = {
-  success: 'bg-success',
-  warning: 'bg-warning',
-  danger: 'bg-destructive',
-  neutral: 'bg-muted-foreground',
-  info: 'bg-brand-500',
+const TONE: Record<StatusTone, string> = {
+  success:
+    'bg-success/10 text-green-700 *:data-dot:bg-success dark:text-success',
+  warning:
+    'bg-warning/10 text-amber-700 *:data-dot:bg-warning dark:text-warning',
+  danger: 'bg-destructive/10 text-destructive *:data-dot:bg-destructive',
+  neutral: 'bg-muted text-muted-foreground *:data-dot:bg-muted-foreground',
+  info: 'bg-primary/10 text-primary *:data-dot:bg-primary',
 }
 
 /**
- * Status label with a coloured dot.
+ * Status pill with a coloured dot.
  *
  * @param props.tone - Colour tone.
  * @param props.children - Label.
@@ -22,11 +24,13 @@ export function StatusBadge(props: {
   children: React.ReactNode
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-      <span
-        aria-hidden
-        className={cn('size-2 rounded-full shadow-[0_0_6px]', DOT[props.tone])}
-      />
+    <span
+      className={cn(
+        'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap',
+        TONE[props.tone]
+      )}
+    >
+      <span aria-hidden className="size-1.5 rounded-full" data-dot />
       {props.children}
     </span>
   )

@@ -275,7 +275,7 @@ function LocalKeyCard(props: { entry: StoredSessionKey }) {
             const expiry = expirations?.[permission] ?? 0n
             return (
               <li
-                className="flex items-center justify-between border px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm"
                 key={permission}
               >
                 <span>{permissionLabel(permission)}</span>
@@ -471,7 +471,7 @@ function SessionKeysPage() {
       </Alert>
       {storedKeys.length === 0 ? (
         <EmptyState
-          description="Generate a session key, authorize it, and pick it as the signer in the sidebar."
+          description="Generate a session key, authorize it, then pick it as the signer in your account menu."
           icon={<KeyRoundIcon />}
           title="No session keys in this browser"
         />

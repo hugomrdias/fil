@@ -2,6 +2,10 @@ import { Link } from '@tanstack/react-router'
 import { Address } from '@/components/address'
 import { type Column, columnHelper } from '@/components/data-table'
 import {
+  RetrievalLink,
+  type RetrievalSource,
+} from '@/components/retrieval-link'
+import {
   FlagBadge,
   RailStateBadge,
   StatusBadge,
@@ -28,10 +32,10 @@ import {
 import type { Network } from '@/lib/networks'
 import { permissionLabel } from '@/lib/permissions'
 
-const LINK = 'font-mono text-primary hover:underline'
+const LINK = 'font-mono text-primary underline-offset-4 hover:underline'
 
 /** Link to a data set detail page. */
-function DataSetLink(props: { network: Network; id: string }) {
+export function DataSetLink(props: { network: Network; id: string }) {
   return (
     <Link
       className={LINK}
@@ -209,8 +213,12 @@ export function providerColumns(network: Network): Column<Provider>[] {
  * Piece table columns for a single data set.
  *
  * @param network - Filecoin network.
+ * @param source - The data set's provider, owner and CDN, for retrieval links.
  */
-export function pieceColumns(network: Network): Column<Piece>[] {
+export function pieceColumns(
+  network: Network,
+  source: RetrievalSource
+): Column<Piece>[] {
   const c = columnHelper<Piece>()
   return c.columns([
     c.accessor('pieceId', {
@@ -220,6 +228,17 @@ export function pieceColumns(network: Network): Column<Piece>[] {
     c.accessor('cid', {
       header: 'PieceCID',
       cell: (info) => <PieceLink cid={info.getValue()} network={network} />,
+    }),
+    c.display({
+      id: 'retrieve',
+      header: 'Retrieve',
+      cell: (info) => (
+        <RetrievalLink
+          cid={info.row.original.cid}
+          network={network}
+          source={source}
+        />
+      ),
     }),
     c.accessor('rawSize', {
       header: 'Size',
@@ -253,6 +272,20 @@ export function pieceWithDataSetColumns(
     c.accessor('cid', {
       header: 'PieceCID',
       cell: (info) => <PieceLink cid={info.getValue()} network={network} />,
+    }),
+    c.display({
+      id: 'retrieve',
+      header: 'Retrieve',
+      cell: (info) => (
+        <RetrievalLink
+          cid={info.row.original.cid}
+          network={network}
+          source={{
+            providerId: info.row.original.providerId,
+            owner: info.row.original.owner,
+          }}
+        />
+      ),
     }),
     c.accessor('dataSetId', {
       header: 'Data set',
@@ -398,8 +431,8 @@ function PermissionList(props: { permissions: SessionKey['permissions'] }) {
         <span
           className={
             permission.active
-              ? 'border px-1 text-xs'
-              : 'border px-1 text-xs text-muted-foreground line-through'
+              ? 'rounded-md border px-1.5 text-xs'
+              : 'rounded-md border px-1.5 text-xs text-muted-foreground line-through'
           }
           key={permission.permission}
           title={`Expires ${formatTimestamp(Number(permission.expiry))}`}

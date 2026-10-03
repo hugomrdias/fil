@@ -225,8 +225,8 @@ function RailPage(props: { network: Network; rail: Rail }) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        actions={<RailStateBadge state={rail.state} />}
         description="Filecoin Pay payment rail."
+        status={<RailStateBadge state={rail.state} />}
         title={`Rail #${id}`}
       />
       <Details
@@ -255,7 +255,7 @@ function RailPage(props: { network: Network; rail: Rail }) {
         ]}
       />
       <section className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold">Settlements</h2>
+        <h2 className="px-1 font-medium">Settlements</h2>
         <DataTable
           columns={columns}
           empty="No settlements yet."

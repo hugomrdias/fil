@@ -7,7 +7,7 @@ A Vite + React single-page app for Filecoin Onchain Cloud. It has two parts:
 
 Built with:
 - [TanStack Router](https://tanstack.com/router), [Query](https://tanstack.com/query), [Table](https://tanstack.com/table) and [Form](https://tanstack.com/form)
-- [shadcn/ui](https://ui.shadcn.com) (preset `b1ZhhFHhw`: Base UI, lyra style, Inter, lucide) recoloured with the Filecoin brand ramp (`#0090FF` is `brand-700`)
+- [shadcn/ui](https://ui.shadcn.com) (preset `beEhf1ou`: Base UI, luma style, Inter, lucide) recoloured with the Filecoin brand ramp (`#0090FF` is `brand-700`), with the [command menu](https://ui.shadcn.com/docs/components/base/command) (`⌘K` or `/` from any page) and the [sidebar](https://ui.shadcn.com/blocks/sidebar) for the dashboard
 - [wagmi](https://wagmi.sh) and [viem](https://viem.sh) with EIP-6963 injected wallets
 - [`@filoz/synapse-core`](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) and [`@filoz/synapse-react`](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-react). The app never imports `@filoz/synapse-sdk`.
 
@@ -34,7 +34,7 @@ Scripts:
 - `pnpm test`: `node --test` over `test/**/*.test.ts`
 - `pnpm typecheck` and `pnpm lint`
 
-Session keys created in the dashboard are stored in the browser's `localStorage`, scoped by chain and wallet. They can only sign Warm Storage operations (create data set, add pieces, schedule piece removals, terminate service), never move funds. The "Sign storage actions with" picker in the dashboard sidebar chooses whether those operations use the session key or the wallet. The wallet is used whenever the key lacks the needed permission.
+Session keys created in the dashboard are stored in the browser's `localStorage`, scoped by chain and wallet. They can only sign Warm Storage operations (create data set, add pieces, schedule piece removals, terminate service), never move funds. The "Sign storage actions with" choice in the dashboard account menu (bottom of the sidebar) chooses whether those operations use the session key or the wallet. The wallet is used whenever the key lacks the needed permission.
 
 ## Deploy
 

@@ -24,10 +24,10 @@ export function Details(props: { title?: string; items: DetailItem[] }) {
         </CardHeader>
       ) : null}
       <CardContent>
-        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
           {props.items.map((item) => (
             <div className="flex min-w-0 flex-col gap-1" key={item.label}>
-              <dt className="text-xs text-muted-foreground">{item.label}</dt>
+              <dt className="text-sm text-muted-foreground">{item.label}</dt>
               <dd className="min-w-0 truncate text-sm">{item.value}</dd>
             </div>
           ))}
@@ -53,7 +53,7 @@ export function MetadataView(props: {
     <ul className="flex flex-wrap gap-1.5">
       {entries.map(([key, value]) => (
         <li
-          className="border bg-muted/40 px-1.5 py-0.5 font-mono text-xs"
+          className="rounded-lg bg-muted px-2 py-0.5 font-mono text-xs"
           key={key}
         >
           {key}
