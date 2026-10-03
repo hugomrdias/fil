@@ -107,7 +107,16 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
       - name: Probe preview
-        run: curl --fail --show-error --silent "$PREVIEW_URL/health"
+        # A new Preview URL can return 404 for a few seconds after creation.
+        run: |
+          for attempt in $(seq 1 12); do
+            if curl --fail --show-error --silent "$PREVIEW_URL/health"; then
+              exit 0
+            fi
+            echo "attempt $attempt failed, retrying in 5s"
+            sleep 5
+          done
+          exit 1
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
 
