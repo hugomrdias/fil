@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "fil-app", "dev", "--port", "5174", "--strictPort"],
       "port": 5174
+    },
+    {
+      "name": "fil-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "fil-api", "dev", "--port", "8787"],
+      "port": 8787
     }
   ]
 }

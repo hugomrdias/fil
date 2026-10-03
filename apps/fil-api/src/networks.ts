@@ -1,5 +1,3 @@
-import { type Db, type DbFactory, type DbStats, withStats } from './db.ts'
-
 /** Indexer schemas; every network's database uses the same names. */
 const SCHEMAS = { observer: 'foc-observer', repair: 'early-repair' } as const
 
@@ -49,31 +47,4 @@ export type Bindings = Omit<Env, Network['binding']> & {
 /** Whether `name` is a supported network. */
 export function isNetworkName(name: string): name is NetworkName {
   return Object.hasOwn(NETWORKS, name)
-}
-
-/** A network with an open database client. */
-export interface NetworkDb {
-  network: Network
-  /** Client that records query time in the request's {@link DbStats}. */
-  db: Db
-  /** Release the connection; call once the request is done. */
-  close: () => Promise<void>
-}
-
-/**
- * Open a database client for a network. Returns `undefined` when the
- * network's Hyperdrive binding is not configured, so callers decide whether
- * that is an error or a status.
- */
-export function openNetworkDb(
-  env: Bindings,
-  name: NetworkName,
-  dbFactory: DbFactory,
-  stats: DbStats
-): NetworkDb | undefined {
-  const network = NETWORKS[name]
-  const hyperdrive = env[network.binding]
-  if (!hyperdrive) return undefined
-  const raw = dbFactory(hyperdrive)
-  return { network, db: withStats(raw, stats), close: () => raw.close() }
 }

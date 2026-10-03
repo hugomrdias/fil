@@ -71,6 +71,11 @@ export function notFound(resource: string, id: string): ApiError {
   return new ApiError(404, 'not_found', `${resource} ${id} not found`)
 }
 
+/** 404 for a `/{network}` path segment that is not a supported network. */
+export function unknownNetwork(network: string): ApiError {
+  return new ApiError(404, 'unknown_network', `Unknown network ${network}`)
+}
+
 /** 503 for a network whose database is not configured. */
 export function networkUnavailable(network: string): ApiError {
   return new ApiError(

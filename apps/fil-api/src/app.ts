@@ -2,18 +2,19 @@ import { StreamableHTTPTransport } from '@hono/mcp'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { Scalar } from '@scalar/hono-api-reference'
 import { cors } from 'hono/cors'
-import { requestId } from 'hono/request-id'
 import { timing } from 'hono/timing'
 import { type DbFactory, hyperdriveDb } from './db.ts'
 import { errorBody, toErrorResponse } from './errors.ts'
 import { checkHealth } from './health.ts'
 import { log } from './log.ts'
 import { buildMcpServer } from './mcp/server.ts'
-import { requestLogger } from './middleware/logger.ts'
 import { rateLimit } from './middleware/rate-limit.ts'
+import { requestId } from './middleware/request-id.ts'
+import { requestTelemetry } from './middleware/telemetry.ts'
 import { NETWORK_NAMES } from './networks.ts'
 import { validationHook } from './routes/hook.ts'
 import { networkRoutes } from './routes/network.ts'
+import { activeSpan, recordError } from './tracing.ts'
 import type { AppEnv } from './types.ts'
 
 /** API version reported in OpenAPI and MCP server info. */
@@ -35,9 +36,9 @@ export function createApp(options: AppOptions = {}) {
   const dbFactory = options.dbFactory ?? hyperdriveDb
   const app = new OpenAPIHono<AppEnv>({ defaultHook: validationHook })
 
-  app.use(requestId())
+  app.use(requestId)
   app.use(timing({ total: true, crossOrigin: true }))
-  app.use(requestLogger)
+  app.use(requestTelemetry)
   app.use(
     cors({
       origin: '*',
@@ -156,6 +157,7 @@ export function createApp(options: AppOptions = {}) {
   app.onError((error, c) => {
     const { status, body, unexpected } = toErrorResponse(error)
     if (unexpected) {
+      recordError(activeSpan(), error)
       log('error', {
         message: 'unhandled error',
         requestId: c.var.requestId,

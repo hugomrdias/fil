@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, type z } from '@hono/zod-openapi'
 import type { DbFactory } from '../db.ts'
-import { networkMiddleware } from '../middleware/network.ts'
+import { NETWORK_PATH, networkMiddleware } from '../middleware/network.ts'
 import { rateLimit } from '../middleware/rate-limit.ts'
 import { getDataSet, listDataSets } from '../queries/data-sets.ts'
 import { getPiece, listDataSetPieces, listPieces } from '../queries/pieces.ts'
@@ -229,7 +229,7 @@ export const CACHE_CONTROL = 'public, max-age=15, stale-while-revalidate=60'
 export function networkRoutes(dbFactory: DbFactory) {
   const api = new OpenAPIHono<AppEnv>({ defaultHook: validationHook })
   api.use(
-    '/:network/*',
+    NETWORK_PATH,
     rateLimit('RATE_LIMIT_API'),
     networkMiddleware(dbFactory),
     async (c, next) => {

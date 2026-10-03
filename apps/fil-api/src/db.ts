@@ -1,4 +1,11 @@
 import postgres from 'postgres'
+import {
+  type Bindings,
+  NETWORKS,
+  type Network,
+  type NetworkName,
+} from './networks.ts'
+import { withSpan } from './tracing.ts'
 
 /** A database row keyed by column name. */
 export type Row = Record<string, unknown>
@@ -59,17 +66,39 @@ export interface DbStats {
   ms: number
 }
 
-/** Wrap a {@link Db} so every query adds to `stats`. */
-export function withStats(db: Db, stats: DbStats): Db {
+/**
+ * Wrap a {@link Db} so every query adds to `stats` and runs in a `db.query`
+ * trace span. Workers tracing only records a `hyperdrive_connect` span for
+ * opening the connection, so without these spans query time is invisible in
+ * the trace.
+ *
+ * @see https://developers.cloudflare.com/workers/observability/traces/custom-spans/
+ * @see https://opentelemetry.io/docs/specs/semconv/database/database-spans/
+ */
+export function withStats(
+  db: Db,
+  stats: DbStats,
+  attributes: Record<string, string> = {}
+): Db {
   return {
-    async query(text, params) {
-      const start = performance.now()
-      try {
-        return await db.query(text, params)
-      } finally {
-        stats.queries++
-        stats.ms += performance.now() - start
+    query<T extends Row = Row>(text: string, params?: readonly unknown[]) {
+      // Queries are parameterized, so the text holds no request values.
+      const spanAttributes = {
+        'db.system.name': 'postgresql',
+        'db.query.text': text,
+        ...attributes,
       }
+      return withSpan('db.query', spanAttributes, async (span) => {
+        const start = performance.now()
+        try {
+          const rows = await db.query<T>(text, params)
+          span.setAttribute('db.response.returned_rows', rows.length)
+          return rows
+        } finally {
+          stats.queries++
+          stats.ms += performance.now() - start
+        }
+      })
     },
     close: () => db.close(),
   }
@@ -135,5 +164,36 @@ export class Where {
   /** Render as a `WHERE` clause. */
   toString(): string {
     return this.render()
+  }
+}
+
+/** A network with an open database client. */
+export interface NetworkDb {
+  network: Network
+  /** Client that records query time in the request's {@link DbStats}. */
+  db: Db
+  /** Release the connection; call once the request is done. */
+  close: () => Promise<void>
+}
+
+/**
+ * Open a database client for a network. Returns `undefined` when the
+ * network's Hyperdrive binding is not configured, so callers decide whether
+ * that is an error or a status.
+ */
+export function openNetworkDb(
+  env: Bindings,
+  name: NetworkName,
+  dbFactory: DbFactory,
+  stats: DbStats
+): NetworkDb | undefined {
+  const network = NETWORKS[name]
+  const hyperdrive = env[network.binding]
+  if (!hyperdrive) return undefined
+  const raw = dbFactory(hyperdrive)
+  return {
+    network,
+    db: withStats(raw, stats, { 'fil.network': name }),
+    close: () => raw.close(),
   }
 }
