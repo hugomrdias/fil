@@ -1,9 +1,10 @@
-import { type Db, ident, type Row, Where } from '../db.ts'
+import type { Db } from '../db.ts'
 import { notFound } from '../errors.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { DataSet } from '../schemas/resources.ts'
-import { addr, bool, json, req, str } from './map.ts'
+import { ident, raw, sql, where } from '../sql.ts'
+import { addr } from './map.ts'
 
 /**
  * Filters for {@link listDataSets}, named like the API query parameters so
@@ -18,29 +19,45 @@ export interface ListDataSetsParams {
   cursor?: string
 }
 
-const COLUMNS = `data_set_id, provider_id, payer, source, metadata, with_cdn,
+/** A `data_sets` row. */
+interface DataSetRow {
+  data_set_id: string
+  provider_id: string
+  payer: string
+  source: string | null
+  metadata: Record<string, unknown> | null
+  with_cdn: boolean
+  with_ipfs_indexing: boolean
+  pdp_end_epoch: string | null
+  deleted: boolean
+  created_at_block: string
+  updated_at_block: string
+}
+
+const COLUMNS =
+  raw(`data_set_id, provider_id, payer, source, metadata, with_cdn,
   with_ipfs_indexing, pdp_end_epoch, deleted, created_at_block,
-  updated_at_block`
+  updated_at_block`)
 
 /** Schema-qualified `data_sets` view. */
 function table(schemas: Schemas) {
-  return `${ident(schemas.repair)}.data_sets`
+  return sql`${ident(schemas.repair)}.data_sets`
 }
 
 /** Map a `data_sets` row to the API shape. */
-function mapDataSet(row: Row): DataSet {
+function mapDataSet(row: DataSetRow): DataSet {
   return {
-    dataSetId: req(row.data_set_id),
-    providerId: str(row.provider_id),
+    dataSetId: row.data_set_id,
+    providerId: row.provider_id,
     owner: addr(row.payer),
-    source: str(row.source) || null,
-    metadata: json(row.metadata),
-    withCdn: bool(row.with_cdn),
-    withIpfsIndexing: bool(row.with_ipfs_indexing),
-    pdpEndEpoch: str(row.pdp_end_epoch),
-    deleted: bool(row.deleted),
-    createdAtBlock: str(row.created_at_block),
-    updatedAtBlock: str(row.updated_at_block),
+    source: row.source || null,
+    metadata: row.metadata,
+    withCdn: row.with_cdn,
+    withIpfsIndexing: row.with_ipfs_indexing,
+    pdpEndEpoch: row.pdp_end_epoch,
+    deleted: row.deleted,
+    createdAtBlock: row.created_at_block,
+    updatedAtBlock: row.updated_at_block,
   }
 }
 
@@ -50,22 +67,19 @@ export async function listDataSets(
   schemas: Schemas,
   params: ListDataSetsParams
 ): Promise<Page<DataSet>> {
-  const where = new Where()
-    .maybe(params.owner, (p) => `payer = ${p}`)
-    .maybe(params.provider_id, (p) => `provider_id = ${p}::bigint`)
-    .maybe(params.deleted, (p) => `deleted = ${p}`)
-    .maybe(params.with_cdn, (p) => `with_cdn = ${p}`)
-  if (params.cursor) {
-    const [id] = decodeCursor(params.cursor, ['int8'])
-    where.add((p) => `data_set_id < ${p}::bigint`, id)
-  }
-  const limit = where.param(params.limit + 1)
-  const rows = await db.query(
-    `select ${COLUMNS} from ${table(schemas)} ${where}
-     order by data_set_id desc limit ${limit}`,
-    where.params
+  const [id] = params.cursor ? decodeCursor(params.cursor, ['int8']) : []
+  const rows = await db.query<DataSetRow>(
+    sql`select ${COLUMNS} from ${table(schemas)} ${where([
+      params.owner !== undefined && sql`payer = ${params.owner}`,
+      params.provider_id !== undefined &&
+        sql`provider_id = ${params.provider_id}::bigint`,
+      params.deleted !== undefined && sql`deleted = ${params.deleted}`,
+      params.with_cdn !== undefined && sql`with_cdn = ${params.with_cdn}`,
+      id !== undefined && sql`data_set_id < ${id}::bigint`,
+    ])}
+     order by data_set_id desc limit ${params.limit + 1}`
   )
-  return toPage(rows, params.limit, mapDataSet, (r) => [req(r.data_set_id)])
+  return toPage(rows, params.limit, mapDataSet, (r) => [r.data_set_id])
 }
 
 /** Get one data set by id; throws 404 when it does not exist. */
@@ -74,9 +88,9 @@ export async function getDataSet(
   schemas: Schemas,
   dataSetId: string
 ): Promise<DataSet> {
-  const rows = await db.query(
-    `select ${COLUMNS} from ${table(schemas)} where data_set_id = $1::bigint`,
-    [dataSetId]
+  const rows = await db.query<DataSetRow>(
+    sql`select ${COLUMNS} from ${table(schemas)}
+     where data_set_id = ${dataSetId}::bigint`
   )
   if (!rows[0]) throw notFound('Data set', dataSetId)
   return mapDataSet(rows[0])
