@@ -11,6 +11,10 @@ import { formatBytes } from '@/lib/format'
 import { useFlatPages } from '@/lib/route-helpers'
 
 export const Route = createFileRoute('/$network/pieces/$cid')({
+  // Not awaited: the page renders its own pending state.
+  loader: ({ context: { queryClient }, params: { network, cid } }) => {
+    void queryClient.prefetchInfiniteQuery(piecesInfinite(network, { cid }))
+  },
   component: PiecePage,
 })
 

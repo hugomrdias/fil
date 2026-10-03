@@ -28,7 +28,7 @@ import {
   railsInfinite,
   sessionKeysInfinite,
 } from '@/lib/api/queries'
-import { addressUrl } from '@/lib/networks'
+import { addressUrl, type Network } from '@/lib/networks'
 
 const TAB_OPTIONS = [
   { value: 'data-sets', label: 'Data sets' },
@@ -43,6 +43,23 @@ const TABS = TAB_OPTIONS.map((option) => option.value)
 
 /** Address page tab. */
 type Tab = (typeof TABS)[number]
+
+/**
+ * fil-api query behind each tab.
+ *
+ * @param network - Filecoin network.
+ * @param address - Lowercase 0x address.
+ */
+function tabQueries(network: Network, address: string) {
+  return {
+    'data-sets': dataSetsInfinite(network, { owner: address }),
+    payer: railsInfinite(network, { payer: address }),
+    payee: railsInfinite(network, { payee: address }),
+    operator: railsInfinite(network, { operator: address }),
+    pieces: piecesInfinite(network, { owner: address }),
+    'session-keys': sessionKeysInfinite(network, { identity: address }),
+  } satisfies Record<Tab, unknown>
+}
 
 /**
  * Keep keyboard-focused tabs visible within the scrolling list.
@@ -65,6 +82,25 @@ export const Route = createFileRoute('/$network/address/$address')({
   validateSearch: z.object({
     tab: z.enum(TABS).optional().catch(undefined),
   }),
+  loaderDeps: ({ search }) => ({ tab: search.tab ?? 'data-sets' }),
+  // Not awaited: the tables render their own pending state.
+  loader: ({ context: { queryClient }, params, deps }) => {
+    const queries = tabQueries(params.network, params.address)
+    // Narrowed per tab: a union of option types does not type-check.
+    switch (deps.tab) {
+      case 'data-sets':
+        void queryClient.prefetchInfiniteQuery(queries['data-sets'])
+        break
+      case 'pieces':
+        void queryClient.prefetchInfiniteQuery(queries.pieces)
+        break
+      case 'session-keys':
+        void queryClient.prefetchInfiniteQuery(queries['session-keys'])
+        break
+      default:
+        void queryClient.prefetchInfiniteQuery(queries[deps.tab])
+    }
+  },
   component: AddressPage,
 })
 
@@ -75,28 +111,21 @@ function AddressPage() {
   const navigate = Route.useNavigate()
   const is = (name: Tab) => tab === name
 
+  const queries = tabQueries(network, address)
+
   const dataSets = useInfiniteQuery({
-    ...dataSetsInfinite(network, { owner: address }),
+    ...queries['data-sets'],
     enabled: is('data-sets'),
   })
-  const payer = useInfiniteQuery({
-    ...railsInfinite(network, { payer: address }),
-    enabled: is('payer'),
-  })
-  const payee = useInfiniteQuery({
-    ...railsInfinite(network, { payee: address }),
-    enabled: is('payee'),
-  })
+  const payer = useInfiniteQuery({ ...queries.payer, enabled: is('payer') })
+  const payee = useInfiniteQuery({ ...queries.payee, enabled: is('payee') })
   const operator = useInfiniteQuery({
-    ...railsInfinite(network, { operator: address }),
+    ...queries.operator,
     enabled: is('operator'),
   })
-  const pieces = useInfiniteQuery({
-    ...piecesInfinite(network, { owner: address }),
-    enabled: is('pieces'),
-  })
+  const pieces = useInfiniteQuery({ ...queries.pieces, enabled: is('pieces') })
   const sessionKeys = useInfiniteQuery({
-    ...sessionKeysInfinite(network, { identity: address }),
+    ...queries['session-keys'],
     enabled: is('session-keys'),
   })
 
