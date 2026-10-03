@@ -8,6 +8,7 @@ import {
   formatBytes,
   formatDuration,
   formatEpochs,
+  formatTimestamp,
   formatUnitsDisplay,
   parseUnitsSafe,
   ratePerDay,
@@ -77,6 +78,42 @@ describe('format', () => {
     assert.equal(formatDuration(3600), '1 hour')
     assert.equal(formatDuration(5), '5 seconds')
     assert.equal(formatEpochs(EPOCHS_PER_DAY * 30n), '30 days')
+  })
+
+  it('formats timestamps within the supported date range', () => {
+    const seconds = 1_804_307_895
+    assert.equal(
+      formatTimestamp(seconds),
+      new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(seconds * 1000))
+    )
+    assert.notEqual(formatTimestamp(8_640_000_000_000), 'Beyond date range')
+  })
+
+  it('handles oversized session key expiries without crashing', () => {
+    assert.equal(formatTimestamp(1_774_386_602_000_000), 'Beyond date range')
+    assert.equal(formatTimestamp(Number(2n ** 256n - 1n)), 'Beyond date range')
+    assert.equal(formatTimestamp(8_640_000_000_001), 'Beyond date range')
+  })
+
+  it('formats integer strings and bigints without losing precision', () => {
+    const seconds = 1_804_307_895n
+    assert.equal(formatTimestamp(seconds), formatTimestamp(Number(seconds)))
+    assert.equal(formatTimestamp(seconds.toString()), formatTimestamp(seconds))
+    assert.equal(
+      formatTimestamp(8_640_000_000_000n),
+      formatTimestamp(8_640_000_000_000)
+    )
+    assert.equal(formatTimestamp(8_640_000_000_001n), 'Beyond date range')
+    assert.equal(formatTimestamp(-8_640_000_000_001n), 'Beyond date range')
+    assert.equal(formatTimestamp('1774386602000000'), 'Beyond date range')
+    assert.equal(formatTimestamp(2n ** 256n - 1n), 'Beyond date range')
+    assert.equal(
+      formatTimestamp((2n ** 256n - 1n).toString()),
+      'Beyond date range'
+    )
   })
 
   it('formats bytes with binary units', () => {
