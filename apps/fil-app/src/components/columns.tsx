@@ -1,10 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Address } from '@/components/address'
 import { type Column, columnHelper } from '@/components/data-table'
-import {
-  RetrievalLink,
-  type RetrievalSource,
-} from '@/components/retrieval-link'
+import { RetrievalLink } from '@/components/retrieval-link'
 import {
   FlagBadge,
   RailStateBadge,
@@ -213,12 +210,8 @@ export function providerColumns(network: Network): Column<Provider>[] {
  * Piece table columns for a single data set.
  *
  * @param network - Filecoin network.
- * @param source - The data set's provider, owner and CDN, for retrieval links.
  */
-export function pieceColumns(
-  network: Network,
-  source: RetrievalSource
-): Column<Piece>[] {
+export function pieceColumns(network: Network): Column<Piece>[] {
   const c = columnHelper<Piece>()
   return c.columns([
     c.accessor('pieceId', {
@@ -233,11 +226,7 @@ export function pieceColumns(
       id: 'retrieve',
       header: 'Retrieve',
       cell: (info) => (
-        <RetrievalLink
-          cid={info.row.original.cid}
-          network={network}
-          source={source}
-        />
+        <RetrievalLink cid={info.row.original.cid} network={network} />
       ),
     }),
     c.accessor('rawSize', {
@@ -277,14 +266,7 @@ export function pieceWithDataSetColumns(
       id: 'retrieve',
       header: 'Retrieve',
       cell: (info) => (
-        <RetrievalLink
-          cid={info.row.original.cid}
-          network={network}
-          source={{
-            providerId: info.row.original.providerId,
-            owner: info.row.original.owner,
-          }}
-        />
+        <RetrievalLink cid={info.row.original.cid} network={network} />
       ),
     }),
     c.accessor('dataSetId', {

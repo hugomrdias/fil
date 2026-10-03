@@ -127,12 +127,7 @@ function MyDataSetPage() {
   const d = dataSet.data
   const baseColumns = useMemo(
     () => [
-      ...pieceColumns(network, {
-        providerId: d?.providerId.toString() ?? null,
-        owner: d?.payer,
-        cdn: d?.cdn,
-        serviceUrl: d?.provider?.pdp.serviceURL,
-      }).filter(
+      ...pieceColumns(network).filter(
         (col) =>
           !(
             'accessorKey' in col &&
@@ -150,7 +145,7 @@ function MyDataSetPage() {
         cell: (info) => <MetadataView metadata={info.getValue()} />,
       }),
     ],
-    [network, d]
+    [network]
   )
   const columns = useMemo<Column<Piece>[]>(
     () => [
