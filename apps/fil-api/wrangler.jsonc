@@ -1,0 +1,69 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fil-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["nodejs_compat"],
+  // Production is served from the custom domain only; Previews use workers.dev.
+  "routes": [{ "pattern": "fil-api.hugomrdias.dev", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "enabled": true, "invocation_logs": true },
+    "traces": { "enabled": true, "head_sampling_rate": 1 }
+  },
+  // One Hyperdrive config per network. Create with:
+  //   wrangler hyperdrive create fil-api-calibration --connection-string="postgresql://..."
+  // Local dev reads CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING> from .env.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE_CALIBRATION",
+      "id": "77e9b6369ca942179a30025beff6d74d"
+    },
+    {
+      "binding": "HYPERDRIVE_MAINNET",
+      "id": "89488b339add4f6aaf318af0e2c42844"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "RATE_LIMIT_API",
+      "namespace_id": "1001",
+      "simple": { "limit": 120, "period": 60 }
+    },
+    {
+      "name": "RATE_LIMIT_MCP",
+      "namespace_id": "1002",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ],
+  // Worker Previews (`wrangler preview`) do not inherit bindings. Previews read
+  // the same read-only databases but count against separate rate limits.
+  // https://developers.cloudflare.com/workers/previews/configuration/
+  "previews": {
+    "hyperdrive": [
+      {
+        "binding": "HYPERDRIVE_CALIBRATION",
+        "id": "77e9b6369ca942179a30025beff6d74d"
+      },
+      {
+        "binding": "HYPERDRIVE_MAINNET",
+        "id": "89488b339add4f6aaf318af0e2c42844"
+      }
+    ],
+    "ratelimits": [
+      {
+        "name": "RATE_LIMIT_API",
+        "namespace_id": "2001",
+        "simple": { "limit": 120, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMIT_MCP",
+        "namespace_id": "2002",
+        "simple": { "limit": 60, "period": 60 }
+      }
+    ]
+  }
+}

@@ -176,5 +176,5 @@ export function schemaCommand(cli: CliOptions, root: Group): SchemaCommand {
         : listSchema(cli, node, path)
     return ok(data)
   })
-  return markBuiltin(command)
+  return markBuiltin(command, { commandPath: 'command' })
 }

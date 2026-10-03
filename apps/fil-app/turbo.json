@@ -1,0 +1,13 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "env": ["VITE_*"],
+      "outputs": ["dist/**"]
+    },
+    "deploy": {
+      "dependsOn": ["^build", "build", "typecheck", "test", "lint"]
+    }
+  }
+}
