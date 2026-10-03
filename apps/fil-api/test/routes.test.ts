@@ -118,6 +118,9 @@ describe('rest routes', () => {
     ['/calibration/data-sets?owner=nope', 'invalid_request'],
     ['/calibration/providers?limit=500', 'invalid_request'],
     ['/calibration/providers/abc', 'invalid_request'],
+    ['/calibration/data-sets/99999999999999999999', 'invalid_request'],
+    ['/calibration/rails/99999999999999999999', 'invalid_request'],
+    [`/calibration/data-sets?cursor=${btoa('["abc"]')}`, 'invalid_cursor'],
     ['/calibration/rails?state=open', 'invalid_request'],
     ['/calibration/providers?cursor=zzz', 'invalid_cursor'],
   ])('returns 400 for %s', async (path, code) => {

@@ -1,12 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { ident, Where } from '../src/db.ts'
+import { ident, logIndex, Where } from '../src/db.ts'
 import { ApiError } from '../src/errors.ts'
 import { NETWORKS } from '../src/networks.ts'
-import { decodeCursor, encodeCursor, toPage } from '../src/pagination.ts'
+import {
+  decodeCursor,
+  encodeCursor,
+  isInt8,
+  toPage,
+} from '../src/pagination.ts'
 import { listDataSets } from '../src/queries/data-sets.ts'
 import { listPieces } from '../src/queries/pieces.ts'
-import { listRails, railState } from '../src/queries/rails.ts'
-import { listSessionKeys, mapSessionKey } from '../src/queries/session-keys.ts'
+import {
+  getRail,
+  listRailSettlements,
+  listRails,
+  railState,
+} from '../src/queries/rails.ts'
+import {
+  listSessionKeyEvents,
+  listSessionKeys,
+  mapSessionKey,
+} from '../src/queries/session-keys.ts'
 import { getStatus, parseCheckpoint } from '../src/queries/status.ts'
 import { fakeDb, rows } from './helpers.ts'
 
@@ -27,18 +41,47 @@ describe('sql helpers', () => {
     expect(where.params).toEqual(['x', 1, 2])
     expect(new Where().toString()).toBe('')
   })
+
+  it('orders same-block events by numeric log index', () => {
+    expect(logIndex('x')).toBe("split_part(x.id, '-', 2)::int")
+    expect(logIndex()).toBe("split_part(id, '-', 2)::int")
+  })
 })
 
 describe('pagination', () => {
   it('round-trips cursors', () => {
     const cursor = encodeCursor(['40938', '0'])
     expect(cursor).toMatch(/^[A-Za-z0-9_-]+$/)
-    expect(decodeCursor(cursor, 2)).toEqual(['40938', '0'])
+    expect(decodeCursor(cursor, ['int8', 'int8'])).toEqual(['40938', '0'])
   })
 
   it('rejects malformed cursors', () => {
-    expect(() => decodeCursor('zzz', 1)).toThrow(ApiError)
-    expect(() => decodeCursor(encodeCursor(['1']), 2)).toThrow(ApiError)
+    expect(() => decodeCursor('zzz', ['int8'])).toThrow(ApiError)
+    expect(() => decodeCursor(encodeCursor(['1']), ['int8', 'int8'])).toThrow(
+      ApiError
+    )
+  })
+
+  it('rejects cursor parts that would fail their SQL cast', () => {
+    expect(() => decodeCursor(encodeCursor(['abc']), ['int8'])).toThrow(
+      ApiError
+    )
+    expect(() =>
+      decodeCursor(encodeCursor(['99999999999999999999']), ['int8'])
+    ).toThrow(ApiError)
+    expect(() =>
+      decodeCursor(encodeCursor(['0xZZ', '1']), ['address', 'int8'])
+    ).toThrow(ApiError)
+    const address = '0x44f08d1befe61255b3c3a349c392c560fa333759'
+    expect(
+      decodeCursor(encodeCursor([address, address]), ['address', 'address'])
+    ).toEqual([address, address])
+  })
+
+  it('bounds ids to the bigint range', () => {
+    expect(isInt8('9223372036854775807')).toBe(true)
+    expect(isInt8('9223372036854775808')).toBe(false)
+    expect(isInt8('-1')).toBe(false)
   })
 
   it('uses the extra row to emit nextCursor', () => {
@@ -49,7 +92,7 @@ describe('pagination', () => {
       (r) => [r.id]
     )
     expect(page.data).toEqual([3, 2])
-    expect(decodeCursor(page.nextCursor ?? '', 1)).toEqual(['2'])
+    expect(decodeCursor(page.nextCursor ?? '', ['int8'])).toEqual(['2'])
     expect(
       toPage(
         [{ id: 1 }],
@@ -77,7 +120,7 @@ describe('owner filters', () => {
     const { db, queries } = fakeDb()
     await listDataSets(db, schemas, {
       owner: '0x480C51FE9FC90E01FA742C51300CC29E151A71CD',
-      providerId: '2',
+      provider_id: '2',
       limit: 10,
     })
     const [q] = queries
@@ -123,6 +166,51 @@ describe('rails', () => {
     expect(queries[0]?.text).toContain(
       't.end_epoch is not null and f.finalized is null'
     )
+  })
+
+  it('picks the latest same-block event by log index', async () => {
+    const { db, queries } = fakeDb()
+    await getRail(db, schemas, '1')
+    const text = queries[0]?.text ?? ''
+    expect(text).toContain(
+      `order by x.block_number desc, ${logIndex('x')} desc`
+    )
+    expect(text).not.toContain('x.id desc')
+  })
+
+  it('limits the page before aggregating settlements', async () => {
+    const { db, queries } = fakeDb()
+    await listRails(db, schemas, { state: 'finalized', limit: 2 })
+    const text = queries[0]?.text ?? ''
+    const limit = text.indexOf('order by c.rail_id desc limit $1')
+    const settled = text.indexOf('fp_rail_settled')
+    expect(limit).toBeGreaterThan(-1)
+    expect(settled).toBeGreaterThan(limit)
+    expect(text).toContain('where x.rail_id = page.rail_id')
+  })
+
+  it('pages settlements by block and log index', async () => {
+    const { db, queries } = fakeDb(() => [
+      { ...rows.settlement, log_index: 12 },
+      { ...rows.settlement, log_index: 3 },
+    ])
+    const page = await listRailSettlements(db, schemas, {
+      railId: '12818',
+      limit: 1,
+    })
+    expect(decodeCursor(page.nextCursor ?? '', ['int8', 'int8'])).toEqual([
+      '4121949',
+      '12',
+    ])
+    await listRailSettlements(db, schemas, {
+      railId: '12818',
+      limit: 1,
+      cursor: page.nextCursor ?? '',
+    })
+    expect(queries[1]?.text).toContain(
+      `(block_number, ${logIndex()}) < ($2::numeric, $3::int)`
+    )
+    expect(queries[1]?.params).toEqual(['12818', '4121949', '12', 2])
   })
 
   it('derives the rail state', () => {
@@ -195,5 +283,30 @@ describe('status', () => {
       latest: { blockNumber: 4121900 },
       finalized: null,
     })
+  })
+})
+
+describe('session key ordering', () => {
+  it('folds the latest authorization by log index within a block', async () => {
+    const { db, queries } = fakeDb()
+    await listSessionKeys(db, schemas, { now: 0, limit: 1 })
+    expect(queries[0]?.text).toContain(
+      `s.block_number desc,\n         ${logIndex('s')} desc`
+    )
+  })
+
+  it('pages events by block and log index', async () => {
+    const { db, queries } = fakeDb(() => [
+      { ...rows.sessionKeyEvent, log_index: 7 },
+      { ...rows.sessionKeyEvent, log_index: 2 },
+    ])
+    const page = await listSessionKeyEvents(db, schemas, { limit: 1 })
+    expect(decodeCursor(page.nextCursor ?? '', ['int8', 'int8'])).toEqual([
+      '3187939',
+      '7',
+    ])
+    expect(queries[0]?.text).toContain(
+      'order by block_number desc, log_index desc'
+    )
   })
 })

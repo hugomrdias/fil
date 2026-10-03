@@ -12,11 +12,14 @@ export interface ListDataSetPiecesParams {
   cursor?: string
 }
 
-/** Filters for {@link listPieces}; at least one of owner, cid, providerId. */
+/**
+ * Filters for {@link listPieces}, named like the API query parameters; at
+ * least one of owner, cid or provider_id is required.
+ */
 export interface ListPiecesParams {
   owner?: string
   cid?: string
-  providerId?: string
+  provider_id?: string
   removed?: boolean
   limit: number
   cursor?: string
@@ -25,6 +28,7 @@ export interface ListPiecesParams {
 const COLUMNS = `p.data_set_id, p.piece_id, p.cid, p.raw_size, p.metadata,
   p.removed, p.added_at_block, p.removed_at_block, p.updated_at_block`
 
+/** Schema-qualified `pieces` view. */
 function pieces(schemas: Schemas) {
   return `${ident(schemas.repair)}.pieces`
 }
@@ -63,7 +67,7 @@ export async function listDataSetPieces(
     .add((p) => `p.data_set_id = ${p}::bigint`, params.dataSetId)
     .maybe(params.removed, (p) => `p.removed = ${p}`)
   if (params.cursor) {
-    const [id] = decodeCursor(params.cursor, 1)
+    const [id] = decodeCursor(params.cursor, ['int8'])
     where.add((p) => `p.piece_id < ${p}::bigint`, id)
   }
   const limit = where.param(params.limit + 1)
@@ -102,10 +106,10 @@ export async function listPieces(
   const where = new Where()
     .maybe(params.owner?.toLowerCase(), (p) => `d.payer = ${p}`)
     .maybe(params.cid, (p) => `p.cid = ${p}`)
-    .maybe(params.providerId, (p) => `d.provider_id = ${p}::bigint`)
+    .maybe(params.provider_id, (p) => `d.provider_id = ${p}::bigint`)
     .maybe(params.removed, (p) => `p.removed = ${p}`)
   if (params.cursor) {
-    const [dataSetId, pieceId] = decodeCursor(params.cursor, 2)
+    const [dataSetId, pieceId] = decodeCursor(params.cursor, ['int8', 'int8'])
     where.add(
       (a, b) => `(p.data_set_id, p.piece_id) < (${a}::bigint, ${b}::bigint)`,
       dataSetId,

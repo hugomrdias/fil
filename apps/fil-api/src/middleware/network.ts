@@ -1,7 +1,6 @@
 import { createMiddleware } from 'hono/factory'
-import { withStats } from '../db.ts'
 import { ApiError, networkUnavailable } from '../errors.ts'
-import { isNetworkName, resolveNetwork } from '../networks.ts'
+import { isNetworkName, openNetworkDb } from '../networks.ts'
 import type { AppEnv } from '../types.ts'
 
 /**
@@ -15,15 +14,14 @@ export const networkMiddleware = createMiddleware<AppEnv>(async (c, next) => {
     if (c.req.path.split('/').length <= 2) return next()
     throw new ApiError(404, 'unknown_network', `Unknown network ${name}`)
   }
-  const { network, hyperdrive } = resolveNetwork(c.env, name)
-  if (!hyperdrive) throw networkUnavailable(name)
+  const opened = openNetworkDb(c.env, name, c.var.dbFactory, c.var.dbStats)
+  if (!opened) throw networkUnavailable(name)
 
-  const db = c.var.dbFactory(hyperdrive)
-  c.set('network', network)
-  c.set('db', withStats(db, c.var.dbStats))
+  c.set('network', opened.network)
+  c.set('db', opened.db)
   try {
     await next()
   } finally {
-    c.executionCtx.waitUntil(db.close())
+    c.executionCtx.waitUntil(opened.close())
   }
 })

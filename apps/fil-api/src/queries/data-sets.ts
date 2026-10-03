@@ -4,12 +4,15 @@ import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { DataSet } from '../schemas/resources.ts'
 import { bool, json, req, str } from './map.ts'
 
-/** Filters for {@link listDataSets}. */
+/**
+ * Filters for {@link listDataSets}, named like the API query parameters so
+ * REST and MCP input passes through unchanged.
+ */
 export interface ListDataSetsParams {
   owner?: string
-  providerId?: string
+  provider_id?: string
   deleted?: boolean
-  withCdn?: boolean
+  with_cdn?: boolean
   limit: number
   cursor?: string
 }
@@ -18,6 +21,7 @@ const COLUMNS = `data_set_id, provider_id, payer, source, metadata, with_cdn,
   with_ipfs_indexing, pdp_end_epoch, deleted, created_at_block,
   updated_at_block`
 
+/** Schema-qualified `data_sets` view. */
 function table(schemas: Schemas) {
   return `${ident(schemas.repair)}.data_sets`
 }
@@ -47,11 +51,11 @@ export async function listDataSets(
 ): Promise<Page<DataSet>> {
   const where = new Where()
     .maybe(params.owner?.toLowerCase(), (p) => `payer = ${p}`)
-    .maybe(params.providerId, (p) => `provider_id = ${p}::bigint`)
+    .maybe(params.provider_id, (p) => `provider_id = ${p}::bigint`)
     .maybe(params.deleted, (p) => `deleted = ${p}`)
-    .maybe(params.withCdn, (p) => `with_cdn = ${p}`)
+    .maybe(params.with_cdn, (p) => `with_cdn = ${p}`)
   if (params.cursor) {
-    const [id] = decodeCursor(params.cursor, 1)
+    const [id] = decodeCursor(params.cursor, ['int8'])
     where.add((p) => `data_set_id < ${p}::bigint`, id)
   }
   const limit = where.param(params.limit + 1)

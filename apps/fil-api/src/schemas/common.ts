@@ -1,5 +1,6 @@
 import { z } from '@hono/zod-openapi'
 import { NETWORK_NAMES } from '../networks.ts'
+import { isInt8 } from '../pagination.ts'
 
 /** Network path parameter. */
 export const NetworkSchema = z.enum(NETWORK_NAMES).openapi({
@@ -35,10 +36,14 @@ export const Uint = z.string().openapi({
   example: '1',
 })
 
-/** Unsigned integer input accepted as a decimal string or number. */
+/**
+ * Id input accepted as a decimal string or number. Bounded to the Postgres
+ * `bigint` range so out-of-range ids fail validation instead of the SQL cast.
+ */
 export const UintInput = z.coerce
   .string()
   .regex(/^\d+$/, 'Expected an unsigned integer')
+  .refine(isInt8, 'Expected an id no larger than 9223372036854775807')
   .openapi({ type: 'string', example: '1' })
 
 /** Boolean query parameter (`true` or `false`). */

@@ -94,5 +94,5 @@ Each network needs its own Hyperdrive binding. Run `pnpm cf-typegen` after chang
 
 - **Workers Logs and traces** are enabled in `wrangler.jsonc`. Each request writes one JSON log line with `requestId`, `route`, `network`, `status`, `durationMs`, `dbQueries` and `dbMs`.
 - **Response headers:** `X-Request-Id`, and `Server-Timing` with `db` and `total` metrics.
-- **Rate limits:** [Workers Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) per client IP, at 120 requests/min for the REST API and 60 requests/min for MCP. Over the limit, requests get a `429` with `Retry-After`.
+- **Rate limits:** [Workers Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) per client IP, at 120 requests/min for the REST API and `/health`, and 60 requests/min for MCP. Over the limit, requests get a `429` with `Retry-After`.
 - **Caching:** successful reads are sent with `Cache-Control: public, max-age=15, stale-while-revalidate=60`.
