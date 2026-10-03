@@ -29,7 +29,12 @@
     },
     "deploy": {
       "dependsOn": ["^build", "typecheck", "test", "lint"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "WRANGLER_SEND_METRICS"
+      ]
     }
   }
 }
