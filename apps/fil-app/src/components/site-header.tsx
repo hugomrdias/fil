@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useMatchRoute } from '@tanstack/react-router'
 import { LayoutDashboardIcon, MenuIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useConnection } from 'wagmi'
@@ -52,6 +52,8 @@ function DashboardButton(props: { className?: string }) {
 /** Explorer top bar: brand, sections, search, network, theme, dashboard. */
 export function SiteHeader() {
   const network = useExplorerNetwork()
+  // The explorer home has its own big search box.
+  const onHome = Boolean(useMatchRoute()({ to: '/$network' }))
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur-md">
@@ -72,7 +74,7 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          <SearchTrigger />
+          {onHome ? null : <SearchTrigger />}
           <NetworkSwitcher className="max-sm:hidden" network={network} />
           <ThemeToggle className="max-lg:hidden" />
           <DashboardButton className="max-sm:hidden" />
