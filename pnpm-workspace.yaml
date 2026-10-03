@@ -1,10 +1,12 @@
 packages:
+  - 'apps/*'
   - 'packages/*'
   - 'examples/*'
 
 allowBuilds:
   '@biomejs/biome': true
   esbuild: true
+  workerd: true
 
 catalog:
   '@types/node': 26.5.1
