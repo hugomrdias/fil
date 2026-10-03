@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { ExternalLinkIcon } from 'lucide-react'
-import { useMemo } from 'react'
+import { type FocusEvent, useMemo } from 'react'
 import { z } from 'zod'
 import {
   dataSetColumns,
@@ -13,6 +13,14 @@ import { CopyButton } from '@/components/copy-button'
 import { DataTable } from '@/components/data-table'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   dataSetsInfinite,
@@ -22,17 +30,27 @@ import {
 } from '@/lib/api/queries'
 import { addressUrl } from '@/lib/networks'
 
-const TABS = [
-  'data-sets',
-  'payer',
-  'payee',
-  'operator',
-  'pieces',
-  'session-keys',
+const TAB_OPTIONS = [
+  { value: 'data-sets', label: 'Data sets' },
+  { value: 'payer', label: 'Rails as payer' },
+  { value: 'payee', label: 'Rails as payee' },
+  { value: 'operator', label: 'Rails as operator' },
+  { value: 'pieces', label: 'Pieces' },
+  { value: 'session-keys', label: 'Session keys' },
 ] as const
+
+const TABS = TAB_OPTIONS.map((option) => option.value)
 
 /** Address page tab. */
 type Tab = (typeof TABS)[number]
+
+/**
+ * Keep keyboard-focused tabs visible within the scrolling list.
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
+ */
+function revealFocusedTab(event: FocusEvent<HTMLElement>) {
+  event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
 
 export const Route = createFileRoute('/$network/address/$address')({
   params: {
@@ -118,19 +136,49 @@ function AddressPage() {
         }
       />
       <Tabs
+        className="min-w-0"
         onValueChange={(value) =>
           navigate({ search: { tab: value as Tab }, replace: true })
         }
         value={tab}
       >
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="data-sets">Data sets</TabsTrigger>
-          <TabsTrigger value="payer">Rails as payer</TabsTrigger>
-          <TabsTrigger value="payee">Rails as payee</TabsTrigger>
-          <TabsTrigger value="operator">Rails as operator</TabsTrigger>
-          <TabsTrigger value="pieces">Pieces</TabsTrigger>
-          <TabsTrigger value="session-keys">Session keys</TabsTrigger>
-        </TabsList>
+        <div className="md:hidden">
+          <Select
+            items={TAB_OPTIONS}
+            onValueChange={(value) => {
+              if (value) {
+                navigate({ search: { tab: value }, replace: true })
+              }
+            }}
+            value={tab}
+          >
+            <SelectTrigger aria-label="Address activity" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              <SelectGroup>
+                {TAB_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="hidden min-w-0 overflow-x-auto md:block">
+          <TabsList
+            aria-label="Address activity"
+            className="w-max"
+            onFocus={revealFocusedTab}
+          >
+            {TAB_OPTIONS.map((option) => (
+              <TabsTrigger key={option.value} value={option.value}>
+                {option.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
         <TabsContent value="data-sets">
           <DataTable
             columns={dataSetCols}

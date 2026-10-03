@@ -264,8 +264,7 @@ function ApprovalsPage() {
           <CardHeader>
             <CardTitle>Custom allowances</CardTitle>
             <CardDescription>
-              Cap how much FWSS may stream and lock instead of approving
-              unlimited allowances.
+              Limit how much FWSS can stream and lock.
             </CardDescription>
           </CardHeader>
           <CardContent>

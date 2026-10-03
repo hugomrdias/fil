@@ -118,8 +118,7 @@ function AccountPage() {
           <CardHeader>
             <CardTitle>Deposit</CardTitle>
             <CardDescription>
-              Moves USDFC from your wallet into Filecoin Pay with a signed
-              permit, in one transaction.
+              Move USDFC from your wallet to Filecoin Pay.
             </CardDescription>
           </CardHeader>
           <CardContent>

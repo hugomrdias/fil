@@ -11,6 +11,9 @@ export const EPOCHS_PER_MONTH = TIME_CONSTANTS.EPOCHS_PER_MONTH
 
 const EPOCH_SECONDS = TIME_CONSTANTS.EPOCH_DURATION
 
+/** JavaScript Date's absolute limit in Unix seconds; see {@link formatTimestamp}. */
+const MAX_DATE_SECONDS = 8_640_000_000_000n
+
 const TIMESTAMP_FORMAT = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
   timeStyle: 'short',
@@ -205,11 +208,23 @@ export function formatBytes(
 
 /**
  * Format a Unix timestamp (seconds) as a locale date and time.
+ * Label timestamps outside JavaScript's date range without throwing.
  *
- * @param seconds - Unix seconds.
+ * @param seconds - Unix seconds; integer strings and bigints retain precision.
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#the_epoch_timestamps_and_invalid_date
  */
-export function formatTimestamp(seconds: number) {
-  return TIMESTAMP_FORMAT.format(new Date(seconds * 1000))
+export function formatTimestamp(seconds: number | bigint | string) {
+  const timestamp = typeof seconds === 'string' ? BigInt(seconds) : seconds
+  if (
+    typeof timestamp === 'bigint' &&
+    (timestamp > MAX_DATE_SECONDS || timestamp < -MAX_DATE_SECONDS)
+  ) {
+    return 'Beyond date range'
+  }
+  const date = new Date(Number(timestamp) * 1000)
+  return Number.isNaN(date.getTime())
+    ? 'Beyond date range'
+    : TIMESTAMP_FORMAT.format(date)
 }
 
 /**

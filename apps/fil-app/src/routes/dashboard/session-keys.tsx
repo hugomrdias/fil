@@ -283,7 +283,7 @@ function LocalKeyCard(props: { entry: StoredSessionKey }) {
                   <Spinner />
                 ) : expiry > now ? (
                   <StatusBadge tone="success">
-                    until {formatTimestamp(Number(expiry))}
+                    until {formatTimestamp(expiry)}
                   </StatusBadge>
                 ) : (
                   <StatusBadge tone="neutral">Not authorized</StatusBadge>
