@@ -1,4 +1,5 @@
 import type { Hook } from '@hono/zod-openapi'
+import { errorBody } from '../errors.ts'
 import type { AppEnv } from '../types.ts'
 
 /**
@@ -11,17 +12,9 @@ export const validationHook: Hook<any, AppEnv, any, any> = (result, c) => {
       path: i.path.join('.'),
       message: i.message,
     }))
-    return c.json(
-      {
-        error: {
-          code: 'invalid_request',
-          message: issues
-            .map((i) => `${i.path || 'query'}: ${i.message}`)
-            .join('; '),
-          issues,
-        },
-      },
-      400
-    )
+    const message = issues
+      .map((i) => `${i.path || 'query'}: ${i.message}`)
+      .join('; ')
+    return c.json(errorBody('invalid_request', message, issues), 400)
   }
 }

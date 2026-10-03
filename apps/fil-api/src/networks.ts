@@ -1,5 +1,8 @@
 import { type Db, type DbFactory, type DbStats, withStats } from './db.ts'
 
+/** Indexer schemas; every network's database uses the same names. */
+const SCHEMAS = { observer: 'foc-observer', repair: 'early-repair' } as const
+
 /**
  * Filecoin networks served by the API and the indexer schemas behind each.
  *
@@ -10,13 +13,13 @@ export const NETWORKS = {
     name: 'calibration',
     chainId: 314159,
     binding: 'HYPERDRIVE_CALIBRATION',
-    schemas: { observer: 'foc-observer', repair: 'early-repair' },
+    schemas: SCHEMAS,
   },
   mainnet: {
     name: 'mainnet',
     chainId: 314,
     binding: 'HYPERDRIVE_MAINNET',
-    schemas: { observer: 'foc-observer', repair: 'early-repair' },
+    schemas: SCHEMAS,
   },
 } as const
 
@@ -48,20 +51,6 @@ export function isNetworkName(name: string): name is NetworkName {
   return Object.hasOwn(NETWORKS, name)
 }
 
-/**
- * Resolve a network and its Hyperdrive binding.
- *
- * Returns `undefined` for the binding when the network is known but its
- * database is not configured.
- */
-export function resolveNetwork(
-  env: Bindings,
-  name: NetworkName
-): { network: Network; hyperdrive: Hyperdrive | undefined } {
-  const network = NETWORKS[name]
-  return { network, hyperdrive: env[network.binding] }
-}
-
 /** A network with an open database client. */
 export interface NetworkDb {
   network: Network
@@ -82,7 +71,8 @@ export function openNetworkDb(
   dbFactory: DbFactory,
   stats: DbStats
 ): NetworkDb | undefined {
-  const { network, hyperdrive } = resolveNetwork(env, name)
+  const network = NETWORKS[name]
+  const hyperdrive = env[network.binding]
   if (!hyperdrive) return undefined
   const raw = dbFactory(hyperdrive)
   return { network, db: withStats(raw, stats), close: () => raw.close() }

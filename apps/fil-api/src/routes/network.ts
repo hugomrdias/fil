@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, type z } from '@hono/zod-openapi'
-import { notFound } from '../errors.ts'
+import type { DbFactory } from '../db.ts'
 import { networkMiddleware } from '../middleware/network.ts'
 import { rateLimit } from '../middleware/rate-limit.ts'
 import { getDataSet, listDataSets } from '../queries/data-sets.ts'
@@ -226,12 +226,12 @@ const routes = {
 export const CACHE_CONTROL = 'public, max-age=15, stale-while-revalidate=60'
 
 /** Routes under `/{network}` for REST reads. */
-export function networkRoutes() {
+export function networkRoutes(dbFactory: DbFactory) {
   const api = new OpenAPIHono<AppEnv>({ defaultHook: validationHook })
   api.use(
     '/:network/*',
     rateLimit('RATE_LIMIT_API'),
-    networkMiddleware,
+    networkMiddleware(dbFactory),
     async (c, next) => {
       await next()
       if (c.res.status === 200) c.header('Cache-Control', CACHE_CONTROL)
@@ -252,7 +252,6 @@ export function networkRoutes() {
   api.openapi(routes.getProvider, async (c) => {
     const { providerId } = c.req.valid('param')
     const data = await getProvider(c.var.db, c.var.network.schemas, providerId)
-    if (!data) throw notFound('Provider', providerId)
     return c.json({ data }, 200)
   })
 
@@ -265,7 +264,6 @@ export function networkRoutes() {
   api.openapi(routes.getDataSet, async (c) => {
     const { dataSetId } = c.req.valid('param')
     const data = await getDataSet(c.var.db, c.var.network.schemas, dataSetId)
-    if (!data) throw notFound('Data set', dataSetId)
     return c.json({ data }, 200)
   })
 
@@ -287,7 +285,6 @@ export function networkRoutes() {
       dataSetId,
       pieceId
     )
-    if (!data) throw notFound('Piece', `${dataSetId}/${pieceId}`)
     return c.json({ data }, 200)
   })
 
@@ -306,7 +303,6 @@ export function networkRoutes() {
   api.openapi(routes.getRail, async (c) => {
     const { railId } = c.req.valid('param')
     const data = await getRail(c.var.db, c.var.network.schemas, railId)
-    if (!data) throw notFound('Rail', railId)
     return c.json({ data }, 200)
   })
 
@@ -322,10 +318,7 @@ export function networkRoutes() {
 
   api.openapi(routes.listSessionKeys, async (c) => {
     const q = c.req.valid('query')
-    const page = await listSessionKeys(c.var.db, c.var.network.schemas, {
-      ...q,
-      now: Math.floor(Date.now() / 1000),
-    })
+    const page = await listSessionKeys(c.var.db, c.var.network.schemas, q)
     return c.json(page, 200)
   })
 

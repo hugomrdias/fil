@@ -8,6 +8,19 @@ export function req(value: unknown): string {
   return String(value ?? '')
 }
 
+/**
+ * Lowercase a nullable address column. Some indexer tables store checksummed
+ * addresses; responses always use lowercase.
+ */
+export function addr(value: unknown): string | null {
+  return str(value)?.toLowerCase() ?? null
+}
+
+/** Lowercase a non-null address column (see {@link addr}). */
+export function reqAddr(value: unknown): string {
+  return req(value).toLowerCase()
+}
+
 /** Convert a database numeric to a JS number (for timestamps and blocks). */
 export function num(value: unknown): number {
   return Number(value)

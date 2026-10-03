@@ -11,15 +11,11 @@ export interface Page<T> {
 
 /** Encode a sort key as an opaque base64url cursor. */
 export function encodeCursor(key: CursorKey): string {
-  const bytes = new TextEncoder().encode(JSON.stringify(key))
-  return btoa(String.fromCharCode(...bytes))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/=+$/, '')
+  return Buffer.from(JSON.stringify(key)).toString('base64url')
 }
 
 /** Largest value of a Postgres `bigint` (`int8`). */
-export const INT8_MAX = 9223372036854775807n
+const INT8_MAX = 9223372036854775807n
 
 /** Whether `value` is a decimal integer that fits in a Postgres `bigint`. */
 export function isInt8(value: string): boolean {
@@ -42,11 +38,7 @@ const CURSOR_PART_CHECKS: Record<CursorPart, (value: string) => boolean> = {
  */
 export function decodeCursor(cursor: string, parts: CursorPart[]): string[] {
   try {
-    const b64 = cursor.replaceAll('-', '+').replaceAll('_', '/')
-    const json = new TextDecoder().decode(
-      Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
-    )
-    const key: unknown = JSON.parse(json)
+    const key: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString())
     if (Array.isArray(key) && key.length === parts.length) {
       const values = key.map(String)
       if (

@@ -78,7 +78,7 @@ describe('rest routes', () => {
   })
 
   it('maps piece lookups with owner and provider', async () => {
-    const { request } = testApp(() => [
+    const { request, fake } = testApp(() => [
       { ...rows.piece, payer: rows.dataSet.payer, provider_id: '2' },
     ])
     const res = await request(
@@ -89,6 +89,8 @@ describe('rest routes', () => {
       owner: rows.dataSet.payer,
       providerId: '2',
     })
+    // The Address schema lowercases input before it reaches the query.
+    expect(fake.queries[0]?.params[0]).toBe(rows.dataSet.payer)
   })
 
   it('lowercases checksummed provider addresses', async () => {

@@ -116,10 +116,10 @@ describe('parseCheckpoint', () => {
 })
 
 describe('owner filters', () => {
-  it('lowercases owner and filters data sets by payer', async () => {
+  it('filters data sets by owner (payer)', async () => {
     const { db, queries } = fakeDb()
     await listDataSets(db, schemas, {
-      owner: '0x480C51FE9FC90E01FA742C51300CC29E151A71CD',
+      owner: '0x480c51fe9fc90e01fa742c51300cc29e151a71cd',
       provider_id: '2',
       limit: 10,
     })
@@ -137,7 +137,7 @@ describe('owner filters', () => {
   it('joins pieces to data sets for owner and keyset cursor', async () => {
     const { db, queries } = fakeDb()
     await listPieces(db, schemas, {
-      owner: '0x305025D07C1DEE47F25A4990179EFF2BECDDCA0B',
+      owner: '0x305025d07c1dee47f25a4990179eff2becddca0b',
       cursor: encodeCursor(['40938', '0']),
       limit: 5,
     })
@@ -169,7 +169,7 @@ describe('rails', () => {
   })
 
   it('picks the latest same-block event by log index', async () => {
-    const { db, queries } = fakeDb()
+    const { db, queries } = fakeDb(() => [rows.rail])
     await getRail(db, schemas, '1')
     const text = queries[0]?.text ?? ''
     expect(text).toContain(
@@ -211,6 +211,18 @@ describe('rails', () => {
       `(block_number, ${logIndex()}) < ($2::numeric, $3::int)`
     )
     expect(queries[1]?.params).toEqual(['12818', '4121949', '12', 2])
+  })
+
+  it('throws 404 for a missing rail and lowercases addresses', async () => {
+    await expect(getRail(fakeDb().db, schemas, '9')).rejects.toMatchObject({
+      status: 404,
+      code: 'not_found',
+    })
+    const { db } = fakeDb(() => [
+      { ...rows.rail, payer: '0x290C51F674ECF478E7EC20810B600BB6526622B4' },
+    ])
+    const rail = await getRail(db, schemas, '1')
+    expect(rail.payer).toBe('0x290c51f674ecf478e7ec20810b600bb6526622b4')
   })
 
   it('derives the rail state', () => {
@@ -255,7 +267,7 @@ describe('session keys', () => {
   it('applies the active filter in HAVING', async () => {
     const { db, queries } = fakeDb()
     await listSessionKeys(db, schemas, {
-      identity: '0x44F08D1BEFE61255B3C3A349C392C560FA333759',
+      identity: '0x44f08d1befe61255b3c3a349c392c560fa333759',
       active: true,
       now: 100,
       limit: 2,

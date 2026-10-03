@@ -2,7 +2,7 @@ import { type Db, ident, logIndex, type Row, Where } from '../db.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { SessionKey, SessionKeyEvent } from '../schemas/resources.ts'
-import { num, req, str } from './map.ts'
+import { num, req, reqAddr, str } from './map.ts'
 
 /**
  * Names of known Warm Storage EIP-712 typehashes used as session key
@@ -11,7 +11,7 @@ import { num, req, str } from './map.ts'
  *
  * @see https://github.com/FilOzone/synapse-sdk/blob/main/packages/synapse-core/src/session-key/permissions.ts
  */
-export const PERMISSION_NAMES: Readonly<Record<string, string>> = {
+const PERMISSION_NAMES: Readonly<Record<string, string>> = {
   // CreateDataSet(uint256 clientDataSetId,address payee,MetadataEntry[] metadata)...
   '0x25ebf20299107c91b4624d5bac3a16d32cabf0db23b450ee09ab7732983b1dc9':
     'CreateDataSet',
@@ -40,8 +40,8 @@ export interface ListSessionKeysParams {
   identity?: string
   signer?: string
   active?: boolean
-  /** Current Unix time in seconds, used to evaluate expiry. */
-  now: number
+  /** Unix time in seconds used to evaluate expiry; defaults to now. */
+  now?: number
   limit: number
   cursor?: string
 }
@@ -75,8 +75,8 @@ export function mapSessionKey(row: Row, now: number): SessionKey {
     txHash: p.txHash,
   }))
   return {
-    identity: req(row.identity),
-    signer: req(row.signer),
+    identity: reqAddr(row.identity),
+    signer: reqAddr(row.signer),
     active: permissions.some((p) => p.active),
     expiry: req(row.expiry),
     updatedAtBlock: req(row.updated_at_block),
@@ -93,22 +93,28 @@ export async function listSessionKeys(
   schemas: Schemas,
   params: ListSessionKeysParams
 ): Promise<Page<SessionKey>> {
+  const now = params.now ?? Math.floor(Date.now() / 1000)
   const inner = new Where()
-    .maybe(params.identity?.toLowerCase(), (p) => `s.identity = ${p}`)
-    .maybe(params.signer?.toLowerCase(), (p) => `s.signer = ${p}`)
-  const outer = new Where(inner.params)
+    .maybe(params.identity, (p) => `s.identity = ${p}`)
+    .maybe(params.signer, (p) => `s.signer = ${p}`)
   if (params.cursor) {
+    // Pages split on (identity, signer), so the cursor can filter events
+    // before they are folded.
     const [identity, signer] = decodeCursor(params.cursor, [
       'address',
       'address',
     ])
-    outer.add((a, b) => `(identity, signer) > (${a}, ${b})`, identity, signer)
+    inner.add(
+      (a, b) => `(s.identity, s.signer) > (${a}, ${b})`,
+      identity,
+      signer
+    )
   }
   const having = new Where(inner.params)
   if (params.active !== undefined) {
     having.add(
       (now, active) => `(max(expiry) > ${now}::numeric) = ${active}`,
-      params.now,
+      now,
       params.active
     )
   }
@@ -131,7 +137,7 @@ export async function listSessionKeys(
          'permission', permission, 'expiry', expiry::text, 'origin', origin,
          'blockNumber', block_number::text, 'txHash', tx_hash
        ) order by permission) as permissions
-     from latest ${outer}
+     from latest
      group by identity, signer
      ${having.render('having')}
      order by identity, signer limit ${limit}`,
@@ -140,7 +146,7 @@ export async function listSessionKeys(
   return toPage(
     rows,
     params.limit,
-    (r) => mapSessionKey(r, params.now),
+    (r) => mapSessionKey(r, now),
     (r) => [req(r.identity), req(r.signer)]
   )
 }
@@ -157,10 +163,10 @@ function parsePermissions(value: unknown): string[] {
 }
 
 /** Map an `skr_authorizations_updated` row to the API shape. */
-export function mapSessionKeyEvent(row: Row): SessionKeyEvent {
+function mapSessionKeyEvent(row: Row): SessionKeyEvent {
   return {
-    identity: req(row.identity),
-    signer: req(row.signer),
+    identity: reqAddr(row.identity),
+    signer: reqAddr(row.signer),
     expiry: req(row.expiry),
     permissions: parsePermissions(row.permissions),
     origin: str(row.origin) || null,
@@ -177,8 +183,8 @@ export async function listSessionKeyEvents(
   params: ListSessionKeyEventsParams
 ): Promise<Page<SessionKeyEvent>> {
   const where = new Where()
-    .maybe(params.identity?.toLowerCase(), (p) => `identity = ${p}`)
-    .maybe(params.signer?.toLowerCase(), (p) => `signer = ${p}`)
+    .maybe(params.identity, (p) => `identity = ${p}`)
+    .maybe(params.signer, (p) => `signer = ${p}`)
   if (params.cursor) {
     const [block, index] = decodeCursor(params.cursor, ['int8', 'int8'])
     where.add(

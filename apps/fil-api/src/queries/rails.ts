@@ -1,8 +1,9 @@
 import { type Db, ident, logIndex, type Row, Where } from '../db.ts'
+import { notFound } from '../errors.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { Rail, Settlement } from '../schemas/resources.ts'
-import { num, req, str } from './map.ts'
+import { addr, num, req, reqAddr, str } from './map.ts'
 
 /** Rail lifecycle state filter. */
 export type RailState = Rail['state']
@@ -27,33 +28,21 @@ export interface ListSettlementsParams {
 
 /**
  * Current rail state folded from Filecoin Pay events: the creation event plus
- * the latest rate and lockup changes, termination and finalization. `where`
- * and `limit` apply here, before settlement totals are joined, so totals are
- * only aggregated for rails on the returned page.
+ * termination, finalization, the latest rate and lockup changes and the
+ * settlement totals. Only termination and finalization (which the `state`
+ * filter needs) are joined before `where` and `limit`; the other lookups run
+ * for rails on the returned page only.
  *
  * @see https://github.com/FilOzone/filecoin-pay
  */
 function railQuery(s: string, where: string, limit: string) {
-  return `select page.*, st.settled_up_to, st.total_settled_amount,
-    st.total_net_payee_amount
+  return `select page.*, r.new_rate, l.new_lockup_period, l.new_lockup_fixed,
+    st.settled_up_to, st.total_settled_amount, st.total_net_payee_amount
   from (
     select c.rail_id, c.payer, c.payee, c.token, c.operator, c.validator,
       c.service_fee_recipient, c.commission_rate_bps, c.block_number,
-      c.timestamp, c.tx_hash,
-      r.new_rate, l.new_lockup_period, l.new_lockup_fixed,
-      t.end_epoch, t.by as terminated_by, f.finalized
+      c.timestamp, c.tx_hash, t.end_epoch, t.by as terminated_by, f.finalized
     from ${s}.fp_rail_created c
-    left join lateral (
-      select x.new_rate from ${s}.fp_rail_rate_modified x
-      where x.rail_id = c.rail_id
-      order by x.block_number desc, ${logIndex('x')} desc limit 1
-    ) r on true
-    left join lateral (
-      select x.new_lockup_period, x.new_lockup_fixed
-      from ${s}.fp_rail_lockup_modified x
-      where x.rail_id = c.rail_id
-      order by x.block_number desc, ${logIndex('x')} desc limit 1
-    ) l on true
     left join lateral (
       select x.end_epoch, x.by from ${s}.fp_rail_terminated x
       where x.rail_id = c.rail_id
@@ -66,6 +55,17 @@ function railQuery(s: string, where: string, limit: string) {
     ${where}
     order by c.rail_id desc limit ${limit}
   ) page
+  left join lateral (
+    select x.new_rate from ${s}.fp_rail_rate_modified x
+    where x.rail_id = page.rail_id
+    order by x.block_number desc, ${logIndex('x')} desc limit 1
+  ) r on true
+  left join lateral (
+    select x.new_lockup_period, x.new_lockup_fixed
+    from ${s}.fp_rail_lockup_modified x
+    where x.rail_id = page.rail_id
+    order by x.block_number desc, ${logIndex('x')} desc limit 1
+  ) l on true
   left join lateral (
     select max(x.settled_up_to) as settled_up_to,
       coalesce(sum(x.total_settled_amount), 0) as total_settled_amount,
@@ -89,22 +89,22 @@ export function railState(row: Row): RailState {
 }
 
 /** Map a folded rail row to the API shape. */
-export function mapRail(row: Row): Rail {
+function mapRail(row: Row): Rail {
   return {
     railId: req(row.rail_id),
     state: railState(row),
-    payer: req(row.payer),
-    payee: req(row.payee),
-    token: req(row.token),
-    operator: req(row.operator),
-    validator: req(row.validator),
-    serviceFeeRecipient: req(row.service_fee_recipient),
+    payer: reqAddr(row.payer),
+    payee: reqAddr(row.payee),
+    token: reqAddr(row.token),
+    operator: reqAddr(row.operator),
+    validator: reqAddr(row.validator),
+    serviceFeeRecipient: reqAddr(row.service_fee_recipient),
     commissionRateBps: req(row.commission_rate_bps),
     paymentRate: str(row.new_rate) ?? '0',
     lockupPeriod: str(row.new_lockup_period) ?? '0',
     lockupFixed: str(row.new_lockup_fixed) ?? '0',
     endEpoch: str(row.end_epoch),
-    terminatedBy: str(row.terminated_by),
+    terminatedBy: addr(row.terminated_by),
     settledUpTo: str(row.settled_up_to),
     totalSettledAmount: str(row.total_settled_amount) ?? '0',
     totalNetPayeeAmount: str(row.total_net_payee_amount) ?? '0',
@@ -121,10 +121,10 @@ export async function listRails(
   params: ListRailsParams
 ): Promise<Page<Rail>> {
   const where = new Where()
-    .maybe(params.payer?.toLowerCase(), (p) => `c.payer = ${p}`)
-    .maybe(params.payee?.toLowerCase(), (p) => `c.payee = ${p}`)
-    .maybe(params.operator?.toLowerCase(), (p) => `c.operator = ${p}`)
-    .maybe(params.token?.toLowerCase(), (p) => `c.token = ${p}`)
+    .maybe(params.payer, (p) => `c.payer = ${p}`)
+    .maybe(params.payee, (p) => `c.payee = ${p}`)
+    .maybe(params.operator, (p) => `c.operator = ${p}`)
+    .maybe(params.token, (p) => `c.token = ${p}`)
   if (params.state) where.raw(STATE_CONDITIONS[params.state])
   if (params.cursor) {
     const [id] = decodeCursor(params.cursor, ['int8'])
@@ -138,21 +138,22 @@ export async function listRails(
   return toPage(rows, params.limit, mapRail, (r) => [req(r.rail_id)])
 }
 
-/** Get one payment rail with its current state. */
+/** Get one payment rail with its current state; throws 404 when missing. */
 export async function getRail(
   db: Db,
   schemas: Schemas,
   railId: string
-): Promise<Rail | undefined> {
+): Promise<Rail> {
   const rows = await db.query(
     railQuery(ident(schemas.observer), 'where c.rail_id = $1::numeric', '1'),
     [railId]
   )
-  return rows[0] && mapRail(rows[0])
+  if (!rows[0]) throw notFound('Rail', railId)
+  return mapRail(rows[0])
 }
 
 /** Map an `fp_rail_settled` row to the API shape. */
-export function mapSettlement(row: Row): Settlement {
+function mapSettlement(row: Row): Settlement {
   return {
     railId: req(row.rail_id),
     totalSettledAmount: req(row.total_settled_amount),

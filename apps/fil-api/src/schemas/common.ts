@@ -48,8 +48,7 @@ export const UintInput = z.coerce
 
 /** Boolean query parameter (`true` or `false`). */
 export const BooleanQuery = z
-  .enum(['true', 'false'])
-  .transform((v) => v === 'true')
+  .stringbool({ truthy: ['true'], falsy: ['false'] })
   .openapi({ type: 'string', enum: ['true', 'false'] })
 
 /** Page size. */

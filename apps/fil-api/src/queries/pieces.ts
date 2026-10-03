@@ -1,8 +1,9 @@
 import { type Db, ident, type Row, Where } from '../db.ts'
+import { notFound } from '../errors.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { Piece, PieceWithDataSet } from '../schemas/resources.ts'
-import { bool, json, req, str } from './map.ts'
+import { addr, bool, json, req, str } from './map.ts'
 
 /** Filters for {@link listDataSetPieces}. */
 export interface ListDataSetPiecesParams {
@@ -34,7 +35,7 @@ function pieces(schemas: Schemas) {
 }
 
 /** Map a `pieces` row to the API shape. */
-export function mapPiece(row: Row): Piece {
+function mapPiece(row: Row): Piece {
   return {
     dataSetId: req(row.data_set_id),
     pieceId: req(row.piece_id),
@@ -49,10 +50,10 @@ export function mapPiece(row: Row): Piece {
 }
 
 /** Map a joined piece and data set row to the API shape. */
-export function mapPieceWithDataSet(row: Row): PieceWithDataSet {
+function mapPieceWithDataSet(row: Row): PieceWithDataSet {
   return {
     ...mapPiece(row),
-    owner: str(row.payer),
+    owner: addr(row.payer),
     providerId: str(row.provider_id),
   }
 }
@@ -79,19 +80,20 @@ export async function listDataSetPieces(
   return toPage(rows, params.limit, mapPiece, (r) => [req(r.piece_id)])
 }
 
-/** Get one piece by data set and piece id. */
+/** Get one piece by data set and piece id; throws 404 when missing. */
 export async function getPiece(
   db: Db,
   schemas: Schemas,
   dataSetId: string,
   pieceId: string
-): Promise<Piece | undefined> {
+): Promise<Piece> {
   const rows = await db.query(
     `select ${COLUMNS} from ${pieces(schemas)} p
      where p.data_set_id = $1::bigint and p.piece_id = $2::bigint`,
     [dataSetId, pieceId]
   )
-  return rows[0] && mapPiece(rows[0])
+  if (!rows[0]) throw notFound('Piece', `${dataSetId}/${pieceId}`)
+  return mapPiece(rows[0])
 }
 
 /**
@@ -104,7 +106,7 @@ export async function listPieces(
   params: ListPiecesParams
 ): Promise<Page<PieceWithDataSet>> {
   const where = new Where()
-    .maybe(params.owner?.toLowerCase(), (p) => `d.payer = ${p}`)
+    .maybe(params.owner, (p) => `d.payer = ${p}`)
     .maybe(params.cid, (p) => `p.cid = ${p}`)
     .maybe(params.provider_id, (p) => `d.provider_id = ${p}::bigint`)
     .maybe(params.removed, (p) => `p.removed = ${p}`)
