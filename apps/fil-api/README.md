@@ -93,7 +93,7 @@ Each network needs its own Hyperdrive binding. Run `pnpm cf-typegen` after chang
 ## Observability and limits
 
 - **Workers Logs and traces** are enabled in `wrangler.jsonc`. Cloudflare writes one invocation log per request (method, URL, status, CPU and wall time). The app adds no per-request log line; it only logs unexpected errors.
-- **Trace spans:** the root span gets `http.route`, `fil.network` and `fil.db.queries` attributes, and every database query runs in a `db.query` child span with its SQL text and returned row count. Workers tracing doesn't instrument Hyperdrive's TCP sockets, so these spans are the only place query time shows up. Unexpected errors are recorded on the root span.
+- **Trace spans:** the root span gets `http.route`, `fil.network` and `fil.db.queries` attributes, and every database query runs in a `db.query` child span with its SQL text and returned row count. Workers tracing only records a `hyperdrive_connect` span for opening the connection, so these spans are the only place query time shows up. Unexpected errors are recorded on the root span.
 - **Request ids:** `X-Request-Id` is the Cloudflare Ray ID, the same value as `$metadata.rayId` on every log and span, so one id from a client finds the whole request. Client-sent `X-Request-Id` headers are ignored.
 - **Response headers:** `X-Request-Id`, and `Server-Timing` with `db` and `total` metrics.
 - **Unknown paths:** only `/calibration/...` and `/mainnet/...` reach the network middleware and API rate limiter. Other paths, such as crawler requests for `/sitemap.xml`, get a plain `404 not_found`. A valid route under an unsupported network, such as `/filecoin/providers`, gets `404 unknown_network`.

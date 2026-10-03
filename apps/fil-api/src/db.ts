@@ -68,8 +68,9 @@ export interface DbStats {
 
 /**
  * Wrap a {@link Db} so every query adds to `stats` and runs in a `db.query`
- * trace span. Workers tracing does not instrument TCP sockets, so without
- * these spans Hyperdrive queries are invisible in the trace.
+ * trace span. Workers tracing only records a `hyperdrive_connect` span for
+ * opening the connection, so without these spans query time is invisible in
+ * the trace.
  *
  * @see https://developers.cloudflare.com/workers/observability/traces/custom-spans/
  * @see https://opentelemetry.io/docs/specs/semconv/database/database-spans/
