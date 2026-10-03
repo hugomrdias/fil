@@ -28,6 +28,15 @@ export type SessionKeyFilters = Filters<'/{network}/session-keys'>
 export type SessionKeyEventFilters = Filters<'/{network}/session-keys/history'>
 
 /**
+ * Query key prefix for every fil-api query of a network.
+ *
+ * @param network - Filecoin network.
+ */
+export function networkKey(network: Network) {
+  return ['fil-api', network] as const
+}
+
+/**
  * Query key prefix for every fil-api query.
  *
  * @param network - Filecoin network.
@@ -39,7 +48,7 @@ export function apiKey(
   resource: string,
   ...params: unknown[]
 ) {
-  return ['fil-api', network, resource, ...params] as const
+  return [...networkKey(network), resource, ...params] as const
 }
 
 /** Shared infinite-query paging options. */

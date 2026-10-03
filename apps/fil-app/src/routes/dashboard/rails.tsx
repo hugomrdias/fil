@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { MoreHorizontalIcon } from 'lucide-react'
 import { useMemo } from 'react'
@@ -16,9 +16,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useRefreshWhenIndexed } from '@/hooks/use-refresh-when-indexed'
 import { useSettleRail, useSettleTerminatedRail } from '@/hooks-synapse'
 import type { Rail } from '@/lib/api/client'
-import { apiKey, railsInfinite } from '@/lib/api/queries'
+import { railsInfinite } from '@/lib/api/queries'
 
 export const Route = createFileRoute('/dashboard/rails')({
   validateSearch: z.object({
@@ -35,9 +36,7 @@ export const Route = createFileRoute('/dashboard/rails')({
  */
 function RailActions(props: { rail: Rail; isPayer: boolean }) {
   const { network } = useDashboard()
-  const queryClient = useQueryClient()
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: apiKey(network, 'rails') })
+  const refresh = useRefreshWhenIndexed(network)
   const settle = useSettleRail(
     txToasts(network, `Settle rail #${props.rail.railId}`, {
       onSuccess: refresh,

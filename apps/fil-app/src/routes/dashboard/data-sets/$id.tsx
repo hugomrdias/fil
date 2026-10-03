@@ -33,13 +33,14 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { UploadPanel } from '@/components/upload-panel'
+import { useRefreshWhenIndexed } from '@/hooks/use-refresh-when-indexed'
 import {
   type UseUploadResult,
   useDeletePieces,
   usePdpDataSet,
 } from '@/hooks-synapse'
 import type { Piece } from '@/lib/api/client'
-import { apiKey, dataSetPiecesInfinite } from '@/lib/api/queries'
+import { dataSetPiecesInfinite } from '@/lib/api/queries'
 import type { Network } from '@/lib/networks'
 import { assertId, useFlatPages } from '@/lib/route-helpers'
 
@@ -92,6 +93,7 @@ function MyDataSetPage() {
   const { id } = Route.useParams()
   const { address, network, signerFor } = useDashboard()
   const queryClient = useQueryClient()
+  const refresh = useRefreshWhenIndexed(network)
   const dataSet = usePdpDataSet({ dataSetId: BigInt(id) })
   const pieces = useInfiniteQuery({
     ...dataSetPiecesInfinite(network, id, 'false'),
@@ -276,9 +278,7 @@ function MyDataSetPage() {
                   ...toRecentPieces(id, result).reverse(),
                   ...prev,
                 ])
-                queryClient.invalidateQueries({
-                  queryKey: apiKey(network, 'data-set-pieces', id),
-                })
+                refresh()
               }}
             />
           </CardContent>

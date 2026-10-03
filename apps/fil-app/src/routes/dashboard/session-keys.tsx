@@ -2,7 +2,7 @@ import {
   DefaultFwssPermissions,
   type Permission,
 } from '@filoz/synapse-core/session-key'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import {
   CheckIcon,
@@ -59,6 +59,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useRefreshWhenIndexed } from '@/hooks/use-refresh-when-indexed'
 import {
   useSessionKeyExpirations,
   useSessionKeyLogin,
@@ -66,7 +67,6 @@ import {
 } from '@/hooks-synapse'
 import type { SessionKey } from '@/lib/api/client'
 import {
-  apiKey,
   sessionKeyEventsInfinite,
   sessionKeysInfinite,
 } from '@/lib/api/queries'
@@ -88,7 +88,7 @@ const ORIGIN = 'fil-app'
  */
 function AuthorizeDialog(props: { address: Address; trigger: string }) {
   const { network } = useDashboard()
-  const queryClient = useQueryClient()
+  const refresh = useRefreshWhenIndexed(network)
   const [open, setOpen] = useState(false)
   const [days, setDays] = useState('30')
   const [permissions, setPermissions] = useState<Permission[]>([
@@ -98,9 +98,7 @@ function AuthorizeDialog(props: { address: Address; trigger: string }) {
     txToasts(network, 'Authorize session key', {
       onSuccess: () => {
         setOpen(false)
-        queryClient.invalidateQueries({
-          queryKey: apiKey(network, 'session-keys'),
-        })
+        refresh()
       },
     })
   )
@@ -185,14 +183,9 @@ function AuthorizeDialog(props: { address: Address; trigger: string }) {
  */
 function RevokeButton(props: { address: Address }) {
   const { network } = useDashboard()
-  const queryClient = useQueryClient()
+  const refresh = useRefreshWhenIndexed(network)
   const revoke = useSessionKeyRevoke(
-    txToasts(network, 'Revoke session key', {
-      onSuccess: () =>
-        queryClient.invalidateQueries({
-          queryKey: apiKey(network, 'session-keys'),
-        }),
-    })
+    txToasts(network, 'Revoke session key', { onSuccess: refresh })
   )
   return (
     <Button

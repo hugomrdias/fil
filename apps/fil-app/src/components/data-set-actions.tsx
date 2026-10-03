@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { useRefreshWhenIndexed } from '@/hooks/use-refresh-when-indexed'
 import { useTerminateDataSet } from '@/hooks-synapse'
 
 /**
@@ -44,9 +45,12 @@ export function PdpDataSetStatus(props: { dataSet: PdpDataSet }) {
  */
 export function TerminateDataSetButton(props: { dataSet: PdpDataSet }) {
   const { network, signerFor } = useDashboard()
+  const refresh = useRefreshWhenIndexed(network)
   const terminate = useTerminateDataSet({
     sessionKey: signerFor([TerminateServicePermission]),
-    ...txToasts(network, `Terminate data set #${props.dataSet.dataSetId}`),
+    ...txToasts(network, `Terminate data set #${props.dataSet.dataSetId}`, {
+      onSuccess: refresh,
+    }),
   })
   const disabled =
     !props.dataSet.live ||

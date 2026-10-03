@@ -4,6 +4,7 @@ import {
   useFundWallet,
   useWithdraw,
 } from '@filoz/synapse-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { CoinsIcon, DropletIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -22,7 +23,11 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { useAccountSummary, useDepositWithPermit } from '@/hooks-synapse'
+import {
+  synapseKeys,
+  useAccountSummary,
+  useDepositWithPermit,
+} from '@/hooks-synapse'
 import { formatEpochs } from '@/lib/format'
 
 export const Route = createFileRoute('/dashboard/account')({
@@ -35,7 +40,14 @@ function AccountPage() {
   const usdfc = useERC20Balance({ address })
   const summary = useAccountSummary({ address })
   const deposit = useDepositWithPermit(txToasts(network, 'Deposit'))
-  const withdraw = useWithdraw(txToasts(network, 'Withdrawal'))
+  const queryClient = useQueryClient()
+  // synapse-react's useWithdraw skips the account summary shown here.
+  const withdraw = useWithdraw(
+    txToasts(network, 'Withdrawal', {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: synapseKeys.accountSummary }),
+    })
+  )
   const fund = useFundWallet({
     mutation: {
       onSuccess: () =>

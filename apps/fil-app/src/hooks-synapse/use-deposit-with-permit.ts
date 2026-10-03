@@ -60,6 +60,7 @@ export function useDepositWithPermit(props?: UseDepositWithPermitProps) {
         queryClient.invalidateQueries({ queryKey: synapseKeys.accountInfo }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.erc20Balance }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.accountSummary }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.uploadCosts }),
       ])
       return result
     },

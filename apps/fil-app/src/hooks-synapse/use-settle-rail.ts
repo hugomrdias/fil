@@ -56,6 +56,10 @@ export function useSettleRail(props?: UseSettleRailProps) {
         queryClient.invalidateQueries({ queryKey: synapseKeys.rail }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.accountInfo }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.accountSummary }),
+        queryClient.invalidateQueries({
+          queryKey: synapseKeys.operatorApprovals,
+        }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.uploadCosts }),
       ])
       return result
     },
@@ -110,6 +114,10 @@ export function useSettleTerminatedRail(props?: UseSettleTerminatedRailProps) {
         queryClient.invalidateQueries({ queryKey: synapseKeys.rail }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.accountInfo }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.accountSummary }),
+        queryClient.invalidateQueries({
+          queryKey: synapseKeys.operatorApprovals,
+        }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.uploadCosts }),
       ])
       return result
     },
