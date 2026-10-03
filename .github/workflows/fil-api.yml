@@ -21,9 +21,9 @@ on:
 permissions:
   contents: read
 
+# Cloudflare credentials are set only on the steps that call wrangler, so
+# dependency install scripts never see them.
 env:
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   WRANGLER_SEND_METRICS: 'false'
   PRODUCTION_URL: https://fil-api.hugomrdias.dev
 
@@ -52,6 +52,9 @@ jobs:
 
       - name: Check and deploy
         run: pnpm turbo run deploy --filter=fil-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Probe production
         run: |
@@ -103,6 +106,8 @@ jobs:
           preview_url="$(printf '%s' "$output" | jq -er '.preview.urls[0]')"
           echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
@@ -121,8 +126,12 @@ jobs:
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
 
       - name: Comment preview URL
+        # Update the comment carrying the marker instead of the bot's last
+        # comment, so other github-actions comments are never overwritten.
         run: |
-          gh pr comment "$PR_NUMBER" --edit-last --create-if-none --body "$(cat <<EOF
+          marker='<!-- fil-api-preview -->'
+          body="$(cat <<EOF
+          $marker
           **fil-api preview** for \`${HEAD_SHA::7}\`
 
           - API: $PREVIEW_URL
@@ -131,6 +140,14 @@ jobs:
           - MCP: \`$PREVIEW_URL/mcp\`
           EOF
           )"
+          comment_id="$(gh api --paginate "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$marker\"))) | .id" \
+            | tail -n 1)"
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH "repos/$GH_REPO/issues/comments/$comment_id" -f body="$body" > /dev/null
+          else
+            gh api --method POST "repos/$GH_REPO/issues/$PR_NUMBER/comments" -f body="$body" > /dev/null
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -146,6 +163,11 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Shares the preview group so closing a PR cancels an in-flight preview
+    # deploy before deleting it, instead of racing it.
+    concurrency:
+      group: fil-api-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -161,4 +183,6 @@ jobs:
         working-directory: apps/fil-api
         run: pnpm exec wrangler preview delete --name "pr-$PR_NUMBER" --skip-confirmation
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
