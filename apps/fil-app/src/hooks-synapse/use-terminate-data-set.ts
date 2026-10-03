@@ -63,10 +63,18 @@ export function useTerminateDataSet(props?: UseTerminateDataSetProps) {
         statusUrl,
         onHash: props?.onHash,
       })
+      // Termination also sets an end epoch on the data set's rails.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: synapseKeys.pdpDataSets }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.pdpDataSet }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.dataSets }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.storageSize }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.rail }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.accountInfo }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.accountSummary }),
+        queryClient.invalidateQueries({
+          queryKey: synapseKeys.operatorApprovals,
+        }),
       ])
       return result
     },

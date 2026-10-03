@@ -22,13 +22,14 @@ import { zBool } from '@/lib/search-schemas'
 
 export const Route = createFileRoute('/$network/data-sets/$id')({
   validateSearch: z.object({ removed: zBool }),
-  loader: ({ context, params }) => {
-    assertId(params.id)
-    return orNotFound(
-      context.queryClient.ensureQueryData(
-        dataSetQuery(params.network, params.id)
-      )
+  loaderDeps: ({ search }) => ({ removed: search.removed }),
+  loader: ({ context: { queryClient }, params: { network, id }, deps }) => {
+    assertId(id)
+    // Warm the pieces table without blocking on it.
+    void queryClient.prefetchInfiniteQuery(
+      dataSetPiecesInfinite(network, id, deps.removed)
     )
+    return orNotFound(queryClient.ensureQueryData(dataSetQuery(network, id)))
   },
   component: DataSetPage,
 })

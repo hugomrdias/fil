@@ -212,11 +212,20 @@ export function useUpload(props?: UseUploadProps) {
         // Polls the provider until the add-pieces transaction is confirmed.
         const added = await SP.waitForAddPieces({ statusUrl })
         setStage('done')
+        // More data raises the rail rate, lockup and FWSS allowance usage.
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: synapseKeys.dataSets }),
           queryClient.invalidateQueries({ queryKey: synapseKeys.pdpDataSets }),
           queryClient.invalidateQueries({ queryKey: synapseKeys.pdpDataSet }),
           queryClient.invalidateQueries({ queryKey: synapseKeys.storageSize }),
+          queryClient.invalidateQueries({ queryKey: synapseKeys.accountInfo }),
+          queryClient.invalidateQueries({
+            queryKey: synapseKeys.accountSummary,
+          }),
+          queryClient.invalidateQueries({
+            queryKey: synapseKeys.operatorApprovals,
+          }),
+          queryClient.invalidateQueries({ queryKey: synapseKeys.uploadCosts }),
         ])
         return {
           added,

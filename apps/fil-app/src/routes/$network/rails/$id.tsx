@@ -34,12 +34,14 @@ import { CHAINS, type Network } from '@/lib/networks'
 import { assertId } from '@/lib/route-helpers'
 
 export const Route = createFileRoute('/$network/rails/$id')({
-  loader: async ({ context, params }) => {
-    assertId(params.id)
+  loader: async ({ context: { queryClient }, params: { network, id } }) => {
+    assertId(id)
+    // Warm the settlements table without blocking on it.
+    void queryClient.prefetchInfiniteQuery(settlementsInfinite(network, id))
     // A 404 may only mean the indexer is behind; the page then falls back
     // to the on-chain rail.
-    await context.queryClient
-      .ensureQueryData(railQuery(params.network, params.id))
+    await queryClient
+      .ensureQueryData(railQuery(network, id))
       .catch((error: unknown) => {
         if (!ApiError.isNotFound(error)) {
           throw error

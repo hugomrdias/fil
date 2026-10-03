@@ -52,9 +52,13 @@ export function useSetOperatorApproval(props?: UseSetOperatorApprovalProps) {
         ...variables,
         onHash: props?.onHash,
       })
-      await queryClient.invalidateQueries({
-        queryKey: synapseKeys.operatorApprovals,
-      })
+      // Upload costs report whether FWSS still needs approval.
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: synapseKeys.operatorApprovals,
+        }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.uploadCosts }),
+      ])
       return result
     },
   })

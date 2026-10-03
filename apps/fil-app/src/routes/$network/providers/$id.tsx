@@ -16,13 +16,16 @@ import {
 import { assertId, orNotFound } from '@/lib/route-helpers'
 
 export const Route = createFileRoute('/$network/providers/$id')({
-  loader: ({ context, params }) => {
-    assertId(params.id)
-    return orNotFound(
-      context.queryClient.ensureQueryData(
-        providerQuery(params.network, params.id)
-      )
+  loader: ({ context: { queryClient }, params: { network, id } }) => {
+    assertId(id)
+    // Warm the tab tables without blocking on them.
+    void queryClient.prefetchInfiniteQuery(
+      dataSetsInfinite(network, { provider_id: id })
     )
+    void queryClient.prefetchInfiniteQuery(
+      piecesInfinite(network, { provider_id: id })
+    )
+    return orNotFound(queryClient.ensureQueryData(providerQuery(network, id)))
   },
   component: ProviderPage,
 })

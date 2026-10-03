@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { useRefreshWhenIndexed } from '@/hooks/use-refresh-when-indexed'
 import { useCreateDataSet } from '@/hooks-synapse'
 import { formatBytes } from '@/lib/format'
 
@@ -48,6 +49,7 @@ export function CreateDataSetDialog(props: {
   const [cdn, setCdn] = useState(false)
   const [metadata, setMetadata] = useState<{ key: string; value: string }[]>([])
   const providers = useProviders({ query: { enabled: open } })
+  const refresh = useRefreshWhenIndexed(network)
   const create = useCreateDataSet({
     sessionKey: signerFor([CreateDataSetPermission]),
     ...txToasts<{ dataSetId: bigint }>(network, 'Create data set', {
@@ -55,6 +57,7 @@ export function CreateDataSetDialog(props: {
       onSuccess: (result) => {
         setOpen(false)
         setMetadata([])
+        refresh()
         props.onCreated?.(result.dataSetId)
       },
     }),

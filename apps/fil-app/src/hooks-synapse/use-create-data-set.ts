@@ -68,10 +68,17 @@ export function useCreateDataSet(props?: UseCreateDataSetProps) {
       })
       props?.onHash?.(txHash)
       const dataSet = await SP.waitForCreateDataSet({ statusUrl })
+      // New rails lock funds and use FWSS allowances.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: synapseKeys.dataSets }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.pdpDataSets }),
         queryClient.invalidateQueries({ queryKey: synapseKeys.storageSize }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.accountInfo }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.accountSummary }),
+        queryClient.invalidateQueries({
+          queryKey: synapseKeys.operatorApprovals,
+        }),
+        queryClient.invalidateQueries({ queryKey: synapseKeys.uploadCosts }),
       ])
       return dataSet
     },
