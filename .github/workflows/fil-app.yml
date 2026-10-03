@@ -130,7 +130,9 @@ jobs:
             fi
             exit "$status"
           fi
-          preview_url="$(printf '%s' "$output" | jq -er '.preview.urls[0]')"
+          # Asset upload progress precedes the JSON on stdout.
+          preview_url="$(printf '%s\n' "$output" | sed -n '/^{/,$p' \
+            | jq -er '.preview.urls[0]')"
           echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
