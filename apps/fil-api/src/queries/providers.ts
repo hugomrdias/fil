@@ -17,6 +17,7 @@ const COLUMNS = `provider_id, provider_address, name, service_url,
   provider_active, pdp_product_active, approved, endorsed,
   created_at_block, updated_at_block`
 
+/** Schema-qualified `providers` view. */
 function table(schemas: Schemas) {
   return `${ident(schemas.repair)}.providers`
 }
@@ -49,7 +50,7 @@ export async function listProviders(
     .maybe(params.active, (p) => `provider_active = ${p}`)
     .maybe(params.endorsed, (p) => `endorsed = ${p}`)
   if (params.cursor) {
-    const [id] = decodeCursor(params.cursor, 1)
+    const [id] = decodeCursor(params.cursor, ['int8'])
     where.add((p) => `provider_id < ${p}::bigint`, id)
   }
   const limit = where.param(params.limit + 1)

@@ -75,6 +75,15 @@ export function withStats(db: Db, stats: DbStats): Db {
   }
 }
 
+/**
+ * SQL expression for an event's position in its block. Ponder event ids are
+ * `<blockHash>-<logIndex>`, so same-block events order by the numeric suffix,
+ * not the id text (where `-9` sorts after `-10`).
+ */
+export function logIndex(alias?: string): string {
+  return `split_part(${alias ? `${alias}.` : ''}id, '-', 2)::int`
+}
+
 /** Quote a trusted SQL identifier such as a configured schema name. */
 export function ident(name: string): string {
   return `"${name.replaceAll('"', '""')}"`

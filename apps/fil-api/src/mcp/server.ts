@@ -1,13 +1,13 @@
 import { z } from '@hono/zod-openapi'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
-import { type Db, type DbFactory, type DbStats, withStats } from '../db.ts'
+import type { DbFactory, DbStats } from '../db.ts'
 import { ApiError, networkUnavailable, notFound } from '../errors.ts'
 import {
   type Bindings,
-  type Network,
+  type NetworkDb,
   type NetworkName,
-  resolveNetwork,
+  openNetworkDb,
 } from '../networks.ts'
 import { getDataSet, listDataSets } from '../queries/data-sets.ts'
 import { getPiece, listDataSetPieces, listPieces } from '../queries/pieces.ts'
@@ -60,17 +60,17 @@ export function buildMcpServer(ctx: McpContext): McpHandle {
         'Read-only Filecoin Onchain Cloud data: storage providers, data sets, pieces, Filecoin Pay rails and session keys. Every tool takes a `network` (calibration or mainnet). Large integers are decimal strings. Paginate with `cursor` from `nextCursor`.',
     }
   )
-  const dbs = new Map<NetworkName, Db>()
+  const opened = new Map<NetworkName, NetworkDb>()
 
-  function use(name: NetworkName): { db: Db; network: Network } {
-    const { network, hyperdrive } = resolveNetwork(ctx.env, name)
-    if (!hyperdrive) throw networkUnavailable(name)
-    let db = dbs.get(name)
-    if (!db) {
-      db = withStats(ctx.dbFactory(hyperdrive), ctx.dbStats)
-      dbs.set(name, db)
+  /** Open a network's database once per request, on first tool use. */
+  function use(name: NetworkName): NetworkDb {
+    let n = opened.get(name)
+    if (!n) {
+      n = openNetworkDb(ctx.env, name, ctx.dbFactory, ctx.dbStats)
+      if (!n) throw networkUnavailable(name)
+      opened.set(name, n)
     }
-    return { db, network }
+    return n
   }
 
   /** Register a read-only tool whose handler returns JSON. */
@@ -146,13 +146,9 @@ export function buildMcpServer(ctx: McpContext): McpHandle {
     'list_data_sets',
     'List Warm Storage data sets, filtered by owner (paying client), provider, deleted or CDN.',
     { ...base, ...filters.dataSets(bool), ...page },
-    ({ network, provider_id, with_cdn, ...q }) => {
+    ({ network, ...q }) => {
       const n = use(network)
-      return listDataSets(n.db, n.network.schemas, {
-        ...q,
-        providerId: provider_id,
-        withCdn: with_cdn,
-      })
+      return listDataSets(n.db, n.network.schemas, q)
     }
   )
 
@@ -194,15 +190,12 @@ export function buildMcpServer(ctx: McpContext): McpHandle {
     'list_pieces',
     'Find pieces across data sets by owner (paying client), PieceCID or provider. Requires at least one of owner, cid or provider_id.',
     { ...base, ...filters.pieces(bool), ...page },
-    ({ network, provider_id, ...q }) => {
-      if (!hasPieceSelector({ ...q, provider_id })) {
+    ({ network, ...q }) => {
+      if (!hasPieceSelector(q)) {
         throw new ApiError(400, 'invalid_request', PIECE_SELECTOR_MESSAGE)
       }
       const n = use(network)
-      return listPieces(n.db, n.network.schemas, {
-        ...q,
-        providerId: provider_id,
-      })
+      return listPieces(n.db, n.network.schemas, q)
     }
   )
 
@@ -264,7 +257,7 @@ export function buildMcpServer(ctx: McpContext): McpHandle {
   return {
     server,
     closeDbs: async () => {
-      await Promise.all([...dbs.values()].map((db) => db.close()))
+      await Promise.all([...opened.values()].map((n) => n.close()))
     },
   }
 }

@@ -21,12 +21,20 @@ describe('rate limits', () => {
     expect(res.status).toBe(429)
   })
 
-  it('does not limit health, docs or the OpenAPI document', async () => {
+  it('limits health, which queries every database', async () => {
+    const { request, fake } = testApp(() => [rows.checkpoint], {
+      RATE_LIMIT_API: fakeLimiter(false),
+    })
+    expect((await request('/health')).status).toBe(429)
+    expect(fake.queries).toHaveLength(0)
+  })
+
+  it('does not limit docs or the OpenAPI document', async () => {
     const { request } = testApp(undefined, {
       RATE_LIMIT_API: fakeLimiter(false),
       RATE_LIMIT_MCP: fakeLimiter(false),
     })
-    for (const path of ['/health', '/openapi.json', '/docs']) {
+    for (const path of ['/openapi.json', '/docs']) {
       expect((await request(path)).status).toBe(200)
     }
   })

@@ -1,3 +1,5 @@
+import { type Db, type DbFactory, type DbStats, withStats } from './db.ts'
+
 /**
  * Filecoin networks served by the API and the indexer schemas behind each.
  *
@@ -58,4 +60,30 @@ export function resolveNetwork(
 ): { network: Network; hyperdrive: Hyperdrive | undefined } {
   const network = NETWORKS[name]
   return { network, hyperdrive: env[network.binding] }
+}
+
+/** A network with an open database client. */
+export interface NetworkDb {
+  network: Network
+  /** Client that records query time in the request's {@link DbStats}. */
+  db: Db
+  /** Release the connection; call once the request is done. */
+  close: () => Promise<void>
+}
+
+/**
+ * Open a database client for a network. Returns `undefined` when the
+ * network's Hyperdrive binding is not configured, so callers decide whether
+ * that is an error or a status.
+ */
+export function openNetworkDb(
+  env: Bindings,
+  name: NetworkName,
+  dbFactory: DbFactory,
+  stats: DbStats
+): NetworkDb | undefined {
+  const { network, hyperdrive } = resolveNetwork(env, name)
+  if (!hyperdrive) return undefined
+  const raw = dbFactory(hyperdrive)
+  return { network, db: withStats(raw, stats), close: () => raw.close() }
 }

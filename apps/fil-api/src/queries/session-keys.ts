@@ -1,4 +1,4 @@
-import { type Db, ident, type Row, Where } from '../db.ts'
+import { type Db, ident, logIndex, type Row, Where } from '../db.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { SessionKey, SessionKeyEvent } from '../schemas/resources.ts'
@@ -54,6 +54,7 @@ export interface ListSessionKeyEventsParams {
   cursor?: string
 }
 
+/** One permission entry as aggregated by {@link listSessionKeys}' SQL. */
 interface PermissionRow {
   permission: string
   expiry: string
@@ -97,7 +98,10 @@ export async function listSessionKeys(
     .maybe(params.signer?.toLowerCase(), (p) => `s.signer = ${p}`)
   const outer = new Where(inner.params)
   if (params.cursor) {
-    const [identity, signer] = decodeCursor(params.cursor, 2)
+    const [identity, signer] = decodeCursor(params.cursor, [
+      'address',
+      'address',
+    ])
     outer.add((a, b) => `(identity, signer) > (${a}, ${b})`, identity, signer)
   }
   const having = new Where(inner.params)
@@ -119,7 +123,7 @@ export async function listSessionKeys(
          as p(permission)
        ${inner}
        order by s.identity, s.signer, p.permission, s.block_number desc,
-         s.id desc
+         ${logIndex('s')} desc
      )
      select identity, signer, max(expiry)::text as expiry,
        max(block_number)::text as updated_at_block,
@@ -176,19 +180,23 @@ export async function listSessionKeyEvents(
     .maybe(params.identity?.toLowerCase(), (p) => `identity = ${p}`)
     .maybe(params.signer?.toLowerCase(), (p) => `signer = ${p}`)
   if (params.cursor) {
-    const [block, id] = decodeCursor(params.cursor, 2)
-    where.add((a, b) => `(block_number, id) < (${a}::numeric, ${b})`, block, id)
+    const [block, index] = decodeCursor(params.cursor, ['int8', 'int8'])
+    where.add(
+      (a, b) => `(block_number, ${logIndex()}) < (${a}::numeric, ${b}::int)`,
+      block,
+      index
+    )
   }
   const limit = where.param(params.limit + 1)
   const rows = await db.query(
-    `select id, identity, signer, expiry, permissions, origin, block_number,
-       timestamp, tx_hash
+    `select ${logIndex()} as log_index, identity, signer, expiry, permissions,
+       origin, block_number, timestamp, tx_hash
      from ${ident(schemas.observer)}.skr_authorizations_updated ${where}
-     order by block_number desc, id desc limit ${limit}`,
+     order by block_number desc, log_index desc limit ${limit}`,
     where.params
   )
   return toPage(rows, params.limit, mapSessionKeyEvent, (r) => [
     req(r.block_number),
-    req(r.id),
+    req(r.log_index),
   ])
 }

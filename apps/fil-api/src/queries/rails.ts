@@ -1,4 +1,4 @@
-import { type Db, ident, type Row, Where } from '../db.ts'
+import { type Db, ident, logIndex, type Row, Where } from '../db.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { Rail, Settlement } from '../schemas/resources.ts'
@@ -27,42 +27,52 @@ export interface ListSettlementsParams {
 
 /**
  * Current rail state folded from Filecoin Pay events: the creation event plus
- * the latest rate and lockup changes, termination, finalization and the
- * settlement totals. Same-block changes are ordered by event id.
+ * the latest rate and lockup changes, termination and finalization. `where`
+ * and `limit` apply here, before settlement totals are joined, so totals are
+ * only aggregated for rails on the returned page.
  *
  * @see https://github.com/FilOzone/filecoin-pay
  */
-function railSelect(s: string) {
-  return `select c.rail_id, c.payer, c.payee, c.token, c.operator, c.validator,
-    c.service_fee_recipient, c.commission_rate_bps, c.block_number,
-    c.timestamp, c.tx_hash,
-    r.new_rate, l.new_lockup_period, l.new_lockup_fixed,
-    t.end_epoch, t.by as terminated_by, f.finalized,
-    st.settled_up_to, st.total_settled_amount, st.total_net_payee_amount
-  from ${s}.fp_rail_created c
-  left join lateral (
-    select x.new_rate from ${s}.fp_rail_rate_modified x
-    where x.rail_id = c.rail_id order by x.block_number desc, x.id desc limit 1
-  ) r on true
-  left join lateral (
-    select x.new_lockup_period, x.new_lockup_fixed
-    from ${s}.fp_rail_lockup_modified x
-    where x.rail_id = c.rail_id order by x.block_number desc, x.id desc limit 1
-  ) l on true
-  left join lateral (
-    select x.end_epoch, x.by from ${s}.fp_rail_terminated x
-    where x.rail_id = c.rail_id order by x.block_number desc, x.id desc limit 1
-  ) t on true
-  left join lateral (
-    select true as finalized from ${s}.fp_rail_finalized x
-    where x.rail_id = c.rail_id limit 1
-  ) f on true
+function railQuery(s: string, where: string, limit: string) {
+  return `select page.*, st.settled_up_to, st.total_settled_amount,
+    st.total_net_payee_amount
+  from (
+    select c.rail_id, c.payer, c.payee, c.token, c.operator, c.validator,
+      c.service_fee_recipient, c.commission_rate_bps, c.block_number,
+      c.timestamp, c.tx_hash,
+      r.new_rate, l.new_lockup_period, l.new_lockup_fixed,
+      t.end_epoch, t.by as terminated_by, f.finalized
+    from ${s}.fp_rail_created c
+    left join lateral (
+      select x.new_rate from ${s}.fp_rail_rate_modified x
+      where x.rail_id = c.rail_id
+      order by x.block_number desc, ${logIndex('x')} desc limit 1
+    ) r on true
+    left join lateral (
+      select x.new_lockup_period, x.new_lockup_fixed
+      from ${s}.fp_rail_lockup_modified x
+      where x.rail_id = c.rail_id
+      order by x.block_number desc, ${logIndex('x')} desc limit 1
+    ) l on true
+    left join lateral (
+      select x.end_epoch, x.by from ${s}.fp_rail_terminated x
+      where x.rail_id = c.rail_id
+      order by x.block_number desc, ${logIndex('x')} desc limit 1
+    ) t on true
+    left join lateral (
+      select true as finalized from ${s}.fp_rail_finalized x
+      where x.rail_id = c.rail_id limit 1
+    ) f on true
+    ${where}
+    order by c.rail_id desc limit ${limit}
+  ) page
   left join lateral (
     select max(x.settled_up_to) as settled_up_to,
       coalesce(sum(x.total_settled_amount), 0) as total_settled_amount,
       coalesce(sum(x.total_net_payee_amount), 0) as total_net_payee_amount
-    from ${s}.fp_rail_settled x where x.rail_id = c.rail_id
-  ) st on true`
+    from ${s}.fp_rail_settled x where x.rail_id = page.rail_id
+  ) st on true
+  order by page.rail_id desc`
 }
 
 const STATE_CONDITIONS: Record<RailState, string> = {
@@ -117,13 +127,12 @@ export async function listRails(
     .maybe(params.token?.toLowerCase(), (p) => `c.token = ${p}`)
   if (params.state) where.raw(STATE_CONDITIONS[params.state])
   if (params.cursor) {
-    const [id] = decodeCursor(params.cursor, 1)
+    const [id] = decodeCursor(params.cursor, ['int8'])
     where.add((p) => `c.rail_id < ${p}::numeric`, id)
   }
   const limit = where.param(params.limit + 1)
   const rows = await db.query(
-    `${railSelect(ident(schemas.observer))} ${where}
-     order by c.rail_id desc limit ${limit}`,
+    railQuery(ident(schemas.observer), where.toString(), limit),
     where.params
   )
   return toPage(rows, params.limit, mapRail, (r) => [req(r.rail_id)])
@@ -136,7 +145,7 @@ export async function getRail(
   railId: string
 ): Promise<Rail | undefined> {
   const rows = await db.query(
-    `${railSelect(ident(schemas.observer))} where c.rail_id = $1::numeric`,
+    railQuery(ident(schemas.observer), 'where c.rail_id = $1::numeric', '1'),
     [railId]
   )
   return rows[0] && mapRail(rows[0])
@@ -165,20 +174,24 @@ export async function listRailSettlements(
 ): Promise<Page<Settlement>> {
   const where = new Where().add((p) => `rail_id = ${p}::numeric`, params.railId)
   if (params.cursor) {
-    const [block, id] = decodeCursor(params.cursor, 2)
-    where.add((a, b) => `(block_number, id) < (${a}::numeric, ${b})`, block, id)
+    const [block, index] = decodeCursor(params.cursor, ['int8', 'int8'])
+    where.add(
+      (a, b) => `(block_number, ${logIndex()}) < (${a}::numeric, ${b}::int)`,
+      block,
+      index
+    )
   }
   const limit = where.param(params.limit + 1)
   const rows = await db.query(
-    `select id, rail_id, total_settled_amount, total_net_payee_amount,
-       operator_commission, network_fee, settled_up_to, block_number,
-       timestamp, tx_hash
+    `select ${logIndex()} as log_index, rail_id, total_settled_amount,
+       total_net_payee_amount, operator_commission, network_fee,
+       settled_up_to, block_number, timestamp, tx_hash
      from ${ident(schemas.observer)}.fp_rail_settled ${where}
-     order by block_number desc, id desc limit ${limit}`,
+     order by block_number desc, log_index desc limit ${limit}`,
     where.params
   )
   return toPage(rows, params.limit, mapSettlement, (r) => [
     req(r.block_number),
-    req(r.id),
+    req(r.log_index),
   ])
 }

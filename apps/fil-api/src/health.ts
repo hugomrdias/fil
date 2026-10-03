@@ -1,10 +1,10 @@
-import { type DbFactory, type DbStats, withStats } from './db.ts'
+import type { DbFactory, DbStats } from './db.ts'
 import { log } from './log.ts'
 import {
   type Bindings,
   NETWORK_NAMES,
   type NetworkName,
-  resolveNetwork,
+  openNetworkDb,
 } from './networks.ts'
 import { getStatus } from './queries/status.ts'
 
@@ -61,12 +61,11 @@ async function checkNetwork(
   ctx: HealthContext,
   name: NetworkName
 ): Promise<NetworkHealth> {
-  const { network, hyperdrive } = resolveNetwork(ctx.env, name)
-  if (!hyperdrive) return { status: 'unavailable' }
-  const db = ctx.dbFactory(hyperdrive)
+  const opened = openNetworkDb(ctx.env, name, ctx.dbFactory, ctx.dbStats)
+  if (!opened) return { status: 'unavailable' }
   try {
     const status = await withTimeout(
-      getStatus(withStats(db, ctx.dbStats), network),
+      getStatus(opened.db, opened.network),
       ctx.timeoutMs ?? 5000
     )
     const indexers = Object.fromEntries(
@@ -90,7 +89,7 @@ async function checkNetwork(
     })
     return { status: 'error' }
   } finally {
-    ctx.waitUntil(db.close())
+    ctx.waitUntil(opened.close())
   }
 }
 

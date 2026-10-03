@@ -258,11 +258,7 @@ export function networkRoutes() {
 
   api.openapi(routes.listDataSets, async (c) => {
     const q = c.req.valid('query')
-    const page = await listDataSets(c.var.db, c.var.network.schemas, {
-      ...q,
-      providerId: q.provider_id,
-      withCdn: q.with_cdn,
-    })
+    const page = await listDataSets(c.var.db, c.var.network.schemas, q)
     return c.json(page, 200)
   })
 
@@ -297,10 +293,7 @@ export function networkRoutes() {
 
   api.openapi(routes.listPieces, async (c) => {
     const q = c.req.valid('query')
-    const page = await listPieces(c.var.db, c.var.network.schemas, {
-      ...q,
-      providerId: q.provider_id,
-    })
+    const page = await listPieces(c.var.db, c.var.network.schemas, q)
     return c.json(page, 200)
   })
 

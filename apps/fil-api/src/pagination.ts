@@ -18,24 +18,43 @@ export function encodeCursor(key: CursorKey): string {
     .replace(/=+$/, '')
 }
 
+/** Largest value of a Postgres `bigint` (`int8`). */
+export const INT8_MAX = 9223372036854775807n
+
+/** Whether `value` is a decimal integer that fits in a Postgres `bigint`. */
+export function isInt8(value: string): boolean {
+  return /^\d{1,19}$/.test(value) && BigInt(value) <= INT8_MAX
+}
+
+/** Type of one cursor part, checked before it reaches a SQL cast. */
+export type CursorPart = 'int8' | 'address'
+
+const CURSOR_PART_CHECKS: Record<CursorPart, (value: string) => boolean> = {
+  int8: isInt8,
+  address: (value) => /^0x[0-9a-f]{40}$/.test(value),
+}
+
 /**
- * Decode a cursor into a sort key with `size` string parts.
+ * Decode a cursor into a sort key whose parts match `parts`.
  *
- * @throws {ApiError} 400 `invalid_cursor` when the cursor is malformed.
+ * @throws {ApiError} 400 `invalid_cursor` when the cursor is malformed or a
+ * part has the wrong type.
  */
-export function decodeCursor(cursor: string, size: number): string[] {
+export function decodeCursor(cursor: string, parts: CursorPart[]): string[] {
   try {
     const b64 = cursor.replaceAll('-', '+').replaceAll('_', '/')
     const json = new TextDecoder().decode(
       Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
     )
     const key: unknown = JSON.parse(json)
-    if (
-      Array.isArray(key) &&
-      key.length === size &&
-      key.every((v) => typeof v === 'string' || typeof v === 'number')
-    ) {
-      return key.map(String)
+    if (Array.isArray(key) && key.length === parts.length) {
+      const values = key.map(String)
+      if (
+        key.every((v) => typeof v === 'string' || typeof v === 'number') &&
+        values.every((v, i) => CURSOR_PART_CHECKS[parts[i] ?? 'int8'](v))
+      ) {
+        return values
+      }
     }
   } catch {
     // fall through

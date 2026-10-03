@@ -73,7 +73,8 @@ export function createApp(options: AppOptions = {}) {
       mcp: '/mcp',
     })
   )
-  app.get('/health', async (c) => {
+  // Health queries every network's database, so it shares the API limit.
+  app.get('/health', rateLimit('RATE_LIMIT_API'), async (c) => {
     const health = await checkHealth({
       env: c.env,
       dbFactory,
