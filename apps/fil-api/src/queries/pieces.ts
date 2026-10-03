@@ -171,12 +171,18 @@ export interface PieceProvider {
   providerId: string
   /** PDP service URL (Curio) of the provider. */
   serviceUrl: string
+  /**
+   * The copy's `ipfsRootCID` metadata when its data set is IPFS-indexed, so
+   * the provider announces the content to the IPFS network. Unvalidated.
+   */
+  ipfsRootCid: string | null
 }
 
 /** A provider row from {@link findProvider}. */
 interface PieceProviderRow {
   provider_id: string
   service_url: string
+  ipfs_root_cid: string | null
 }
 
 /**
@@ -191,7 +197,9 @@ async function findProvider(
   match: Sql
 ): Promise<PieceProvider | undefined> {
   const rows = await db.query<PieceProviderRow>(
-    sql`select pr.provider_id, pr.service_url
+    sql`select pr.provider_id, pr.service_url,
+       case when d.with_ipfs_indexing then p.metadata->>'ipfsRootCID' end
+         as ipfs_root_cid
      from ${pieces(schemas)} p
      join ${dataSets(schemas)} d on d.data_set_id = p.data_set_id
      join ${providers(schemas)} pr on pr.provider_id = d.provider_id
@@ -203,7 +211,13 @@ async function findProvider(
      limit 1`
   )
   const row = rows[0]
-  return row && { providerId: row.provider_id, serviceUrl: row.service_url }
+  return (
+    row && {
+      providerId: row.provider_id,
+      serviceUrl: row.service_url,
+      ipfsRootCid: row.ipfs_root_cid,
+    }
+  )
 }
 
 /** Find the provider to retrieve a PieceCID from, if any serves it. */

@@ -9,7 +9,12 @@ import {
 import { fakeLimiter, rows, testApp } from './helpers.ts'
 
 const SERVICE_URL = rows.provider.service_url
-const providerRow = { provider_id: '2', service_url: SERVICE_URL }
+const providerRow = {
+  provider_id: '2',
+  service_url: SERVICE_URL,
+  ipfs_root_cid: null,
+}
+const ROOT_CID = 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi'
 
 let seed = 0
 
@@ -59,12 +64,50 @@ describe('GET /get/{cid}', () => {
     expect(fake.queries).toHaveLength(2)
   })
 
-  it('sends PieceCIDs to the provider even with browser=true', async () => {
+  it('sends PieceCIDs without an IPFS root to the provider with browser=true', async () => {
     const cid = await uniquePieceCid()
     const { request } = testApp(() => [providerRow])
     const res = await request(`/get/${cid}?browser=true`)
     expect(res.headers.get('location')).toBe(`${SERVICE_URL}/piece/${cid}`)
   })
+
+  it('opens PieceCIDs with an IPFS root in inbrowser.link with browser=true', async () => {
+    const cid = await uniquePieceCid()
+    const { request, fake } = testApp(() => [
+      { ...providerRow, ipfs_root_cid: ROOT_CID },
+    ])
+    const res = await request(`/get/${cid}?browser=true&filename=a.txt`)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe(
+      `${INBROWSER_URL}/ipfs/${ROOT_CID}?filename=a.txt`
+    )
+    expect(res.headers.get('x-cache')).toBe('miss')
+    expect(fake.queries[0]?.text).toContain(
+      `case when d.with_ipfs_indexing then p.metadata->>'ipfsRootCID' end`
+    )
+
+    // The cached entry keeps the root, and plain requests still get bytes.
+    const cached = await request(`/get/${cid}?browser=true`)
+    expect(cached.headers.get('location')).toBe(
+      `${INBROWSER_URL}/ipfs/${ROOT_CID}`
+    )
+    expect(cached.headers.get('x-cache')).toBe('hit')
+    const raw = await request(`/get/${cid}`)
+    expect(raw.headers.get('location')).toBe(`${SERVICE_URL}/piece/${cid}`)
+    expect(fake.queries).toHaveLength(1)
+  })
+
+  it.each(['nope', rows.piece.cid])(
+    'ignores an ipfsRootCID of %s that is not an IPFS CID',
+    async (root) => {
+      const cid = await uniquePieceCid()
+      const { request } = testApp(() => [
+        { ...providerRow, ipfs_root_cid: root },
+      ])
+      const res = await request(`/get/${cid}?browser=true`)
+      expect(res.headers.get('location')).toBe(`${SERVICE_URL}/piece/${cid}`)
+    }
+  )
 
   it('redirects IPFS root CIDs to the provider gateway', async () => {
     const cid = uniqueIpfsCid()

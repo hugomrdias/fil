@@ -45,7 +45,8 @@ Conventions:
 
 | CID | `browser` | Redirect |
 | --- | --- | --- |
-| PieceCID v2 (`bafkzcib…`) | any | `{serviceUrl}/piece/{cid}` on a provider storing the piece |
+| PieceCID v2 (`bafkzcib…`) | `false` or absent | `{serviceUrl}/piece/{cid}` on a provider storing the piece |
+| PieceCID v2 (`bafkzcib…`) | `true` | `https://inbrowser.link/ipfs/{root}` when the chosen copy has `ipfsRootCID` metadata in an IPFS-indexed data set, otherwise `{serviceUrl}/piece/{cid}` |
 | Other CID (IPFS content) | `false` or absent | `{serviceUrl}/ipfs/{cid}` on a provider with a piece whose `ipfsRootCID` metadata matches, in an IPFS-indexed data set |
 | Other CID (IPFS content) | `true` | `https://inbrowser.link/ipfs/{cid}`, without a database lookup |
 

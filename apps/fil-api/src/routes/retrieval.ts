@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
-import type { RetrievalCid } from '../cid.ts'
+import { parseRetrievalCid, type RetrievalCid } from '../cid.ts'
 import { type DbFactory, type DbStats, openNetworkDb } from '../db.ts'
 import { networkUnavailable, notFound } from '../errors.ts'
 import { rateLimit } from '../middleware/rate-limit.ts'
@@ -49,7 +49,9 @@ const route = createRoute({
   tags: ['Retrieval'],
   summary: 'Redirect to where content can be retrieved',
   description: [
-    'Redirects a PieceCID to `/piece/{cid}` on a storage provider serving it.',
+    'Redirects a PieceCID to `/piece/{cid}` on a storage provider serving it,',
+    'or with `browser=true` to inbrowser.link when the piece has `ipfsRootCID`',
+    'metadata in an IPFS-indexed data set.',
     'Redirects an IPFS root CID to `/ipfs/{cid}` on a provider with a piece',
     'whose `ipfsRootCID` metadata matches, or to inbrowser.link with',
     '`browser=true`. Other query parameters are forwarded.',
@@ -61,7 +63,8 @@ const route = createRoute({
     query: z.object({
       network: NetworkSchema.default('mainnet'),
       browser: BooleanQuery.optional().openapi({
-        description: 'Open IPFS content in the browser through inbrowser.link',
+        description:
+          'Open IPFS content, or a piece with an IPFS root, in the browser through inbrowser.link',
       }),
     }),
   },
@@ -149,7 +152,7 @@ export function retrievalRoutes(dbFactory: DbFactory) {
     const lookup = { env: c.env, network, dbFactory, cid }
     const { value: provider, status } = await staleWhileRevalidate({
       cache: caches.default,
-      key: new URL(`/__cache/v1/${network}/${cid.kind}/${cid.cid}`, c.req.url)
+      key: new URL(`/__cache/v2/${network}/${cid.kind}/${cid.cid}`, c.req.url)
         .href,
       freshMs: PROVIDER_FRESH_MS,
       maxAgeSeconds: PROVIDER_MAX_AGE_S,
@@ -172,6 +175,10 @@ export function retrievalRoutes(dbFactory: DbFactory) {
 
     c.header('Cache-Control', PROVIDER_REDIRECT_CACHE_CONTROL)
     c.header('X-Cache', status)
+    const root = browser ? ipfsRoot(provider.ipfsRootCid) : undefined
+    if (root) {
+      return c.redirect(retrievalUrl(INBROWSER_URL, `ipfs/${root}`, query), 302)
+    }
     // Kinds match Curio's endpoints: `/piece/{cid}` and `/ipfs/{cid}`.
     return c.redirect(
       retrievalUrl(provider.serviceUrl, `${cid.kind}/${cid.cid}`, query),
@@ -180,6 +187,20 @@ export function retrievalRoutes(dbFactory: DbFactory) {
   })
 
   return api
+}
+
+/**
+ * Normalized IPFS root CID from piece metadata, or `undefined` when the
+ * metadata has none or holds something other than an IPFS CID.
+ */
+function ipfsRoot(value: string | null): string | undefined {
+  if (!value) return undefined
+  try {
+    const cid = parseRetrievalCid(value)
+    return cid.kind === 'ipfs' ? cid.cid : undefined
+  } catch {
+    return undefined
+  }
 }
 
 /** Empty {@link DbStats} for work outside the request's own totals. */
