@@ -5,6 +5,7 @@ import {
   type Network,
   type NetworkName,
 } from './networks.ts'
+import { raw, render, type Sql } from './sql.ts'
 import { withSpan } from './tracing.ts'
 
 /** A database row keyed by column name. */
@@ -12,11 +13,11 @@ export type Row = Record<string, unknown>
 
 /** Minimal read-only query interface used by the query layer. */
 export interface Db {
-  /** Run a parameterized SQL query and return its rows. */
-  query<T extends Row = Row>(
-    text: string,
-    params?: readonly unknown[]
-  ): Promise<T[]>
+  /**
+   * Run a SQL fragment and return its rows, typed by the caller. `bigint` and
+   * `numeric` columns arrive as strings, `jsonb` and `boolean` parsed.
+   */
+  query<T extends object = Row>(query: Sql): Promise<T[]>
   /** Release the underlying connection. */
   close(): Promise<void>
 }
@@ -39,10 +40,8 @@ export function createPostgresDb(connectionString: string): Db {
     prepare: true,
   })
   return {
-    async query<T extends Row = Row>(
-      text: string,
-      params: readonly unknown[] = []
-    ) {
+    async query<T extends object = Row>(query: Sql) {
+      const { text, params } = render(query)
       const rows = await sql.unsafe(
         text,
         params as postgres.ParameterOrJSON<never>[],
@@ -81,17 +80,17 @@ export function withStats(
   attributes: Record<string, string> = {}
 ): Db {
   return {
-    query<T extends Row = Row>(text: string, params?: readonly unknown[]) {
+    query<T extends object = Row>(query: Sql) {
       // Queries are parameterized, so the text holds no request values.
       const spanAttributes = {
         'db.system.name': 'postgresql',
-        'db.query.text': text,
+        'db.query.text': render(query).text,
         ...attributes,
       }
       return withSpan('db.query', spanAttributes, async (span) => {
         const start = performance.now()
         try {
-          const rows = await db.query<T>(text, params)
+          const rows = await db.query<T>(query)
           span.setAttribute('db.response.returned_rows', rows.length)
           return rows
         } finally {
@@ -109,62 +108,8 @@ export function withStats(
  * `<blockHash>-<logIndex>`, so same-block events order by the numeric suffix,
  * not the id text (where `-9` sorts after `-10`).
  */
-export function logIndex(alias?: string): string {
-  return `split_part(${alias ? `${alias}.` : ''}id, '-', 2)::int`
-}
-
-/** Quote a trusted SQL identifier such as a configured schema name. */
-export function ident(name: string): string {
-  return `"${name.replaceAll('"', '""')}"`
-}
-
-/**
- * Collects SQL `WHERE` conditions and their positional parameters.
- */
-export class Where {
-  readonly params: unknown[]
-  readonly #conditions: string[] = []
-
-  /** Start a builder, optionally after existing parameters. */
-  constructor(params: unknown[] = []) {
-    this.params = params
-  }
-
-  /** Add a parameter and return its `$n` placeholder. */
-  param(value: unknown): string {
-    this.params.push(value)
-    return `$${this.params.length}`
-  }
-
-  /** Add a condition; `build` receives placeholders for `values`. */
-  add(build: (...placeholders: string[]) => string, ...values: unknown[]) {
-    this.#conditions.push(build(...values.map((v) => this.param(v))))
-    return this
-  }
-
-  /** Add a condition only when `value` is defined. */
-  maybe<T>(value: T | undefined, build: (placeholder: string) => string) {
-    if (value !== undefined) this.add(build, value)
-    return this
-  }
-
-  /** Add a raw condition with no parameters. */
-  raw(condition: string) {
-    this.#conditions.push(condition)
-    return this
-  }
-
-  /** Render `<keyword> ...`, or an empty string without conditions. */
-  render(keyword: 'where' | 'having' = 'where'): string {
-    return this.#conditions.length === 0
-      ? ''
-      : `${keyword} ${this.#conditions.join(' and ')}`
-  }
-
-  /** Render as a `WHERE` clause. */
-  toString(): string {
-    return this.render()
-  }
+export function logIndex(alias?: string): Sql {
+  return raw(`split_part(${alias ? `${alias}.` : ''}id, '-', 2)::int`)
 }
 
 /** A network with an open database client. */

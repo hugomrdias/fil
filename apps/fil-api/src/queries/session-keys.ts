@@ -1,8 +1,9 @@
-import { type Db, ident, logIndex, type Row, Where } from '../db.ts'
+import { type Db, logIndex } from '../db.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { SessionKey, SessionKeyEvent } from '../schemas/resources.ts'
-import { num, req, reqAddr, str } from './map.ts'
+import { ident, sql, where } from '../sql.ts'
+import { reqAddr } from './map.ts'
 
 /**
  * Names of known Warm Storage EIP-712 typehashes used as session key
@@ -63,9 +64,32 @@ interface PermissionRow {
   txHash: string
 }
 
+/** A session key folded by {@link listSessionKeys}' SQL. */
+interface SessionKeyRow {
+  identity: string
+  signer: string
+  expiry: string
+  updated_at_block: string
+  permissions: PermissionRow[]
+}
+
+/** An `skr_authorizations_updated` row with its log index. */
+interface SessionKeyEventRow {
+  log_index: number
+  identity: string
+  signer: string
+  expiry: string
+  /** JSON-encoded array of permission typehashes. */
+  permissions: string | null
+  origin: string
+  block_number: string
+  timestamp: string
+  tx_hash: string
+}
+
 /** Map an aggregated session key row to the API shape. */
-export function mapSessionKey(row: Row, now: number): SessionKey {
-  const permissions = (row.permissions as PermissionRow[]).map((p) => ({
+export function mapSessionKey(row: SessionKeyRow, now: number): SessionKey {
+  const permissions = row.permissions.map((p) => ({
     permission: p.permission,
     name: PERMISSION_NAMES[p.permission] ?? null,
     expiry: p.expiry,
@@ -78,8 +102,8 @@ export function mapSessionKey(row: Row, now: number): SessionKey {
     identity: reqAddr(row.identity),
     signer: reqAddr(row.signer),
     active: permissions.some((p) => p.active),
-    expiry: req(row.expiry),
-    updatedAtBlock: req(row.updated_at_block),
+    expiry: row.expiry,
+    updatedAtBlock: row.updated_at_block,
     permissions,
   }
 }
@@ -94,40 +118,25 @@ export async function listSessionKeys(
   params: ListSessionKeysParams
 ): Promise<Page<SessionKey>> {
   const now = params.now ?? Math.floor(Date.now() / 1000)
-  const inner = new Where()
-    .maybe(params.identity, (p) => `s.identity = ${p}`)
-    .maybe(params.signer, (p) => `s.signer = ${p}`)
-  if (params.cursor) {
-    // Pages split on (identity, signer), so the cursor can filter events
-    // before they are folded.
-    const [identity, signer] = decodeCursor(params.cursor, [
-      'address',
-      'address',
-    ])
-    inner.add(
-      (a, b) => `(s.identity, s.signer) > (${a}, ${b})`,
-      identity,
-      signer
-    )
-  }
-  const having = new Where(inner.params)
-  if (params.active !== undefined) {
-    having.add(
-      (now, active) => `(max(expiry) > ${now}::numeric) = ${active}`,
-      now,
-      params.active
-    )
-  }
-  const limit = inner.param(params.limit + 1)
-  const rows = await db.query(
-    `with latest as (
+  // Pages split on (identity, signer), so the cursor can filter events
+  // before they are folded.
+  const [identity, signer] = params.cursor
+    ? decodeCursor(params.cursor, ['address', 'address'])
+    : []
+  const rows = await db.query<SessionKeyRow>(
+    sql`with latest as (
        select distinct on (s.identity, s.signer, p.permission)
          s.identity, s.signer, p.permission, s.expiry, s.origin,
          s.block_number, s.tx_hash
        from ${ident(schemas.observer)}.skr_authorizations_updated s
        cross join lateral jsonb_array_elements_text(s.permissions::jsonb)
          as p(permission)
-       ${inner}
+       ${where([
+         params.identity !== undefined && sql`s.identity = ${params.identity}`,
+         params.signer !== undefined && sql`s.signer = ${params.signer}`,
+         identity !== undefined &&
+           sql`(s.identity, s.signer) > (${identity}, ${signer})`,
+       ])}
        order by s.identity, s.signer, p.permission, s.block_number desc,
          ${logIndex('s')} desc
      )
@@ -139,23 +148,27 @@ export async function listSessionKeys(
        ) order by permission) as permissions
      from latest
      group by identity, signer
-     ${having.render('having')}
-     order by identity, signer limit ${limit}`,
-    inner.params
+     ${where(
+       [
+         params.active !== undefined &&
+           sql`(max(expiry) > ${now}::numeric) = ${params.active}`,
+       ],
+       'having'
+     )}
+     order by identity, signer limit ${params.limit + 1}`
   )
   return toPage(
     rows,
     params.limit,
     (r) => mapSessionKey(r, now),
-    (r) => [req(r.identity), req(r.signer)]
+    (r) => [r.identity, r.signer]
   )
 }
 
 /** Parse the JSON-encoded permissions column. */
-function parsePermissions(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(String)
+function parsePermissions(value: string | null): string[] {
   try {
-    const parsed: unknown = JSON.parse(String(value))
+    const parsed: unknown = JSON.parse(value ?? '')
     return Array.isArray(parsed) ? parsed.map(String) : []
   } catch {
     return []
@@ -163,16 +176,16 @@ function parsePermissions(value: unknown): string[] {
 }
 
 /** Map an `skr_authorizations_updated` row to the API shape. */
-function mapSessionKeyEvent(row: Row): SessionKeyEvent {
+function mapSessionKeyEvent(row: SessionKeyEventRow): SessionKeyEvent {
   return {
     identity: reqAddr(row.identity),
     signer: reqAddr(row.signer),
-    expiry: req(row.expiry),
+    expiry: row.expiry,
     permissions: parsePermissions(row.permissions),
-    origin: str(row.origin) || null,
-    blockNumber: req(row.block_number),
-    timestamp: num(row.timestamp),
-    txHash: req(row.tx_hash),
+    origin: row.origin || null,
+    blockNumber: row.block_number,
+    timestamp: Number(row.timestamp),
+    txHash: row.tx_hash,
   }
 }
 
@@ -182,27 +195,22 @@ export async function listSessionKeyEvents(
   schemas: Schemas,
   params: ListSessionKeyEventsParams
 ): Promise<Page<SessionKeyEvent>> {
-  const where = new Where()
-    .maybe(params.identity, (p) => `identity = ${p}`)
-    .maybe(params.signer, (p) => `signer = ${p}`)
-  if (params.cursor) {
-    const [block, index] = decodeCursor(params.cursor, ['int8', 'int8'])
-    where.add(
-      (a, b) => `(block_number, ${logIndex()}) < (${a}::numeric, ${b}::int)`,
-      block,
-      index
-    )
-  }
-  const limit = where.param(params.limit + 1)
-  const rows = await db.query(
-    `select ${logIndex()} as log_index, identity, signer, expiry, permissions,
+  const [block, index] = params.cursor
+    ? decodeCursor(params.cursor, ['int8', 'int8'])
+    : []
+  const rows = await db.query<SessionKeyEventRow>(
+    sql`select ${logIndex()} as log_index, identity, signer, expiry, permissions,
        origin, block_number, timestamp, tx_hash
-     from ${ident(schemas.observer)}.skr_authorizations_updated ${where}
-     order by block_number desc, log_index desc limit ${limit}`,
-    where.params
+     from ${ident(schemas.observer)}.skr_authorizations_updated ${where([
+       params.identity !== undefined && sql`identity = ${params.identity}`,
+       params.signer !== undefined && sql`signer = ${params.signer}`,
+       block !== undefined &&
+         sql`(block_number, ${logIndex()}) < (${block}::numeric, ${index}::int)`,
+     ])}
+     order by block_number desc, log_index desc limit ${params.limit + 1}`
   )
   return toPage(rows, params.limit, mapSessionKeyEvent, (r) => [
-    req(r.block_number),
-    req(r.log_index),
+    r.block_number,
+    String(r.log_index),
   ])
 }

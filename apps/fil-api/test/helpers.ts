@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers'
 import { createApp } from '../src/app.ts'
 import type { Db, Row } from '../src/db.ts'
 import type { Bindings } from '../src/networks.ts'
+import { render, type Sql } from '../src/sql.ts'
 
 /** A query recorded by {@link fakeDb}. */
 export interface RecordedQuery {
@@ -17,7 +18,8 @@ export function fakeDb(
   const queries: RecordedQuery[] = []
   let closed = 0
   const db: Db = {
-    query<T extends Row = Row>(text: string, params: readonly unknown[] = []) {
+    query<T extends object = Row>(query: Sql) {
+      const { text, params } = render(query)
       queries.push({ text, params })
       return Promise.resolve(handler(text, params) as T[])
     },

@@ -1,6 +1,17 @@
-import { type Db, ident } from '../db.ts'
+import type { Db } from '../db.ts'
 import type { Network } from '../networks.ts'
 import type { Status } from '../schemas/resources.ts'
+import { ident, join, sql } from '../sql.ts'
+
+/** A `_ponder_checkpoint` row tagged with its schema. */
+interface CheckpointRow {
+  schema: string
+  chain_name: string
+  chain_id: string
+  latest_checkpoint: string
+  safe_checkpoint: string
+  finalized_checkpoint: string
+}
 
 /** Block position decoded from a Ponder checkpoint. */
 export interface Checkpoint {
@@ -26,24 +37,23 @@ export function parseCheckpoint(value: unknown): Checkpoint | null {
 
 /** Indexer progress for every schema of a network. */
 export async function getStatus(db: Db, network: Network): Promise<Status> {
-  const entries = Object.values(network.schemas)
-  const rows = await db.query(
-    entries
-      .map(
-        (schema, i) =>
-          `select $${i + 1}::text as schema, chain_name, chain_id,
+  const rows = await db.query<CheckpointRow>(
+    join(
+      Object.values(network.schemas).map(
+        (schema) =>
+          sql`select ${schema}::text as schema, chain_name, chain_id,
              latest_checkpoint, safe_checkpoint, finalized_checkpoint
            from ${ident(schema)}._ponder_checkpoint`
-      )
-      .join(' union all '),
-    entries
+      ),
+      ' union all '
+    )
   )
   return {
     network: network.name,
     chainId: network.chainId,
     indexers: rows.map((r) => ({
-      schema: String(r.schema),
-      chainName: String(r.chain_name),
+      schema: r.schema,
+      chainName: r.chain_name,
       chainId: Number(r.chain_id),
       latest: parseCheckpoint(r.latest_checkpoint),
       safe: parseCheckpoint(r.safe_checkpoint),

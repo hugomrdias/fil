@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ident, logIndex, Where } from '../src/db.ts'
+import { logIndex } from '../src/db.ts'
 import { ApiError } from '../src/errors.ts'
 import { NETWORKS } from '../src/networks.ts'
 import {
@@ -22,29 +22,52 @@ import {
   mapSessionKey,
 } from '../src/queries/session-keys.ts'
 import { getStatus, parseCheckpoint } from '../src/queries/status.ts'
+import { ident, join, raw, render, sql, where } from '../src/sql.ts'
 import { fakeDb, rows } from './helpers.ts'
 
 const schemas = NETWORKS.calibration.schemas
 
 describe('sql helpers', () => {
   it('quotes identifiers', () => {
-    expect(ident('early-repair')).toBe('"early-repair"')
-    expect(ident('a"b')).toBe('"a""b"')
+    expect(render(ident('early-repair')).text).toBe('"early-repair"')
+    expect(render(ident('a"b')).text).toBe('"a""b"')
   })
 
-  it('numbers placeholders in order', () => {
-    const where = new Where()
-      .maybe('x', (p) => `a = ${p}`)
-      .maybe(undefined, (p) => `b = ${p}`)
-      .add((p, q) => `(c, d) < (${p}, ${q})`, 1, 2)
-    expect(where.toString()).toBe('where a = $1 and (c, d) < ($2, $3)')
-    expect(where.params).toEqual(['x', 1, 2])
-    expect(new Where().toString()).toBe('')
+  it('numbers placeholders across nested fragments in order', () => {
+    const b: string | undefined = undefined
+    const query = sql`select 1 ${where([
+      sql`a = ${'x'}`,
+      b !== undefined && sql`b = ${b}`,
+      sql`(c, d) < (${1}, ${2})`,
+    ])} limit ${3}`
+    expect(render(query)).toEqual({
+      text: 'select 1 where a = $1 and (c, d) < ($2, $3) limit $4',
+      params: ['x', 1, 2, 3],
+    })
+  })
+
+  it('renders nothing without conditions and keeps false as a value', () => {
+    expect(render(sql`select 1 ${where([undefined, false])}`).text).toBe(
+      'select 1 '
+    )
+    expect(render(sql`a = ${false}`)).toEqual({
+      text: 'a = $1',
+      params: [false],
+    })
+    expect(render(where([sql`n > ${1}`], 'having')).text).toBe('having n > $1')
+  })
+
+  it('joins fragments', () => {
+    expect(render(join([], ', ')).text).toBe('')
+    expect(render(join([sql`${1}`, raw('x'), sql`${2}`], ', '))).toEqual({
+      text: '$1, x, $2',
+      params: [1, 2],
+    })
   })
 
   it('orders same-block events by numeric log index', () => {
-    expect(logIndex('x')).toBe("split_part(x.id, '-', 2)::int")
-    expect(logIndex()).toBe("split_part(id, '-', 2)::int")
+    expect(render(logIndex('x')).text).toBe("split_part(x.id, '-', 2)::int")
+    expect(render(logIndex()).text).toBe("split_part(id, '-', 2)::int")
   })
 })
 
@@ -185,7 +208,7 @@ describe('rails', () => {
     await getRail(db, schemas, '1')
     const text = queries[0]?.text ?? ''
     expect(text).toContain(
-      `order by x.block_number + 0 desc, ${logIndex('x')} desc`
+      `order by x.block_number + 0 desc, ${render(logIndex('x')).text} desc`
     )
     expect(text).not.toContain('x.block_number desc')
     expect(text).not.toContain('x.id desc')
@@ -221,7 +244,7 @@ describe('rails', () => {
       cursor: page.nextCursor ?? '',
     })
     expect(queries[1]?.text).toContain(
-      `(block_number, ${logIndex()}) < ($2::numeric, $3::int)`
+      `(block_number, ${render(logIndex()).text}) < ($2::numeric, $3::int)`
     )
     expect(queries[1]?.params).toEqual(['12818', '4121949', '12', 2])
   })
@@ -316,7 +339,7 @@ describe('session key ordering', () => {
     const { db, queries } = fakeDb()
     await listSessionKeys(db, schemas, { now: 0, limit: 1 })
     expect(queries[0]?.text).toContain(
-      `s.block_number desc,\n         ${logIndex('s')} desc`
+      `s.block_number desc,\n         ${render(logIndex('s')).text} desc`
     )
   })
 
