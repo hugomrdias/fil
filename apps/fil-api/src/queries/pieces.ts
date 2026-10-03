@@ -1,9 +1,10 @@
+import { cidForms } from '../cid.ts'
 import type { Db } from '../db.ts'
 import { notFound } from '../errors.ts'
 import type { Schemas } from '../networks.ts'
 import { decodeCursor, type Page, toPage } from '../pagination.ts'
 import type { Piece, PieceWithDataSet } from '../schemas/resources.ts'
-import { ident, raw, sql, where } from '../sql.ts'
+import { ident, join, raw, type Sql, sql, where } from '../sql.ts'
 import { addr } from './map.ts'
 
 /** Filters for {@link listDataSetPieces}. */
@@ -57,6 +58,11 @@ function pieces(schemas: Schemas) {
 /** Schema-qualified `data_sets` view. */
 function dataSets(schemas: Schemas) {
   return sql`${ident(schemas.repair)}.data_sets`
+}
+
+/** Schema-qualified `providers` view. */
+function providers(schemas: Schemas) {
+  return sql`${ident(schemas.repair)}.providers`
 }
 
 /** Map a `pieces` row to the API shape. */
@@ -158,4 +164,92 @@ export async function listPieces(
     r.data_set_id,
     r.piece_id,
   ])
+}
+
+/** A storage provider serving a live copy of some content. */
+export interface PieceProvider {
+  providerId: string
+  /** PDP service URL (Curio) of the provider. */
+  serviceUrl: string
+  /**
+   * The copy's `ipfsRootCID` metadata when its data set is IPFS-indexed, so
+   * the provider announces the content to the IPFS network. Unvalidated.
+   */
+  ipfsRootCid: string | null
+}
+
+/** A provider row from {@link findProvider}. */
+interface PieceProviderRow {
+  provider_id: string
+  service_url: string
+  ipfs_root_cid: string | null
+}
+
+/**
+ * Find the best provider serving a live copy of the pieces matching `match`:
+ * the piece is not removed, its data set not deleted, and the provider is
+ * active with an HTTP service URL. Endorsed providers rank first, then
+ * approved ones, then the oldest copy.
+ */
+async function findProvider(
+  db: Db,
+  schemas: Schemas,
+  match: Sql
+): Promise<PieceProvider | undefined> {
+  const rows = await db.query<PieceProviderRow>(
+    sql`select pr.provider_id, pr.service_url,
+       case when d.with_ipfs_indexing then p.metadata->>'ipfsRootCID' end
+         as ipfs_root_cid
+     from ${pieces(schemas)} p
+     join ${dataSets(schemas)} d on d.data_set_id = p.data_set_id
+     join ${providers(schemas)} pr on pr.provider_id = d.provider_id
+     where ${match}
+       and not p.removed and not d.deleted
+       and pr.provider_active and pr.pdp_product_active
+       and pr.service_url ~ '^https?://'
+     order by pr.endorsed desc, pr.approved desc, p.added_at_block asc
+     limit 1`
+  )
+  const row = rows[0]
+  return (
+    row && {
+      providerId: row.provider_id,
+      serviceUrl: row.service_url,
+      ipfsRootCid: row.ipfs_root_cid,
+    }
+  )
+}
+
+/** Find the provider to retrieve a PieceCID from, if any serves it. */
+export function findPieceProvider(
+  db: Db,
+  schemas: Schemas,
+  cid: string
+): Promise<PieceProvider | undefined> {
+  return findProvider(db, schemas, sql`p.cid = ${cid}`)
+}
+
+/**
+ * Find the provider to retrieve IPFS content from by the `ipfsRootCID` piece
+ * metadata key, matching CIDv0 and CIDv1 forms of the same root. Only
+ * IPFS-indexed data sets are searched, and they are looked up first so the
+ * metadata filter scans just their pieces.
+ *
+ * @see https://github.com/filecoin-project/curio/blob/main/documentation/en/curio-market/retrievals.md
+ */
+export function findIpfsRootProvider(
+  db: Db,
+  schemas: Schemas,
+  rootCid: string
+): Promise<PieceProvider | undefined> {
+  return findProvider(
+    db,
+    schemas,
+    sql`p.data_set_id = any(array(select data_set_id
+         from ${dataSets(schemas)} where with_ipfs_indexing and not deleted))
+       and p.metadata->>'ipfsRootCID' in (${join(
+         cidForms(rootCid).map((form) => sql`${form}`),
+         ', '
+       )})`
+  )
 }

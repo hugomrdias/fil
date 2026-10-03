@@ -12,6 +12,7 @@ Built with [Hono](https://hono.dev), [`@hono/zod-openapi`](https://github.com/ho
 | `GET /docs` | API reference (Scalar) |
 | `POST /mcp` | MCP server (Streamable HTTP, stateless) |
 | `GET /health` | Latest indexed block per network and indexer; `503` if a configured database fails |
+| `GET /get/{cid}` | Redirect to where a PieceCID or IPFS root CID can be retrieved (see [Retrieval](#retrieval)) |
 
 Every data route is namespaced by network: `/calibration/...` or `/mainnet/...`.
 
@@ -38,7 +39,26 @@ Conventions:
 - **Pagination** uses `limit` (1–200, default 50) and an opaque `cursor`. Each response looks like `{ data, nextCursor }`.
 - **Errors** look like `{ error: { code, message } }`.
 
-The MCP server offers one tool per route: `get_status`, `list_providers`, `get_provider`, `list_data_sets`, `get_data_set`, `list_data_set_pieces`, `get_piece`, `list_pieces`, `list_rails`, `get_rail`, `list_rail_settlements`, `list_session_keys` and `list_session_key_events`. Each tool requires a `network` argument.
+### Retrieval
+
+`GET /get/{cid}?network=mainnet&browser=false` redirects (`302`) to where the content can be fetched. The Worker never proxies the bytes. `network` defaults to `mainnet`. The CID's codec and multihash decide where the redirect goes:
+
+| CID | `browser` | Redirect |
+| --- | --- | --- |
+| PieceCID v2 (`bafkzcib…`) | `false` or absent | `{serviceUrl}/piece/{cid}` on a provider storing the piece |
+| PieceCID v2 (`bafkzcib…`) | `true` | `https://inbrowser.link/ipfs/{root}` when the chosen copy has `ipfsRootCID` metadata in an IPFS-indexed data set, otherwise `{serviceUrl}/piece/{cid}` |
+| Other CID (IPFS content) | `false` or absent | `{serviceUrl}/ipfs/{cid}` on a provider with a piece whose `ipfsRootCID` metadata matches, in an IPFS-indexed data set |
+| Other CID (IPFS content) | `true` | `https://inbrowser.link/ipfs/{cid}`, without a database lookup |
+
+Legacy v1 PieceCIDs (`baga…`) and strings that aren't CIDs return `400`. If no live copy exists, the response is `404`. Other query parameters, such as `format=car`, are forwarded to the target. When several providers store the content, the route ranks endorsed providers first, then approved ones, then the oldest copy.
+
+Resolved providers are cached per network and CID in the [Workers Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/) with stale-while-revalidate:
+- An entry is fresh for 10 minutes.
+- After that, it is still served immediately for up to 24 hours, and refreshed in the background after the response.
+- The `X-Cache` response header reports `hit`, `stale`, `miss` or `none`.
+- The cache is per datacenter, and it does nothing on `workers.dev` preview URLs.
+
+The MCP server offers one tool per data route: `get_status`, `list_providers`, `get_provider`, `list_data_sets`, `get_data_set`, `list_data_set_pieces`, `get_piece`, `list_pieces`, `list_rails`, `get_rail`, `list_rail_settlements`, `list_session_keys` and `list_session_key_events`. Each tool requires a `network` argument.
 
 ## Development
 
