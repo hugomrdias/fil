@@ -112,13 +112,24 @@ jobs:
       - name: Create or update preview
         id: preview
         working-directory: apps/fil-app
+        # Previews attach to an existing Worker, which the first production
+        # deploy from main creates; until then this step skips with a notice.
         run: |
-          set -o pipefail
+          errors="$RUNNER_TEMP/wrangler-preview.err"
+          status=0
           output="$(pnpm exec wrangler preview \
             --name "pr-$PR_NUMBER" \
             --message "$HEAD_SHA" \
-            --json)"
+            --json 2> "$errors")" || status=$?
           printf '%s\n' "$output"
+          cat "$errors" >&2
+          if [ "$status" -ne 0 ]; then
+            if grep -q 'code: 10007' "$errors"; then
+              echo "::notice::The fil-app Worker does not exist yet. Previews start working after the first production deploy from main."
+              exit 0
+            fi
+            exit "$status"
+          fi
           preview_url="$(printf '%s' "$output" | jq -er '.preview.urls[0]')"
           echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
         env:
@@ -126,6 +137,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Probe preview
+        if: steps.preview.outputs.preview_url != ''
         # A new Preview URL can return 404 for a few seconds after creation.
         run: |
           for attempt in $(seq 1 12); do
@@ -141,6 +153,7 @@ jobs:
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
 
       - name: Comment preview URL
+        if: steps.preview.outputs.preview_url != ''
         # Update the comment carrying the marker instead of the bot's last
         # comment, so other github-actions comments are never overwritten.
         run: |
@@ -193,7 +206,18 @@ jobs:
 
       - name: Delete preview
         working-directory: apps/fil-app
-        run: pnpm exec wrangler preview delete --name "pr-$PR_NUMBER" --skip-confirmation
+        # Nothing to delete when the Worker was never deployed (see preview).
+        run: |
+          errors="$RUNNER_TEMP/wrangler-preview-delete.err"
+          if ! pnpm exec wrangler preview delete --name "pr-$PR_NUMBER" \
+            --skip-confirmation 2> "$errors"; then
+            cat "$errors" >&2
+            if grep -q 'code: 10007' "$errors"; then
+              echo "::notice::The fil-app Worker does not exist yet; no preview to delete."
+              exit 0
+            fi
+            exit 1
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
