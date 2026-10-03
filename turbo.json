@@ -26,6 +26,10 @@
       "cache": false,
       "persistent": true,
       "interruptible": true
+    },
+    "deploy": {
+      "dependsOn": ["^build", "typecheck", "test", "lint"],
+      "cache": false
     }
   }
 }

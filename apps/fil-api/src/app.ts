@@ -1,0 +1,168 @@
+import { StreamableHTTPTransport } from '@hono/mcp'
+import { OpenAPIHono } from '@hono/zod-openapi'
+import { Scalar } from '@scalar/hono-api-reference'
+import { cors } from 'hono/cors'
+import { requestId } from 'hono/request-id'
+import { timing } from 'hono/timing'
+import { type DbFactory, hyperdriveDb } from './db.ts'
+import { ApiError } from './errors.ts'
+import { checkHealth } from './health.ts'
+import { log } from './log.ts'
+import { buildMcpServer } from './mcp/server.ts'
+import { requestLogger } from './middleware/logger.ts'
+import { rateLimit } from './middleware/rate-limit.ts'
+import { NETWORK_NAMES } from './networks.ts'
+import { validationHook } from './routes/hook.ts'
+import { networkRoutes } from './routes/network.ts'
+import type { AppEnv } from './types.ts'
+
+/** API version reported in OpenAPI and MCP server info. */
+export const VERSION = '0.0.0'
+
+/** Options for {@link createApp}. */
+export interface AppOptions {
+  /** Database client factory; tests inject fakes. */
+  dbFactory?: DbFactory
+}
+
+/**
+ * Create the fil-api Hono app: REST routes under `/{network}`, OpenAPI
+ * document, API reference and the MCP endpoint.
+ *
+ * @see https://hono.dev/examples/zod-openapi
+ */
+export function createApp(options: AppOptions = {}) {
+  const dbFactory = options.dbFactory ?? hyperdriveDb
+  const app = new OpenAPIHono<AppEnv>({ defaultHook: validationHook })
+
+  app.use(requestId())
+  app.use(timing({ total: true, crossOrigin: true }))
+  app.use(requestLogger)
+  app.use(async (c, next) => {
+    c.set('dbFactory', dbFactory)
+    await next()
+  })
+  app.use(
+    cors({
+      origin: '*',
+      allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      allowHeaders: [
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'Mcp-Session-Id',
+        'Mcp-Protocol-Version',
+        'Last-Event-ID',
+      ],
+      exposeHeaders: [
+        'Mcp-Session-Id',
+        'X-Request-Id',
+        'Retry-After',
+        'Server-Timing',
+      ],
+    })
+  )
+
+  app.get('/', (c) =>
+    c.json({
+      name: 'fil-api',
+      version: VERSION,
+      networks: NETWORK_NAMES,
+      openapi: '/openapi.json',
+      docs: '/docs',
+      mcp: '/mcp',
+    })
+  )
+  app.get('/health', async (c) => {
+    const health = await checkHealth({
+      env: c.env,
+      dbFactory,
+      dbStats: c.var.dbStats,
+      waitUntil: (p) => c.executionCtx.waitUntil(p),
+      requestId: c.var.requestId,
+    })
+    c.header('Cache-Control', 'no-store')
+    return c.json(health, health.ok ? 200 : 503)
+  })
+
+  app.doc31('/openapi.json', (c) => ({
+    openapi: '3.1.0',
+    info: {
+      title: 'fil-api',
+      version: VERSION,
+      description:
+        'Read-only Filecoin Onchain Cloud data: storage providers, data sets, pieces, Filecoin Pay rails and session keys.',
+    },
+    servers: [{ url: new URL(c.req.url).origin }],
+    tags: [
+      { name: 'Status' },
+      { name: 'Providers' },
+      { name: 'Data sets' },
+      { name: 'Pieces' },
+      { name: 'Rails' },
+      { name: 'Session keys' },
+    ],
+  }))
+  app.get('/docs', Scalar({ url: '/openapi.json', pageTitle: 'fil-api' }))
+
+  app.on(['GET', 'DELETE'], '/mcp', (c) => {
+    c.header('Allow', 'POST')
+    return c.json(
+      {
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Method not allowed: stateless server',
+        },
+        id: null,
+      },
+      405
+    )
+  })
+  app.post('/mcp', rateLimit('RATE_LIMIT_MCP'), async (c) => {
+    const { server, closeDbs } = buildMcpServer({
+      env: c.env,
+      dbFactory,
+      dbStats: c.var.dbStats,
+      version: VERSION,
+    })
+    const transport = new StreamableHTTPTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    })
+    try {
+      await server.connect(transport)
+      return await transport.handleRequest(c)
+    } finally {
+      c.executionCtx.waitUntil(closeDbs().then(() => server.close()))
+    }
+  })
+
+  app.route('/', networkRoutes())
+
+  app.notFound((c) =>
+    c.json({ error: { code: 'not_found', message: 'Route not found' } }, 404)
+  )
+
+  app.onError((error, c) => {
+    if (error instanceof ApiError) {
+      return c.json(
+        { error: { code: error.code, message: error.message } },
+        error.status
+      )
+    }
+    log('error', {
+      message: 'unhandled error',
+      requestId: c.var.requestId,
+      path: c.req.path,
+      error: error.message,
+      stack: error.stack,
+    })
+    return c.json(
+      { error: { code: 'internal_error', message: 'Internal server error' } },
+      500
+    )
+  })
+
+  return app
+}
