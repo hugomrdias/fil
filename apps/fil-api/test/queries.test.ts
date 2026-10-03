@@ -134,7 +134,7 @@ describe('owner filters', () => {
     ])
   })
 
-  it('joins pieces to data sets for owner and keyset cursor', async () => {
+  it('scans pieces of the owner data sets with a keyset cursor', async () => {
     const { db, queries } = fakeDb()
     await listPieces(db, schemas, {
       owner: '0x305025d07c1dee47f25a4990179eff2becddca0b',
@@ -145,16 +145,28 @@ describe('owner filters', () => {
     expect(q?.text).toContain(
       'join "early-repair".data_sets d on d.data_set_id = p.data_set_id'
     )
-    expect(q?.text).toContain('d.payer = $1')
+    expect(q?.text).toMatch(
+      /p\.data_set_id = any\(array\(select data_set_id\s+from "early-repair"\.data_sets where payer = \$1 and data_set_id <= \$2::bigint\)\)/
+    )
     expect(q?.text).toContain(
-      '(p.data_set_id, p.piece_id) < ($2::bigint, $3::bigint)'
+      '(p.data_set_id, p.piece_id) < ($3::bigint, $4::bigint)'
     )
     expect(q?.params).toEqual([
       '0x305025d07c1dee47f25a4990179eff2becddca0b',
       '40938',
+      '40938',
       '0',
       6,
     ])
+  })
+
+  it('filters pieces by CID without a data set lookup', async () => {
+    const { db, queries } = fakeDb()
+    await listPieces(db, schemas, { cid: 'bafk', removed: false, limit: 5 })
+    const [q] = queries
+    expect(q?.text).toContain('where p.cid = $1 and p.removed = $2')
+    expect(q?.text).not.toContain('any(array(')
+    expect(q?.params).toEqual(['bafk', false, 6])
   })
 })
 
@@ -173,8 +185,9 @@ describe('rails', () => {
     await getRail(db, schemas, '1')
     const text = queries[0]?.text ?? ''
     expect(text).toContain(
-      `order by x.block_number desc, ${logIndex('x')} desc`
+      `order by x.block_number + 0 desc, ${logIndex('x')} desc`
     )
+    expect(text).not.toContain('x.block_number desc')
     expect(text).not.toContain('x.id desc')
   })
 

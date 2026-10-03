@@ -106,16 +106,28 @@ export async function listPieces(
   params: ListPiecesParams
 ): Promise<Page<PieceWithDataSet>> {
   const where = new Where()
-    .maybe(params.owner, (p) => `d.payer = ${p}`)
     .maybe(params.cid, (p) => `p.cid = ${p}`)
-    .maybe(params.provider_id, (p) => `d.provider_id = ${p}::bigint`)
     .maybe(params.removed, (p) => `p.removed = ${p}`)
-  if (params.cursor) {
-    const [dataSetId, pieceId] = decodeCursor(params.cursor, ['int8', 'int8'])
+  const cursor = params.cursor
+    ? decodeCursor(params.cursor, ['int8', 'int8'])
+    : undefined
+  if (params.owner !== undefined || params.provider_id !== undefined) {
+    // Look up the matching data sets first and scan pieces only within them.
+    // As a join filter the planner instead walks the whole pieces index in
+    // order and keeps the few rows that match a small owner.
+    const dataSets = new Where(where.params)
+      .maybe(params.owner, (p) => `payer = ${p}`)
+      .maybe(params.provider_id, (p) => `provider_id = ${p}::bigint`)
+    if (cursor) dataSets.add((p) => `data_set_id <= ${p}::bigint`, cursor[0])
+    where.raw(
+      `p.data_set_id = any(array(select data_set_id
+         from ${ident(schemas.repair)}.data_sets ${dataSets}))`
+    )
+  }
+  if (cursor) {
     where.add(
       (a, b) => `(p.data_set_id, p.piece_id) < (${a}::bigint, ${b}::bigint)`,
-      dataSetId,
-      pieceId
+      ...cursor
     )
   }
   const limit = where.param(params.limit + 1)

@@ -27,6 +27,17 @@ export interface ListSettlementsParams {
 }
 
 /**
+ * `order by` for the latest event of one rail. `+ 0` keeps the planner off
+ * the `block_number` index: walking it backwards and filtering by `rail_id`
+ * looks cheap but scans hundreds of thousands of other rails' events per rail
+ * (rate changes are dominated by a few busy rails). The `rail_id` index plus a
+ * top-1 sort is fast for all but those busy rails.
+ */
+function latestFirst(alias: string) {
+  return `${alias}.block_number + 0 desc, ${logIndex(alias)} desc`
+}
+
+/**
  * Current rail state folded from Filecoin Pay events: the creation event plus
  * termination, finalization, the latest rate and lockup changes and the
  * settlement totals. Only termination and finalization (which the `state`
@@ -46,7 +57,7 @@ function railQuery(s: string, where: string, limit: string) {
     left join lateral (
       select x.end_epoch, x.by from ${s}.fp_rail_terminated x
       where x.rail_id = c.rail_id
-      order by x.block_number desc, ${logIndex('x')} desc limit 1
+      order by ${latestFirst('x')} limit 1
     ) t on true
     left join lateral (
       select true as finalized from ${s}.fp_rail_finalized x
@@ -58,13 +69,13 @@ function railQuery(s: string, where: string, limit: string) {
   left join lateral (
     select x.new_rate from ${s}.fp_rail_rate_modified x
     where x.rail_id = page.rail_id
-    order by x.block_number desc, ${logIndex('x')} desc limit 1
+    order by ${latestFirst('x')} limit 1
   ) r on true
   left join lateral (
     select x.new_lockup_period, x.new_lockup_fixed
     from ${s}.fp_rail_lockup_modified x
     where x.rail_id = page.rail_id
-    order by x.block_number desc, ${logIndex('x')} desc limit 1
+    order by ${latestFirst('x')} limit 1
   ) l on true
   left join lateral (
     select max(x.settled_up_to) as settled_up_to,
