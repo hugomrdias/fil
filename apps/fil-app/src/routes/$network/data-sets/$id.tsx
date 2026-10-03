@@ -45,15 +45,7 @@ function DataSetPage() {
     chainId: CHAINS[network].id,
   })
   const pieces = useInfiniteQuery(dataSetPiecesInfinite(network, id, removed))
-  const columns = useMemo(
-    () =>
-      pieceColumns(network, {
-        providerId: dataSet.providerId,
-        owner: dataSet.owner,
-        cdn: dataSet.withCdn,
-      }),
-    [network, dataSet.providerId, dataSet.owner, dataSet.withCdn]
-  )
+  const columns = useMemo(() => pieceColumns(network), [network])
   const chainData = onChain.data
 
   return (
