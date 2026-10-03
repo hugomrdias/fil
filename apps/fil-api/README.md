@@ -69,7 +69,7 @@ Scripts:
 | Pull request opened or updated | `wrangler preview --name pr-<number>` creates a [Worker Preview](https://developers.cloudflare.com/workers/previews/) on `workers.dev`, probes `/health` and comments its URL on the PR |
 | Pull request closed | `wrangler preview delete` removes the preview |
 
-The workflow only runs when `apps/fil-api`, the lockfile, `pnpm-workspace.yaml`, `turbo.json` or the workflow itself changes. Pull requests from forks get no preview, because they can't read the secrets.
+The production deploy uses the `fil-api-production` GitHub environment, so its deployment history, URL and any protection rules stay separate from fil-app's. The workflow only runs when `apps/fil-api`, the lockfile, `pnpm-workspace.yaml`, `turbo.json` or the workflow itself changes. Pull requests from forks get no preview, because they can't read the secrets.
 
 Previews don't inherit production bindings, so the `previews` block in `wrangler.jsonc` repeats both Hyperdrive bindings. Previews read the same read-only databases as production but use separate rate-limit namespaces.
 
