@@ -75,7 +75,7 @@ pnpm --filter fil-api dev
 ```
 
 Scripts:
-- `pnpm test`: vitest in workerd via `@cloudflare/vitest-pool-workers`, with a fake database
+- `pnpm test`: vitest in workerd via `@cloudflare/vitest-plugin`, with a fake database
 - `pnpm typecheck`: checks that the generated worker types are current and runs `tsc`
 - `pnpm cf-typegen`: regenerates `worker-configuration.d.ts` after changing `wrangler.jsonc`
 

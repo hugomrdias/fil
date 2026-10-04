@@ -1,8 +1,5 @@
 /**
- * Helpers over the Workers custom spans API. `getActiveSpan()`,
- * `setAttributes()` and `recordException()` shipped in September 2026; the
- * workerd bundled with `@cloudflare/vitest-pool-workers` predates them, so
- * these helpers degrade to no-ops there instead of throwing.
+ * Helpers over the Workers custom spans API.
  *
  * @see https://developers.cloudflare.com/workers/observability/traces/custom-spans/
  */
@@ -16,7 +13,7 @@ export type SpanAttributes = Record<
 
 /** The span active on the async context: the invocation's root span outside custom spans. */
 export function activeSpan(): Span | undefined {
-  return tracing.getActiveSpan?.()
+  return tracing.getActiveSpan()
 }
 
 /** Set several attributes, skipping `undefined` values. */
@@ -31,10 +28,10 @@ export function setAttributes(
 
 /** Record `error` on `span` and mark the span as failed. */
 export function recordError(span: Span | undefined, error: unknown) {
-  span?.recordException?.(
+  span?.recordException(
     error instanceof Error ? error : { message: String(error) }
   )
-  span?.setStatus?.({ code: 'error' })
+  span?.setStatus({ code: 'error' })
 }
 
 /**
