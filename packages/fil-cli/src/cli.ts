@@ -1,6 +1,7 @@
 import { defineCli } from 'clipact'
 import pkg from '../package.json' with { type: 'json' }
 import { commands } from './commands/index.ts'
+import { errors } from './errors.ts'
 
 /**
  * The `fil` CLI. This module and the definitions it imports load only zod and
@@ -20,4 +21,5 @@ export const cli = defineCli({
   aliases: { publish: 'put', rm: 'delete' },
   skills: new URL('../skills/', import.meta.url),
   mapError: () => import('./map-error.ts'),
+  errors,
 })

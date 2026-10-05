@@ -241,51 +241,53 @@ Illustrative compact successful result, with placeholder IDs and a reserved exam
 
 ```json
 {
-  "ok": true,
-  "operationId": "op_example",
-  "state": "ready",
-  "resource": {
-    "ref": "artifact_example",
-    "kind": "artifact",
-    "name": "report",
-    "chainId": "314",
-    "payer": "<payer-address>",
-    "pieceCid": "<car-piece-cid>",
-    "rootCid": "<unixfs-root-cid>",
-    "copies": [
-      { "providerId": "12", "dataSetId": "345", "pieceId": "6" },
-      { "providerId": "34", "dataSetId": "678", "pieceId": "9" }
-    ],
-    "url": "https://artifact.example/report/"
-  },
-  "storage": {
-    "complete": true,
-    "requestedCopies": 2,
-    "confirmedCopies": 2
-  },
-  "retrieval": {
+  "data": {
+    "operationId": "op_example",
     "state": "ready",
-    "checkedAt": "2026-09-28T12:00:00Z"
+    "resource": {
+      "ref": "artifact_example",
+      "kind": "artifact",
+      "name": "report",
+      "chainId": "314",
+      "payer": "<payer-address>",
+      "pieceCid": "<car-piece-cid>",
+      "rootCid": "<unixfs-root-cid>",
+      "copies": [
+        { "providerId": "12", "dataSetId": "345", "pieceId": "6" },
+        { "providerId": "34", "dataSetId": "678", "pieceId": "9" }
+      ],
+      "url": "https://artifact.example/report/"
+    },
+    "storage": {
+      "complete": true,
+      "requestedCopies": 2,
+      "confirmedCopies": 2
+    },
+    "retrieval": {
+      "state": "ready",
+      "checkedAt": "2026-09-28T12:00:00Z"
+    }
   }
 }
 ```
 
 The resource is the small managed-content record. The surrounding state, storage summary, and retrieval check describe this operation's outcome at a point in time; they are not additional resource fields or a permanent availability guarantee. Use the resource reference for get/inspect/delete and the operation ID for job inspection or recovery.
 
-Exit `0` only when the requested command contract is satisfied (`ok: true`); exit `1` otherwise. Partial copies, pending publication, and action-required outcomes exit `1`, and their stable error `code` (for example `storage_partial`, `publication_pending`, `insufficient_funds`) carries the diagnosis. A partial or pending put still returns the resource, its URL, and its operation ID so a harness can share the link or resume. Operation inspection exits `0` while reporting a still-pending operation.
+Exit `0` only when the requested command contract is satisfied (the result has `data`); exit `1` otherwise. Partial copies, pending publication, and action-required outcomes exit `1`, and their stable error `code` (for example `storage_partial`, `publication_pending`, `insufficient_funds`) carries the diagnosis. A failed result carries no `data`, so a partial or pending put returns the operation ID, the resource reference, and its URL in `error.details`, and a harness can still share the link or resume. Operation inspection exits `0` while reporting a still-pending operation.
 
 Illustrative pending result, following the guidelines' error shape:
 
 ```json
 {
-  "ok": false,
-  "operationId": "op_example",
-  "state": "pending",
-  "resource": { "ref": "artifact_example", "url": "https://artifact.example/report/" },
   "error": {
     "code": "publication_pending",
     "message": "Both copies are committed; the gateway has not served the entry point yet.",
-    "retryable": false
+    "retryable": false,
+    "details": {
+      "operationId": "op_example",
+      "state": "pending",
+      "resource": { "ref": "artifact_example", "url": "https://artifact.example/report/" }
+    }
   },
   "next": [
     { "by": "agent", "command": "fil operations resume op_example --json", "description": "Continue publication checks for this operation" }

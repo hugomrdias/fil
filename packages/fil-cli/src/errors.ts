@@ -1,43 +1,123 @@
-import { CliError, isCliError, type Next } from 'clipact'
+import { CliError, type ErrorRegistry, isCliError, type Next } from 'clipact'
+import * as z from 'zod'
 
 /**
  * Error codes `fil` returns besides clipact's built-ins. Codes are stable:
- * agents and scripts branch on them.
+ * agents and scripts branch on them. {@link errors} describes each one.
  *
  * @see ../../../docs/agent-cli/guidelines.md#errors-next-steps-and-retries
  */
 export const ErrorCodes = {
-  /** No session key for the network. */
   authRequired: 'auth_required',
-  /** A session key waits for approval in the console. */
   loginPending: 'login_pending',
-  /** The session key lacks a scope the command needs, or it expired. */
   sessionExpired: 'session_expired',
-  /** The owner approved fewer scopes than requested. */
   permissionDenied: 'permission_denied',
-  /** The payer cannot cover the upload. */
   insufficientFunds: 'insufficient_funds',
-  /** No managed resource, operation, provider, or piece by that name. */
   notFound: 'not_found',
-  /** `get` would overwrite an existing path. */
   outputExists: 'output_exists',
-  /** Retrieved bytes or blocks do not match their CIDs. */
   verificationFailed: 'verification_failed',
-  /** A retrieved archive tried to write outside the output directory. */
   unsafePath: 'unsafe_path',
-  /** Another process is running the operation. */
   operationRunning: 'operation_running',
-  /** A put or delete stopped; resume it. */
   operationFailed: 'operation_failed',
-  /** A resumed put found its source file changed. */
   sourceChanged: 'source_changed',
-  /** A resumed put lost its staged CAR. */
   stagingMissing: 'staging_missing',
-  /** The provider rejected the commit transaction. */
   commitRejected: 'commit_rejected',
-  /** The removal transaction reverted. */
   removalReverted: 'removal_reverted',
 } as const
+
+/** `details` fields of a put or delete error: the operation to resume. */
+const operation = {
+  operationId: z
+    .string()
+    .optional()
+    .describe(
+      'Set on put and delete errors; resume it with fil operations resume'
+    ),
+}
+
+/**
+ * The error registry: a description and `details` schema for each code,
+ * published by `fil schema <command>`.
+ *
+ * @see ../../../docs/agent-cli/guidelines.md#errors-next-steps-and-retries
+ */
+export const errors = {
+  [ErrorCodes.authRequired]: {
+    description: 'No session key for the network; run fil login.',
+    details: z.strictObject(operation),
+  },
+  [ErrorCodes.loginPending]: {
+    description: 'A session key waits for approval in the console.',
+    details: z.strictObject({
+      url: z.string().describe('Console page that approves the key'),
+      ...operation,
+    }),
+  },
+  [ErrorCodes.sessionExpired]: {
+    description:
+      'The session key lacks a scope the command needs, or it expired.',
+    details: z.strictObject({
+      missing: z.array(z.string()).describe('Scopes to authorize'),
+      ...operation,
+    }),
+  },
+  [ErrorCodes.permissionDenied]: {
+    description: 'The wallet owner approved fewer scopes than requested.',
+    details: z.strictObject({
+      missing: z.array(z.string()).describe('Scopes not granted'),
+    }),
+  },
+  [ErrorCodes.insufficientFunds]: {
+    description: 'The payer cannot cover the upload.',
+    details: z.strictObject({
+      fundingUrl: z.string().describe('Console page that funds the payer'),
+      depositNeeded: z.string().describe('USDFC base units to deposit first'),
+      needsApproval: z
+        .boolean()
+        .describe('The payer must approve Warm Storage first'),
+      ...operation,
+    }),
+  },
+  [ErrorCodes.notFound]: {
+    description:
+      'No managed resource, operation, provider, or piece has that name.',
+    details: z.strictObject(operation),
+  },
+  [ErrorCodes.outputExists]: {
+    description: 'fil get would overwrite an existing path.',
+  },
+  [ErrorCodes.verificationFailed]: {
+    description: 'Retrieved bytes or blocks do not match their CIDs.',
+  },
+  [ErrorCodes.unsafePath]: {
+    description:
+      'A retrieved archive tried to write outside the output directory.',
+  },
+  [ErrorCodes.operationRunning]: {
+    description: 'Another process is running the operation.',
+    details: z.strictObject(operation),
+  },
+  [ErrorCodes.operationFailed]: {
+    description: 'A put or delete stopped; resume it.',
+    details: z.strictObject(operation),
+  },
+  [ErrorCodes.sourceChanged]: {
+    description: 'A resumed put found its source file changed.',
+    details: z.strictObject(operation),
+  },
+  [ErrorCodes.stagingMissing]: {
+    description: 'A resumed put lost its staged CAR.',
+    details: z.strictObject(operation),
+  },
+  [ErrorCodes.commitRejected]: {
+    description: 'The provider rejected the commit transaction.',
+    details: z.strictObject(operation),
+  },
+  [ErrorCodes.removalReverted]: {
+    description: 'The removal transaction reverted.',
+    details: z.strictObject(operation),
+  },
+} satisfies ErrorRegistry
 
 /** Errors a command that signs with the session key can return. */
 const SESSION_ERRORS = [
@@ -68,17 +148,34 @@ export function resumeStep(operationId: string): Next {
   }
 }
 
+/** Codes whose `details` schema in {@link errors} has `operationId`. */
+const OPERATION_CODES: ReadonlySet<string> = new Set(
+  Object.entries(errors)
+    .filter(
+      ([, definition]) =>
+        'details' in definition && 'operationId' in definition.details.shape
+    )
+    .map(([code]) => code)
+)
+
 /**
- * Attach an operation to an error from a put or delete: its ID in the result
- * and a resume step after any user step. Put and delete errors are never
- * retryable, because repeating the original command starts a new paid
- * operation; resuming continues the saved one.
+ * Attach an operation to an error from a put or delete: a resume step after
+ * any user step, and the operation ID in `details` for codes whose schema
+ * has `operationId`. Built-in codes keep their `details` unchanged. Put and
+ * delete errors are never retryable, because repeating the original command
+ * starts a new paid operation; resuming continues the saved one.
  *
  * @see ../../../docs/fil-cli/interface-research.md#the-agent-execution-contract
  */
 export function operationError(error: unknown, operationId: string): CliError {
+  const resume = resumeStep(operationId)
   if (isCliError(error)) {
-    if (error.data?.operationId === operationId) return error
+    if (error.next?.some((step) => step.command === resume.command)) {
+      return error
+    }
+    const details = OPERATION_CODES.has(error.code)
+      ? { ...(error.details as object | undefined), operationId }
+      : error.details
     return new CliError({
       code: error.code,
       message: error.message,
@@ -86,9 +183,8 @@ export function operationError(error: unknown, operationId: string): CliError {
       ...(error.retryAfterSeconds === undefined
         ? {}
         : { retryAfterSeconds: error.retryAfterSeconds }),
-      ...(error.details === undefined ? {} : { details: error.details }),
-      next: [...(error.next ?? []), resumeStep(operationId)],
-      data: { ...error.data, operationId },
+      ...(details === undefined ? {} : { details }),
+      next: [...(error.next ?? []), resume],
       cause: error.cause ?? error,
     })
   }
@@ -97,8 +193,8 @@ export function operationError(error: unknown, operationId: string): CliError {
     code: ErrorCodes.operationFailed,
     message: `Operation ${operationId} stopped: ${message}`,
     retryable: false,
-    next: [resumeStep(operationId)],
-    data: { operationId },
+    details: { operationId },
+    next: [resume],
     cause: error,
   })
 }

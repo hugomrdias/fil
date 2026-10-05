@@ -1,8 +1,9 @@
 /**
  * Spawns the built `bin/fil.js` without a TTY, as an agent harness does, and
  * checks the output contract: one JSON line on stdout, exit code 0 exactly
- * when `ok` is true, no ANSI codes, no JSON on stderr, the session key never
- * printed, and a SIGTERM turned into an `interrupted` result with exit 143.
+ * when the result has `data`, no ANSI codes, no JSON on stderr, the session
+ * key never printed, and a SIGTERM turned into an `interrupted` result with
+ * exit 143.
  */
 import assert from 'node:assert/strict'
 import { createServer, type Server } from 'node:http'
@@ -53,9 +54,8 @@ test('every outcome keeps the output contract and hides the session key', async 
   for (const [args, extra, expected] of cases) {
     const result = await exec(BIN, args, { env: { ...env, ...extra } })
     const json = assertContract(result)
-    const outcome = json.ok
-      ? 'ok'
-      : (json.error as { code: string } | undefined)?.code
+    const outcome =
+      'data' in json ? 'ok' : (json.error as { code: string } | undefined)?.code
     assert.equal(outcome, expected, args.join(' '))
     const secret = SESSION_KEY.slice(2)
     assert.ok(!result.stdout.includes(secret), `${args.join(' ')}: stdout`)

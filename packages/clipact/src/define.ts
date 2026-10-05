@@ -2,7 +2,7 @@ import type {
   StandardJSONSchemaV1,
   StandardSchemaV1,
 } from '@standard-schema/spec'
-import type { CliError, Next } from './errors.ts'
+import type { CliError, ErrorRegistry, Next } from './errors.ts'
 
 /**
  * A schema that validates and exports JSON Schema, such as a zod v4 schema.
@@ -51,9 +51,9 @@ export interface CommandOptions<
   env?: { [K in FieldOf<I>]?: string }
   /** Fields read only from their environment variable and always redacted. */
   secrets?: FieldOf<I>[]
-  /** Schema for the command fields of a successful result. */
+  /** Schema of `data` in a successful result: an object or an array. */
   output?: O
-  /** Error codes the command may return, besides the built-in codes. */
+  /** Codes from the CLI's error registry the command may return, besides the built-in codes. */
   errors?: string[]
   /** The command changes no state. Implies `idempotent`. */
   readOnly?: boolean
@@ -125,7 +125,7 @@ export interface Ok<T> {
 }
 
 /** Returns `true` for a value created by `ctx.ok`. */
-export function isOk(value: unknown): value is Ok<Record<string, unknown>> {
+export function isOk(value: unknown): value is Ok<unknown> {
   return typeof value === 'object' && value !== null && OK in value
 }
 
@@ -152,7 +152,7 @@ export interface Context<
   log(message: string): void
   /** Registers a long-running job; its ID is printed now and `next` is used if interrupted. */
   checkpoint(checkpoint: Checkpoint): void
-  /** Creates the successful result. */
+  /** Creates the successful result; `data` defaults to `{}`. */
   ok(
     ...args: O extends Schema
       ? [data: DataOf<O>, options?: { next?: Next[] }]
@@ -199,6 +199,13 @@ export interface CliOptions {
   skills?: URL | string
   /** Lazily imports a module that default-exports a {@link MapError} function. */
   mapError?: () => Promise<{ default: MapError }>
+  /**
+   * Every error code the commands may return besides the built-in codes,
+   * with a description and an optional `details` schema.
+   *
+   * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/agent-cli/guidelines.md#errors-next-steps-and-retries
+   */
+  errors?: ErrorRegistry
 }
 
 /**
