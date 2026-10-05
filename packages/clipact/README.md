@@ -290,6 +290,7 @@ Throw a `CliError` for expected failures. Strict tests check that its code is de
 | `interrupted` | SIGINT, SIGTERM, SIGHUP | `true` only for `readOnly` or `idempotent` commands |
 | `internal_error` | Anything unexpected | `false` |
 | `rate_limited`, `service_unavailable`, `timeout` | Handlers | Default `true` only for `readOnly` or `idempotent` commands |
+| `skill_conflict` | `skills install`, when `skills` is configured (see [Agent skills](#agent-skills)) | `false` |
 | Your codes | Handlers | Default `false` |
 
 An explicit `retryable` always wins. The framework never retries; handlers and SDKs own request-level retries and backoff, and return `retryable: true` only when the same command can be run again safely.
