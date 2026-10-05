@@ -41,7 +41,7 @@ When an agent runs `fil`, every command writes one JSON object to stdout and exi
 - **Signing** uses a session key authorized by your wallet. The provider submits the transactions, and your wallet pays for storage.
 - **State** lives in a local SQLite database. Each `put` and `delete` is saved before it runs, so `fil operations resume <id>` can finish an interrupted job without committing it twice.
 
-Read [the architecture](docs/architecture.md) for details.
+Read [the architecture](docs/fil-cli/architecture.md) for details.
 
 ## Repository
 
@@ -53,12 +53,22 @@ A pnpm and Turborepo monorepo; all packages are private.
 | `packages/clipact` | `clipact` | [Framework for agent-friendly CLIs](packages/clipact/README.md) |
 | `examples/launchpad` | `launchpad-example` | [Example clipact CLI with bundling](examples/launchpad/README.md) |
 
+See [development](docs/development.md) for requirements, installation, and validation.
+
+### fil
+
 | Guide | Contents |
 | --- | --- |
-| [Architecture](docs/architecture.md) | Modules, login, put/get/rm flows, state, recovery, verification |
-| [Filecoin CLI interface research](docs/fil-cli-interface-research.md) | Command surface, resources, operations, CLI state, and artifact delivery design |
-| [CLI guidelines for agents](docs/agent-cli-guidelines.md) | Output, error, exit-code, discovery, and startup-performance conventions for agent-facing Node.js CLIs |
-| [CLI framework design](docs/cli-framework-design.md) | Design of `clipact`, the framework that implements the agent CLI guidelines |
-| [Development](docs/development.md) | Requirements, installation, validation |
+| [Architecture](docs/fil-cli/architecture.md) | Modules, login, put/get/rm flows, state, recovery, verification |
+| [Interface research](docs/fil-cli/interface-research.md) | Command surface, resources, operations, CLI state, and artifact delivery design |
+
+### Agent-facing CLIs
+
+Generic guidance for any Node.js CLI that agents run, independent of `fil`. See the [index](docs/agent-cli/README.md).
+
+| Guide | Contents |
+| --- | --- |
+| [CLI guidelines for agents](docs/agent-cli/guidelines.md) | Output, error, exit-code, discovery, and startup-performance conventions for agent-facing Node.js CLIs |
+| [CLI framework design](docs/agent-cli/framework-design.md) | Design of `clipact`, the framework that implements the agent CLI guidelines |
 
 Built with [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core), [clipact](packages/clipact/README.md), and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf). The CAR packing follows [Filecoin Pin](https://github.com/filecoin-project/filecoin-pin).

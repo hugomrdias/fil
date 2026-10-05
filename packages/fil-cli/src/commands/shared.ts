@@ -5,7 +5,7 @@ import { NETWORKS } from '../network.ts'
  * Input every command that talks to the chain accepts. clipact has no global
  * options, so each command spreads this into its input schema.
  *
- * @see ../../../../docs/cli-framework-design.md#defining-commands
+ * @see ../../../../docs/agent-cli/framework-design.md#defining-commands
  */
 export const account = {
   network: z

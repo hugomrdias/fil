@@ -29,8 +29,8 @@ type LoginResult = {
 
 /**
  * Save an approved session. Returns the result when every requested scope
- * was granted; throws `permission_denied` (with the partial result) when
- * some were not.
+ * was granted; throws `permission_denied` with the missing scopes when some
+ * were not.
  */
 function finishLogin(
   app: App,
@@ -43,21 +43,11 @@ function finishLogin(
     rootAddress: grants.root,
     ...(expiresAt ? { expiresAt } : {}),
   })
-  const result: LoginResult = {
-    network: app.network,
-    address: session.address,
-    rootAddress: grants.root,
-    scopes: grants.granted,
-    ...(expiresAt
-      ? { expiresAt: new Date(Number(expiresAt) * 1000).toISOString() }
-      : {}),
-  }
   if (grants.missing.length > 0) {
     throw new CliError({
       code: ErrorCodes.permissionDenied,
       message: `The wallet owner did not grant: ${grants.missing.join(', ')}.`,
       details: { missing: grants.missing },
-      data: result,
       next: [
         {
           by: 'user',
@@ -67,7 +57,15 @@ function finishLogin(
       ],
     })
   }
-  return result
+  return {
+    network: app.network,
+    address: session.address,
+    rootAddress: grants.root,
+    scopes: grants.granted,
+    ...(expiresAt
+      ? { expiresAt: new Date(Number(expiresAt) * 1000).toISOString() }
+      : {}),
+  }
 }
 
 /**

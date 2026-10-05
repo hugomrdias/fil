@@ -35,7 +35,7 @@ export type JobReporter = Pick<
  * Shared setup is a plain function each handler calls; clipact has no
  * middleware.
  *
- * @see ../../../../docs/cli-framework-design.md#defining-commands
+ * @see ../../../../docs/agent-cli/framework-design.md#defining-commands
  */
 export function appFor(ctx: { input: AccountInput; signal: AbortSignal }): App {
   const { network, sessionKey, rootAddress } = ctx.input

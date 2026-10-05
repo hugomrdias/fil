@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { CliError } from 'clipact'
 import type { Hex } from 'viem'
+import { invalidInput, operationError } from '../src/errors.ts'
 import { openDatabase } from '../src/state/db.ts'
 import {
   getOperation,
@@ -257,13 +258,38 @@ test('put errors carry the operation ID and a resume step, never retryable', asy
   assert.equal(error.code, 'operation_failed')
   assert.equal(error.retryable, false)
   const op = onlyOperation(ctx)
-  assert.equal(error.data?.operationId, op.id)
+  assert.equal(
+    (error.details as { operationId?: string } | undefined)?.operationId,
+    op.id
+  )
   assert.deepEqual(error.next?.at(-1), {
     by: 'agent',
     command: `fil operations resume ${op.id}`,
     description: 'Continue this operation with its saved input',
   })
   assert.equal(op.executionStatus, 'failed')
+})
+
+test('operation errors add the ID to details only for fil codes', () => {
+  const resume = 'fil operations resume op_1'
+  const invalid = operationError(invalidInput('Too small.', 'path'), 'op_1')
+  assert.deepEqual(invalid.details, [{ path: 'path', message: 'Too small.' }])
+  assert.equal(invalid.next?.at(-1)?.command, resume)
+
+  const down = operationError(
+    new CliError({ code: 'service_unavailable', message: 'Down.' }),
+    'op_1'
+  )
+  assert.equal(down.details, undefined)
+  assert.equal(down.retryable, false)
+  assert.equal(down.next?.at(-1)?.command, resume)
+
+  const details = { fundingUrl: 'u', depositNeeded: '1', needsApproval: false }
+  const funds = operationError(
+    new CliError({ code: 'insufficient_funds', message: 'Fund.', details }),
+    'op_1'
+  )
+  assert.deepEqual(funds.details, { ...details, operationId: 'op_1' })
 })
 
 test('resume after a dropped wait finds the landed commit without sending', async () => {
@@ -346,7 +372,10 @@ test('put stops with insufficient_funds, a funding step, and the operation', asy
     error.next?.map((step) => step.by),
     ['user', 'agent']
   )
-  assert.equal(error.data?.operationId, onlyOperation(ctx).id)
+  assert.equal(
+    (error.details as { operationId?: string } | undefined)?.operationId,
+    onlyOperation(ctx).id
+  )
   assert.equal(calls.upload, 0)
 })
 
@@ -429,7 +458,8 @@ test('a reverted removal keeps the resource and is resumable (#2)', async () => 
   assert.ok(error instanceof CliError)
   assert.equal(error.code, 'removal_reverted')
   assert.equal(getResource(ctx.db, put.resource.ref)?.status, 'active')
-  const operationId = error.data?.operationId as string
+  const operationId = (error.details as { operationId?: string } | undefined)
+    ?.operationId as string
   const failed = getOperation(ctx.db, operationId)
   assert.equal(failed?.executionStatus, 'failed')
   assert.equal(failed?.checkpoint.transactionHash, undefined)

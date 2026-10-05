@@ -1,6 +1,6 @@
 # fil-cli
 
-Prototype `fil` command-line interface for Filecoin Onchain Cloud. It stores a file or folder with one copy on one Curio provider and returns Curio retrieval URLs. It uses [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly, [clipact](../clipact/README.md) for the agent output contract, and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil-cli-interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli-guidelines.md).
+Prototype `fil` command-line interface for Filecoin Onchain Cloud. It stores a file or folder with one copy on one Curio provider and returns Curio retrieval URLs. It uses [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly, [clipact](../clipact/README.md) for the agent output contract, and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil-cli/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md).
 
 ```sh
 pnpm --filter fil-cli build
@@ -40,7 +40,7 @@ Files are stored as exact bytes. Folders are packed with the IPIP-499 `unixfs-v1
 
 ## Recovery
 
-Each `put` and `delete` saves an operation before any external mutation, prints its ID to stderr right away, and records checkpoints as it goes. Errors from a put or delete carry `operationId` and a `fil operations resume <id>` step, and are never `retryable`: running the original command again would start a new paid operation.
+Each `put` and `delete` saves an operation before any external mutation, prints its ID to stderr right away, and records checkpoints as it goes. Errors from a put or delete carry a `fil operations resume <id>` step and are never `retryable`. Errors with a fil code also carry the ID in `error.details.operationId`; built-in codes such as `invalid_input` keep their own `details`: running the original command again would start a new paid operation.
 
 ```sh
 fil operations ls --incomplete
@@ -54,7 +54,7 @@ Ctrl+C or a harness's SIGTERM aborts the work at the next step and returns an `i
 
 ## Output
 
-`fil` follows the [clipact](../clipact/README.md) contract: in machine mode (`--json`, `FIL_OUTPUT=json`, a detected agent, or a non-terminal stdout) it writes one JSON object to stdout, with `ok`, command fields, and `error` and `next` on failure. Exit code `0` means `ok: true`; everything else exits `1`. Diagnostics and progress go to stderr. `fil schema --list` and `fil schema <command>` describe every command offline, `fil completion <shell>` prints shell completions, and `fil skills install` installs the bundled [agent skill](skills/fil/SKILL.md).
+`fil` follows the [clipact](../clipact/README.md) contract: in machine mode (`--json`, `FIL_OUTPUT=json`, a detected agent, or a non-terminal stdout) it writes one JSON object to stdout: `data` on success or `error` on failure, then optional `next` steps. Exit code `0` means the result has `data`; `1` means it has `error`. Diagnostics and progress go to stderr. `fil schema --list` and `fil schema <command>` describe every command and error code offline, `fil completion <shell>` prints shell completions, and `fil skills install` installs the bundled [agent skill](skills/fil/SKILL.md).
 
 | Error code | Meaning |
 | --- | --- |

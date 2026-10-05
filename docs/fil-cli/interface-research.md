@@ -14,7 +14,7 @@ For folder publishing, reuse [Filecoin Pin](https://github.com/filecoin-project/
 
 Provide both a useful workflow and a dependable execution contract. A large command tree generated directly from contracts would expose too much machinery for the primary task.
 
-This document covers the design specific to the Filecoin CLI. Generic conventions for agent-facing Node.js CLIs (output and error contract, exit codes, agent detection, schema discovery, non-interactive behavior, harness integration, evaluation, and startup performance) are in [CLI guidelines for agents](agent-cli-guidelines.md); `fil` follows them.
+This document covers the design specific to the Filecoin CLI. Generic conventions for agent-facing Node.js CLIs (output and error contract, exit codes, agent detection, schema discovery, non-interactive behavior, harness integration, evaluation, and startup performance) are in [CLI guidelines for agents](../agent-cli/guidelines.md); `fil` follows them.
 
 ## Proposed user interface
 
@@ -223,7 +223,7 @@ Account/network preferences belong in CLI configuration; private and session key
 
 ## The agent execution contract
 
-`fil` applies the [CLI guidelines for agents](agent-cli-guidelines.md): one JSON result object on stdout (success and error), human-readable diagnostics on stderr, exit codes `0` and `1` only, structured `retryable` and `next` fields, agent-aware help, no prompts in noninteractive mode, and offline `fil schema <command>` discovery. The Filecoin CLI adds these specifics:
+`fil` applies the [CLI guidelines for agents](../agent-cli/guidelines.md): one JSON result object on stdout (success and error), human-readable diagnostics on stderr, exit codes `0` and `1` only, structured `retryable` and `next` fields, agent-aware help, no prompts in noninteractive mode, and offline `fil schema <command>` discovery. The Filecoin CLI adds these specifics:
 
 | Concern | Filecoin CLI contract |
 | --- | --- |
@@ -241,51 +241,53 @@ Illustrative compact successful result, with placeholder IDs and a reserved exam
 
 ```json
 {
-  "ok": true,
-  "operationId": "op_example",
-  "state": "ready",
-  "resource": {
-    "ref": "artifact_example",
-    "kind": "artifact",
-    "name": "report",
-    "chainId": "314",
-    "payer": "<payer-address>",
-    "pieceCid": "<car-piece-cid>",
-    "rootCid": "<unixfs-root-cid>",
-    "copies": [
-      { "providerId": "12", "dataSetId": "345", "pieceId": "6" },
-      { "providerId": "34", "dataSetId": "678", "pieceId": "9" }
-    ],
-    "url": "https://artifact.example/report/"
-  },
-  "storage": {
-    "complete": true,
-    "requestedCopies": 2,
-    "confirmedCopies": 2
-  },
-  "retrieval": {
+  "data": {
+    "operationId": "op_example",
     "state": "ready",
-    "checkedAt": "2026-09-28T12:00:00Z"
+    "resource": {
+      "ref": "artifact_example",
+      "kind": "artifact",
+      "name": "report",
+      "chainId": "314",
+      "payer": "<payer-address>",
+      "pieceCid": "<car-piece-cid>",
+      "rootCid": "<unixfs-root-cid>",
+      "copies": [
+        { "providerId": "12", "dataSetId": "345", "pieceId": "6" },
+        { "providerId": "34", "dataSetId": "678", "pieceId": "9" }
+      ],
+      "url": "https://artifact.example/report/"
+    },
+    "storage": {
+      "complete": true,
+      "requestedCopies": 2,
+      "confirmedCopies": 2
+    },
+    "retrieval": {
+      "state": "ready",
+      "checkedAt": "2026-09-28T12:00:00Z"
+    }
   }
 }
 ```
 
 The resource is the small managed-content record. The surrounding state, storage summary, and retrieval check describe this operation's outcome at a point in time; they are not additional resource fields or a permanent availability guarantee. Use the resource reference for get/inspect/delete and the operation ID for job inspection or recovery.
 
-Exit `0` only when the requested command contract is satisfied (`ok: true`); exit `1` otherwise. Partial copies, pending publication, and action-required outcomes exit `1`, and their stable error `code` (for example `storage_partial`, `publication_pending`, `insufficient_funds`) carries the diagnosis. A partial or pending put still returns the resource, its URL, and its operation ID so a harness can share the link or resume. Operation inspection exits `0` while reporting a still-pending operation.
+Exit `0` only when the requested command contract is satisfied (the result has `data`); exit `1` otherwise. Partial copies, pending publication, and action-required outcomes exit `1`, and their stable error `code` (for example `storage_partial`, `publication_pending`, `insufficient_funds`) carries the diagnosis. A failed result carries no `data`, so a partial or pending put returns the operation ID, the resource reference, and its URL in `error.details`, and a harness can still share the link or resume. Operation inspection exits `0` while reporting a still-pending operation.
 
 Illustrative pending result, following the guidelines' error shape:
 
 ```json
 {
-  "ok": false,
-  "operationId": "op_example",
-  "state": "pending",
-  "resource": { "ref": "artifact_example", "url": "https://artifact.example/report/" },
   "error": {
     "code": "publication_pending",
     "message": "Both copies are committed; the gateway has not served the entry point yet.",
-    "retryable": false
+    "retryable": false,
+    "details": {
+      "operationId": "op_example",
+      "state": "pending",
+      "resource": { "ref": "artifact_example", "url": "https://artifact.example/report/" }
+    }
   },
   "next": [
     { "by": "agent", "command": "fil operations resume op_example --json", "description": "Continue publication checks for this operation" }
@@ -352,7 +354,7 @@ Store-and-serve has ongoing costs. Report current storage obligations and egress
 
 ## Harness integration
 
-Start with one compact Agent Skill covering publishing, retrieval, inspection, and recovery; see [Agent Skills](agent-cli-guidelines.md#agent-skills) for packaging and `fil skills install`. The skill should teach a few essential facts: use structured output; return the actual URL from the result; distinguish pending/partial/ready; resume an existing operation after interruption; never paste credentials.
+Start with one compact Agent Skill covering publishing, retrieval, inspection, and recovery; see [Agent Skills](../agent-cli/guidelines.md#agent-skills) for packaging and `fil skills install`. The skill should teach a few essential facts: use structured output; return the actual URL from the result; distinguish pending/partial/ready; resume an existing operation after interruption; never paste credentials.
 
 For a local MCP adapter, expose a small set such as `put_artifact`, `inspect_artifact`, `list_artifacts`, `get_artifact`, `delete_artifact`, and `list_operations`/`inspect_operation`/`resume_operation`. `put_artifact` maps to the same operation as `artifacts put` and its `publish` alias; expose one creation tool rather than duplicate tools for the alias. Deletion requires separately authorized removal permissions. Resource links can point to published artifacts; client rendering support varies, so a resource link does not guarantee an inline preview.
 
@@ -378,7 +380,7 @@ Ship `files put/get/delete`, `artifacts put/get/delete`, the `publish` command a
 
 Before settling the delivery architecture, prototype one PDF and one static folder through Filecoin Pin/UnixFS and through raw-piece delivery. Check whether the chosen gateway actually renders/downloads them correctly, including asset paths and origin separation. This is the main unresolved dependency.
 
-Evaluate the resulting interface as described in [Evaluate with agents](agent-cli-guidelines.md#evaluate-with-agents), additionally measuring duplicate paid mutations and correctness of the final share link.
+Evaluate the resulting interface as described in [Evaluate with agents](../agent-cli/guidelines.md#evaluate-with-agents), additionally measuring duplicate paid mutations and correctness of the final share link.
 
 Acceptance scenarios:
 

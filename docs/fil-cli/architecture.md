@@ -1,6 +1,6 @@
 # fil CLI architecture
 
-This document describes how the `fil` prototype in [`packages/fil-cli`](../packages/fil-cli) works: its modules, the login, put, get, and delete flows, local state, and the recovery model. The [interface research](fil-cli-interface-research.md) explains why the design looks like this. This document describes what was built and where it departs from that design.
+This document describes how the `fil` prototype in [`packages/fil-cli`](../../packages/fil-cli) works: its modules, the login, put, get, and delete flows, local state, and the recovery model. The [interface research](interface-research.md) explains why the design looks like this. This document describes what was built and where it departs from that design.
 
 ## Overview
 
@@ -10,7 +10,7 @@ This document describes how the `fil` prototype in [`packages/fil-cli`](../packa
 - **One copy.** Each upload has one copy on one provider. The CLI calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly and does not use synapse-sdk.
 - **Delegated signing.** A session key, approved by the wallet owner in the [pay.filecoin.cloud console](https://pay.filecoin.cloud/console/session-keys), signs uploads and removals. The owner's wallet pays for storage.
 - **Recoverable jobs.** Each `put` and `delete` is saved as an operation in SQLite before it changes anything outside the machine, so an interrupted job can be resumed without committing twice.
-- **Machine contract.** [clipact](../packages/clipact/README.md) implements the [CLI guidelines for agents](agent-cli-guidelines.md): one JSON result on stdout, exit codes `0`/`1`, errors with `retryable` and `next` steps marked `by: "agent"` or `by: "user"`, offline `schema`, confirmation gates, signal handling, and lazily loaded handlers.
+- **Machine contract.** [clipact](../../packages/clipact/README.md) implements the [CLI guidelines for agents](../agent-cli/guidelines.md): one JSON result on stdout, exit codes `0`/`1`, errors with `retryable` and `next` steps marked `by: "agent"` or `by: "user"`, offline `schema`, confirmation gates, signal handling, and lazily loaded handlers.
 
 ```mermaid
 flowchart LR
@@ -138,7 +138,7 @@ Details (`auth/login.ts`, `handlers/login.ts`):
 
 - **The key is saved first.** Running `fil login` again resumes a pending login with the same key and scopes. A fully approved session that already covers the requested scopes is reused. Anything else, or `--fresh`, generates a new key.
 - **Finding the owner.** In `AuthorizationsUpdated`, `identity` (the owner) is indexed but `signer` is not. The CLI therefore scans events from `fromBlock` in windows of at most 2,000 blocks and matches the signer locally. The matching event names the owner, so the user never enters an address.
-- **Partial grants.** The console lets the owner untick scopes. After finding the owner, the CLI reads per-scope expiries. If any requested scope is missing, the session is still saved and the result is `permission_denied`, with the granted scopes as partial data and a `by: "user"` step to log in again.
+- **Partial grants.** The console lets the owner untick scopes. After finding the owner, the CLI reads per-scope expiries. If any requested scope is missing, the session is still saved and the result is `permission_denied`, with the missing scopes in `error.details` and a `by: "user"` step to log in again.
 - **Human vs. agent.** When a human is at a terminal (clipact's `mode.interactive` and no detected agent), login opens the browser and waits (default 600 s; `ctx.signal` stops the wait). Otherwise it checks once and returns `login_pending` with two `next` steps: the approval link `by: "user"`, and `fil login` `by: "agent"` to check again. It never opens a browser for an agent.
 - **Console link contract.** The address is lowercased, because the console rejects bad mixed-case checksums. The scopes use console IDs. The network is required. The funding link is `/console?deposit=<decimal>&operator=fwss&network=<net>` and is added only when a deposit is needed.
 - **Funding stays with the owner.** The session key cannot deposit or approve. `fil status` and the `put` preflight return a prefilled funding link.
@@ -196,7 +196,7 @@ Two synapse-core details matter here:
 
 ### Resume
 
-`runOperation` returns the saved outcome of a completed operation without running anything. Otherwise it acquires the operation lock, reports the operation to clipact with `ctx.checkpoint` (which prints its ID to stderr immediately, so it survives a SIGKILL), and runs the job from its checkpoint. A failure marks the operation `failed` and becomes an error with `operationId` and a `fil operations resume <id>` step; put and delete errors are never `retryable`, because repeating the original command starts a new paid operation. `fil operations resume <id>` then applies these rules:
+`runOperation` returns the saved outcome of a completed operation without running anything. Otherwise it acquires the operation lock, reports the operation to clipact with `ctx.checkpoint` (which prints its ID to stderr immediately, so it survives a SIGKILL), and runs the job from its checkpoint. A failure marks the operation `failed` and becomes an error with a `fil operations resume <id>` step. Errors with a fil code also carry `operationId` in `error.details`, and built-in codes such as `invalid_input` keep their own `details`. Put and delete errors are never `retryable`, because repeating the original command starts a new paid operation. `fil operations resume <id>` then applies these rules:
 
 - **Commit signed** (`commit` saved): first read `clientNonces(payer, nonce)` from the FWSS view contract. FWSS stores `((firstAdded + count) << 128) | dataSetId` for every used add-pieces nonce, including the add half of create-and-add, so a non-zero value means the commit landed and gives both IDs; the job completes without sending anything. A zero value means it did not land, and the **same** `extraData` is sent again (or awaited, if its `statusUrl` was saved). FWSS rejects a second use of a nonce, so at most one commit takes effect even if the first submission lands late ([#1](https://github.com/hugomrdias/foc-cli/issues/1)).
 - **Commit rejected** (the provider reports a failed transaction): the saved `statusUrl` is cleared, so a resume checks the nonce and resends the same signature.
@@ -272,7 +272,7 @@ All queries are limited to `(chainId, payer)`, so one database can serve several
 
 ## Output and errors
 
-clipact renders results. In machine mode (`--json`, `FIL_OUTPUT=json`, a detected agent, or a non-terminal stdout) stdout carries one compact JSON object; otherwise each command's `human()` formatter writes text. On-chain IDs and amounts are decimal strings. Progress goes to stderr: a status line for humans, a plain line at most every 15 s for agents. Exit code `0` means `ok: true`; everything else exits `1`.
+clipact renders results. In machine mode (`--json`, `FIL_OUTPUT=json`, a detected agent, or a non-terminal stdout) stdout carries one compact JSON object; otherwise each command's `human()` formatter writes text. On-chain IDs and amounts are decimal strings. Progress goes to stderr: a status line for humans, a plain line at most every 15 s for agents. The object has `data` on success or `error` on failure, then optional `next` steps; exit code `0` means the result has `data`, and `1` means it has `error`.
 
 Errors are clipact `CliError`s with a stable snake_case `code`, a `retryable` flag, optional `details`, and `next` steps. Each command lists its codes in its definition, and `schema` and help show them. Errors from viem or synapse-core that are not `CliError`s go through the lazily loaded `map-error.ts`, which maps RPC and HTTP failures to `service_unavailable` or `timeout`; clipact marks those retryable only for read-only and idempotent commands. Anything else is `internal_error`.
 
