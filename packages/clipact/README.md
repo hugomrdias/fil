@@ -1,6 +1,6 @@
 # clipact
 
-A small framework for Node.js CLIs that agents and humans can both rely on. It implements the [CLI guidelines for agents](../../docs/agent-cli-guidelines.md) once, following the [framework design](../../docs/cli-framework-design.md), so every command gets the same contract by default:
+A small framework for Node.js CLIs that agents and humans can both rely on. It implements the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md) once, following the [framework design](../../docs/agent-cli/framework-design.md), so every command gets the same contract by default:
 
 - one compact JSON result on stdout in machine mode, human text otherwise, and diagnostics on stderr;
 - exit code `0` when `ok` is `true` and `1` otherwise, with signals re-raised as `128 + N`;
@@ -584,7 +584,7 @@ Unbundled, the same CLI costs 27–33 ms, mostly from loading zod's modules. Bun
 
 ## Not yet implemented
 
-From the [design](../../docs/cli-framework-design.md#milestones): telemetry (`telemetry` commands, `DO_NOT_TRACK`), a startup-budget check in CI, and NDJSON `--events`. Prompts beyond confirmation, output formats other than JSON and text, and MCP are out of scope.
+From the [design](../../docs/agent-cli/framework-design.md#milestones): telemetry (`telemetry` commands, `DO_NOT_TRACK`), a startup-budget check in CI, and NDJSON `--events`. Prompts beyond confirmation, output formats other than JSON and text, and MCP are out of scope.
 
 ## Development
 

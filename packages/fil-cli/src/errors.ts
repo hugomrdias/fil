@@ -4,7 +4,7 @@ import { CliError, isCliError, type Next } from 'clipact'
  * Error codes `fil` returns besides clipact's built-ins. Codes are stable:
  * agents and scripts branch on them.
  *
- * @see ../../../docs/agent-cli-guidelines.md#errors-next-steps-and-retries
+ * @see ../../../docs/agent-cli/guidelines.md#errors-next-steps-and-retries
  */
 export const ErrorCodes = {
   /** No session key for the network. */
@@ -74,7 +74,7 @@ export function resumeStep(operationId: string): Next {
  * retryable, because repeating the original command starts a new paid
  * operation; resuming continues the saved one.
  *
- * @see ../../../docs/fil-cli-interface-research.md#the-agent-execution-contract
+ * @see ../../../docs/fil-cli/interface-research.md#the-agent-execution-contract
  */
 export function operationError(error: unknown, operationId: string): CliError {
   if (isCliError(error)) {

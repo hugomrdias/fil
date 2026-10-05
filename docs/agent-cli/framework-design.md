@@ -1,6 +1,6 @@
 # CLI framework design
 
-Date: 2026-10-01. Status: the core (milestone 1) is implemented in [`packages/clipact`](../packages/clipact/README.md), along with shell completions and skills; the other services are not. Name: `clipact`. Scope: a small Node.js library that implements the [CLI guidelines for agents](agent-cli-guidelines.md) once, so `fil` and future CLIs get the output contract, agent behavior, and startup performance by default.
+Date: 2026-10-01. Status: the core (milestone 1) is implemented in [`packages/clipact`](../../packages/clipact/README.md), along with shell completions and skills; the other services are not. Name: `clipact`. Scope: a small Node.js library that implements the [CLI guidelines for agents](guidelines.md) once, so any agent-facing CLI gets the output contract, agent behavior, and startup performance by default.
 
 ## Goals
 
@@ -209,7 +209,7 @@ Help is rendered from definitions in two styles:
 
 ## Runtime services
 
-- **Signals and exit**: implemented as in [Signal handling](agent-cli-guidelines.md#signal-handling) and [Exit and stream hygiene](agent-cli-guidelines.md#exit-and-stream-hygiene). `ctx.signal` is passed to all handler I/O. `ctx.checkpoint({ id, next })` registers a long-running job: the framework prints the ID to stderr immediately, so it survives a SIGKILL, and includes the `next` steps in an `interrupted` result.
+- **Signals and exit**: implemented as in [Signal handling](guidelines.md#signal-handling) and [Exit and stream hygiene](guidelines.md#exit-and-stream-hygiene). `ctx.signal` is passed to all handler I/O. `ctx.checkpoint({ id, next })` registers a long-running job: the framework prints the ID to stderr immediately, so it survives a SIGKILL, and includes the `next` steps in an `interrupted` result.
 - **Progress**: `ctx.progress({ phase, message, data? })` takes structured objects from the start. It draws a spinner on a human TTY and writes a plain stderr line at most every 15 s in agent mode. A later NDJSON `--events` mode can emit the same objects without handler changes.
 - **Framework state**: a small file in the platform state directory holds only framework-owned state: the telemetry choice and whether its notice was shown. It is not a configuration layer for command input.
 - **Telemetry**: the framework decides enablement (`DO_NOT_TRACK`, `ACME_TELEMETRY`, the stored choice from `telemetry disable`), builds the event (command path, flag names, outcome, error code, duration, versions, agent, mode), shows the first-run notice, supports `ACME_TELEMETRY=log`, and hands the event to the application's lazily loaded sender after the result is written.
@@ -295,6 +295,6 @@ The framework depends only on the Standard Schema interfaces, so applications ch
 ## Milestones
 
 1. **Core** (implemented): definitions, router, `parseArgs` integration, input merging and validation, envelope and errors, modes and agent detection, help, `schema`, signals and exit, testing helpers.
-2. **Spike**: build `fil artifacts put` and `fil operations resume` on the core; run the guideline tests in Claude Code, Codex, and Gemini CLI. The prototype, now named `fil`, runs on clipact ([architecture](architecture.md)); the harness runs remain.
+2. **Spike**: validate the core on a real CLI, including a long-running, resumable command; run the guideline tests in Claude Code, Codex, and Gemini CLI. A real CLI runs on clipact; the harness runs remain.
 3. **Services**: telemetry, gating and dry-run polish, startup budget in CI. Skills are implemented.
 4. **Later**: `--events`. Shell completions are implemented.

@@ -107,7 +107,7 @@ test/contract.test.ts     output-contract sweep and module-load tracing against 
 | `schema sites create` | 74.0 ms | +14.4 ms |
 | `sites list` (loads a handler and the SDK) | 73.0 ms | +13.4 ms |
 
-`--version` slightly exceeds the design's 10 ms budget, because the entry chunk loads zod and every definition before routing. A CLI that needs less can precompute help and schema output at build time, as the [design](../../docs/cli-framework-design.md#performance-budget) describes.
+`--version` slightly exceeds the design's 10 ms budget, because the entry chunk loads zod and every definition before routing. A CLI that needs less can precompute help and schema output at build time, as the [design](../../docs/agent-cli/framework-design.md#performance-budget) describes.
 
 ## Tests
 

@@ -55,7 +55,7 @@ function summary(path: string, command: AnyCommand): Record<string, unknown> {
  * Builds the `schema --list` result: the command tree with one-line
  * descriptions, in one call.
  *
- * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/agent-cli-guidelines.md#discovery-and-schemas
+ * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/agent-cli/guidelines.md#discovery-and-schemas
  */
 export function listSchema(
   cli: CliOptions,
@@ -136,7 +136,7 @@ function redactSecrets(spec: CommandSpec): JsonSchema {
  * Builds the built-in `schema` command, which prints the JSON Schemas of a
  * command, or the command list of the CLI or a group, as one JSON object.
  *
- * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/agent-cli-guidelines.md#discovery-and-schemas
+ * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/agent-cli/guidelines.md#discovery-and-schemas
  */
 export function schemaCommand(cli: CliOptions, root: Group): SchemaCommand {
   const command: SchemaCommand = defineCommand({

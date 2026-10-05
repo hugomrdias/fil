@@ -1,6 +1,6 @@
 # fil CLI architecture
 
-This document describes how the `fil` prototype in [`packages/fil-cli`](../packages/fil-cli) works: its modules, the login, put, get, and delete flows, local state, and the recovery model. The [interface research](fil-cli-interface-research.md) explains why the design looks like this. This document describes what was built and where it departs from that design.
+This document describes how the `fil` prototype in [`packages/fil-cli`](../../packages/fil-cli) works: its modules, the login, put, get, and delete flows, local state, and the recovery model. The [interface research](interface-research.md) explains why the design looks like this. This document describes what was built and where it departs from that design.
 
 ## Overview
 
@@ -10,7 +10,7 @@ This document describes how the `fil` prototype in [`packages/fil-cli`](../packa
 - **One copy.** Each upload has one copy on one provider. The CLI calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly and does not use synapse-sdk.
 - **Delegated signing.** A session key, approved by the wallet owner in the [pay.filecoin.cloud console](https://pay.filecoin.cloud/console/session-keys), signs uploads and removals. The owner's wallet pays for storage.
 - **Recoverable jobs.** Each `put` and `delete` is saved as an operation in SQLite before it changes anything outside the machine, so an interrupted job can be resumed without committing twice.
-- **Machine contract.** [clipact](../packages/clipact/README.md) implements the [CLI guidelines for agents](agent-cli-guidelines.md): one JSON result on stdout, exit codes `0`/`1`, errors with `retryable` and `next` steps marked `by: "agent"` or `by: "user"`, offline `schema`, confirmation gates, signal handling, and lazily loaded handlers.
+- **Machine contract.** [clipact](../../packages/clipact/README.md) implements the [CLI guidelines for agents](../agent-cli/guidelines.md): one JSON result on stdout, exit codes `0`/`1`, errors with `retryable` and `next` steps marked `by: "agent"` or `by: "user"`, offline `schema`, confirmation gates, signal handling, and lazily loaded handlers.
 
 ```mermaid
 flowchart LR

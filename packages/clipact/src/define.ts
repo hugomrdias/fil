@@ -194,7 +194,7 @@ export interface CliOptions {
    * Directory of bundled skills (`<name>/SKILL.md`), such as
    * `new URL('../skills/', import.meta.url)`; adds the `skills` commands.
    *
-   * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/agent-cli-guidelines.md#agent-skills
+   * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/agent-cli/guidelines.md#agent-skills
    */
   skills?: URL | string
   /** Lazily imports a module that default-exports a {@link MapError} function. */
@@ -205,7 +205,7 @@ export interface CliOptions {
  * Defines a command. Handlers are loaded lazily, so this module should
  * import only the schema library.
  *
- * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/cli-framework-design.md#defining-commands
+ * @see https://github.com/hugomrdias/foc-cli/blob/main/docs/agent-cli/framework-design.md#defining-commands
  */
 export function defineCommand<
   I extends Schema | undefined = undefined,

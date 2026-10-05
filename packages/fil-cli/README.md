@@ -1,6 +1,6 @@
 # fil-cli
 
-Prototype `fil` command-line interface for Filecoin Onchain Cloud. It stores a file or folder with one copy on one Curio provider and returns Curio retrieval URLs. It uses [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly, [clipact](../clipact/README.md) for the agent output contract, and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil-cli-interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli-guidelines.md).
+Prototype `fil` command-line interface for Filecoin Onchain Cloud. It stores a file or folder with one copy on one Curio provider and returns Curio retrieval URLs. It uses [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly, [clipact](../clipact/README.md) for the agent output contract, and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil-cli/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md).
 
 ```sh
 pnpm --filter fil-cli build

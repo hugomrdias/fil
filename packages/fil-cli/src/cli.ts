@@ -7,8 +7,8 @@ import { commands } from './commands/index.ts'
  * clipact, so `--help`, `--version`, and `schema` never load an SDK; each
  * handler is imported when its command runs.
  *
- * @see ../../../docs/cli-framework-design.md
- * @see ../../../docs/fil-cli-interface-research.md
+ * @see ../../../docs/agent-cli/framework-design.md
+ * @see ../../../docs/fil-cli/interface-research.md
  */
 export const cli = defineCli({
   name: 'fil',

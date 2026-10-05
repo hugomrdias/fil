@@ -3,7 +3,7 @@
  * command definitions, plus one lazily loaded chunk per handler, so
  * `--help`, `--version`, and `schema` never load synapse-core or viem.
  *
- * @see ../../../docs/agent-cli-guidelines.md#startup-performance
+ * @see ../../../docs/agent-cli/guidelines.md#startup-performance
  */
 import { rm } from 'node:fs/promises'
 import { build } from 'esbuild'

@@ -14,7 +14,7 @@ const setting = z.object({
  * `fil doctor`: resolved settings with their sources, and quick checks of the
  * state database and the RPC endpoint.
  *
- * @see ../../../../docs/agent-cli-guidelines.md#configuration-and-environment
+ * @see ../../../../docs/agent-cli/guidelines.md#configuration-and-environment
  */
 export const doctor = defineCommand({
   name: 'doctor',
