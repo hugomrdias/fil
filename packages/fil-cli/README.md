@@ -1,10 +1,15 @@
 # fil-cli
 
-Prototype `fil` command-line interface for Filecoin Onchain Cloud. It stores a file or folder with one copy on one Curio provider and returns Curio retrieval URLs. It uses [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly, [clipact](../clipact/README.md) for the agent output contract, and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil-cli/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md).
+`fil` is a prototype command-line interface for Filecoin Onchain Cloud. It stores a file or a folder as one copy on one Curio provider and returns Curio retrieval URLs. It runs on the calibration network unless you choose mainnet.
+
+`fil` calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly. It uses [clipact](../clipact/README.md) for the agent output contract and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil-cli/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md). The [architecture](../../docs/fil-cli/architecture.md) describes the modules and flows.
+
+To build `fil` and put it on your path, run these commands from the repository root:
 
 ```sh
 pnpm --filter fil-cli build
-node packages/fil-cli/bin/fil.js --help
+alias fil="node $PWD/packages/fil-cli/bin/fil.js"
+fil --help
 ```
 
 ## Log in
@@ -13,34 +18,40 @@ node packages/fil-cli/bin/fil.js --help
 fil login
 ```
 
-`fil login` generates a session key and saves it locally. It then opens the pay.filecoin.cloud console, where the wallet owner approves the key. The CLI detects the approval on chain; there is nothing to copy back. By default it requests `createDataSet`, `addPieces`, and `schedulePieceRemovals`; repeat `--scopes` to choose others.
+`fil login` generates a session key and saves it locally. It then opens the [pay.filecoin.cloud](https://pay.filecoin.cloud) console, where the wallet owner approves the key. The CLI finds the approval on chain, so there is nothing to copy back. By default, it requests the `createDataSet`, `addPieces`, and `schedulePieceRemovals` scopes. To request other scopes, repeat `--scopes`.
 
-A human at a terminal gets the browser and a wait for approval. An agent, or any run without a terminal, never waits or opens a browser: it gets a `login_pending` error whose `next` steps are the approval link for the user and `fil login` for the agent to run once the user approves. An interrupted login resumes with the same key.
+The session key signs each request, the provider submits the transactions, and the wallet pays for storage.
 
-The session key cannot fund the account. `fil status` reports scope expiries, USDFC funds, and FWSS approval. When the account needs a deposit, it includes a prefilled console funding link. `fil doctor` shows the resolved network, RPC, console, and state directory with their sources, and checks the database and RPC.
+In a terminal, `fil login` opens the browser and waits for approval. An agent, or any run without a terminal, gets a `login_pending` error instead and never waits. The error's `next` steps are the approval link for the user and `fil login` for the agent to run after the user approves. An interrupted login resumes with the same key. To generate a new key, pass `--fresh`.
 
-For CI, set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS` instead of logging in. The session key is a secret: it is read only from the environment and never printed.
+For CI, set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS` instead of running `fil login`. `fil` reads the session key only from the environment and never prints it.
+
+## Check the account
+
+The session key cannot fund the account. `fil status` reports the expiry of each scope, the USDFC funds, and the Warm Storage (FWSS) approval. When the account needs a deposit, `fil status` also returns a prefilled funding link to the console.
+
+`fil doctor` shows the network, RPC, console, and state directory that `fil` resolved, with the source of each value. It also checks the database and the RPC.
 
 ## Store and retrieve
 
 ```sh
-fil put ./report.pdf          # raw piece  → <serviceURL>/piece/<pieceCid>
-fil put ./site                # UnixFS CAR → <serviceURL>/ipfs/<rootCid>/
-fil put ./site --dry-run      # size, provider, cost, authorization; stores nothing
+fil put ./report.pdf          # raw piece   → <serviceURL>/piece/<pieceCid>
+fil put ./site                # UnixFS CAR  → <serviceURL>/ipfs/<rootCid>/
+fil put ./site --dry-run      # size, provider, cost, and authorization; stores nothing
 fil publish ./site            # alias of put
-fil get res_… --output ./copy # verified by PieceCID; folders are extracted
-fil ls
-fil inspect res_… --check
-fil delete res_… --yes        # alias rm; schedules removal, state removal_pending
+fil get res_… --output ./copy # verifies the PieceCID and extracts folders
+fil ls                        # add --all to include resources pending removal
+fil inspect res_… --check     # sends a HEAD request to the retrieval URL
+fil delete res_… --yes        # alias rm; schedules removal
 ```
 
-Files are stored as exact bytes. Folders are packed with the IPIP-499 `unixfs-v1-2025` profile into a data set with `withIPFSIndexing`, so Curio serves them at `/ipfs/<rootCid>/`. Curio's `/ipfs` endpoint is a trustless gateway: it returns blocks and CARs, not rendered pages. Packing skips dotfiles and rejects symlinks. Content must be between 127 bytes and about 1 GiB.
+`fil` stores a file as its exact bytes. It packs a folder into a UnixFS CAR with the IPIP-499 `unixfs-v1-2025` profile, the same way as [Filecoin Pin](https://github.com/filecoin-project/filecoin-pin). The CAR goes into a data set with `withIPFSIndexing`, so Curio serves it at `/ipfs/<rootCid>/`. Curio's `/ipfs` endpoint is a trustless gateway. It returns blocks and CARs, not rendered pages.
 
-`delete` is destructive: without `--yes` it asks a human at a terminal, and returns `confirmation_required` with a `by: "user"` step everywhere else, including for agents.
+Packing skips dotfiles and rejects symlinks. The file or the packed CAR must be between 127 and 1,065,353,216 bytes (1016 MiB).
 
-## Recovery
+`delete` schedules removal, and the provider then deletes the stored copy. The resource state becomes `removal_pending`. Without `--yes`, `delete` asks a human at a terminal to confirm. In every other case, including for agents, it returns `confirmation_required` with a step for the user (`by: "user"`).
 
-Each `put` and `delete` saves an operation before any external mutation, prints its ID to stderr right away, and records checkpoints as it goes. Errors from a put or delete carry a `fil operations resume <id>` step and are never `retryable`. Errors with a fil code also carry the ID in `error.details.operationId`; built-in codes such as `invalid_input` keep their own `details`: running the original command again would start a new paid operation.
+## Resume an interrupted put or delete
 
 ```sh
 fil operations ls --incomplete
@@ -48,37 +59,62 @@ fil operations inspect op_…
 fil operations resume op_…
 ```
 
-A resumed put never commits twice. The commit is signed with a fresh nonce and saved before it is sent; a resume first asks FWSS (`clientNonces`) whether that nonce landed, and otherwise resends the same signature, which FWSS accepts at most once. A resume also skips the upload when the provider already has the piece, refuses a source file that changed, and returns the saved outcome of a completed operation. A reverted removal leaves the resource active and can be resumed.
+Each `put` and `delete` saves an operation in the local SQLite database before it changes anything on chain or at the provider. It prints the operation ID to stderr at once, so the ID survives even a SIGKILL. It then saves a checkpoint after each step.
 
-Ctrl+C or a harness's SIGTERM aborts the work at the next step and returns an `interrupted` result with the resume step, then exits with the signal (`130` or `143`).
+An error from a put or delete carries a `fil operations resume <id>` step and is never `retryable`. Running the original command again would start a new paid operation. Errors with a `fil` code also carry the ID in `error.details.operationId`. clipact's built-in codes, such as `invalid_input`, keep their own `details`.
 
-## Output
+A resumed put never commits twice. `fil` signs the commit with a fresh nonce and saves it before sending it. A resume first asks FWSS (`clientNonces`) whether that nonce landed. If it did not, the resume sends the same signature again, and FWSS accepts it at most once.
 
-`fil` follows the [clipact](../clipact/README.md) contract: in machine mode (`--json`, `FIL_OUTPUT=json`, a detected agent, or a non-terminal stdout) it writes one JSON object to stdout: `data` on success or `error` on failure, then optional `next` steps. Exit code `0` means the result has `data`; `1` means it has `error`. Diagnostics and progress go to stderr. `fil schema --list` and `fil schema <command>` describe every command and error code offline, `fil completion <shell>` prints shell completions, and `fil skills install` installs the bundled [agent skill](skills/fil/SKILL.md).
+A resume also does the following:
+
+- Skips the upload when the provider already has the piece.
+- Fails with `source_changed` when the source file changed.
+- Returns the saved result of an operation that already completed.
+
+If a removal transaction reverts, the resource stays active and you can resume the delete.
+
+Ctrl+C, SIGTERM, or SIGHUP stops the work at the next step. `fil` returns an `interrupted` result with the resume step, then re-raises the signal, so the shell sees `130`, `143`, or `129`.
+
+## Output and errors
+
+`fil` follows the [clipact](../clipact/README.md) output contract. It uses machine mode when you pass `--json`, set `FIL_OUTPUT=json`, run it from a detected agent, or redirect stdout away from a terminal. In machine mode, it writes one JSON object to stdout, with `data` on success or `error` on failure, then optional `next` steps. The exit code is `0` when the result has `data` and `1` when it has `error`. Diagnostics and progress go to stderr in every mode.
+
+| Command | Prints |
+| --- | --- |
+| `fil schema --list` | Every command, offline |
+| `fil schema <command>` | The command's input and output as JSON Schema, and its error codes |
+| `fil completion <shell>` | A completion script for `bash`, `zsh`, or `fish` |
+| `fil skills install` | Installs the bundled [agent skill](skills/fil/SKILL.md) |
 
 | Error code | Meaning |
 | --- | --- |
-| `auth_required`, `login_pending`, `session_expired`, `permission_denied` | Log in or approve scopes (a user step) |
-| `insufficient_funds` | Fund the account at the console link (a user step) |
-| `not_found`, `output_exists` | Wrong ref or ID; output path taken |
-| `operation_failed`, `commit_rejected`, `removal_reverted`, `source_changed`, `staging_missing`, `operation_running` | A put or delete stopped; follow `next` |
-| `verification_failed`, `unsafe_path` | Retrieved content did not verify |
-| `invalid_input`, `confirmation_required`, `interrupted`, `internal_error`, `service_unavailable`, `timeout` | clipact built-ins |
+| `auth_required`, `login_pending`, `session_expired`, `permission_denied` | The user must log in or approve scopes |
+| `insufficient_funds` | The user must fund the account at the console link |
+| `not_found` | No resource, operation, provider, or piece has that name |
+| `output_exists` | The `fil get` output path exists. Pass `--force` to overwrite it |
+| `operation_failed`, `commit_rejected`, `removal_reverted`, `source_changed`, `staging_missing`, `operation_running` | A put or delete stopped. Follow the `next` steps |
+| `verification_failed` | Retrieved bytes or blocks do not match their CIDs |
+| `unsafe_path` | A retrieved archive tried to write outside the output directory |
+| `invalid_input`, `confirmation_required`, `interrupted`, `internal_error`, `service_unavailable`, `timeout` | Built into clipact. See [clipact errors](../clipact/README.md#errors) |
 
 ## Configuration and state
 
 | Variable | Purpose |
 | --- | --- |
-| `FIL_NETWORK` | `mainnet` or `calibration`; `--network` wins, then this, then the config file, then calibration |
-| `FIL_SESSION_KEY`, `FIL_ROOT_ADDRESS` | Session key credentials without `login` |
-| `FIL_CONFIG_DIR` | Config directory (default: platform config dir `fil`) |
-| `FIL_STATE_DIR` | SQLite state and staging (default: platform data dir `fil`) |
-| `FIL_RPC_URL` | RPC endpoint override |
-| `FIL_CONSOLE_URL` | Console origin (default `https://pay.filecoin.cloud`) |
-| `FIL_OUTPUT`, `FIL_AGENT` | clipact output mode and agent detection overrides |
+| `FIL_NETWORK` | `mainnet` or `calibration`. `--network` takes precedence, then `FIL_NETWORK`, then the config file, then `calibration` |
+| `FIL_SESSION_KEY`, `FIL_ROOT_ADDRESS` | Session key and wallet address, used instead of `fil login` |
+| `FIL_CONFIG_DIR` | Config directory. Default: the platform config directory for `fil` |
+| `FIL_STATE_DIR` | SQLite state and staged CARs. Default: the platform data directory for `fil` |
+| `FIL_RPC_URL` | RPC endpoint. Default: synapse-core's fallback transport for the chain |
+| `FIL_CONSOLE_URL` | Console origin. Default: `https://pay.filecoin.cloud` |
+| `FIL_OUTPUT`, `FIL_AGENT` | Override clipact's output mode and agent detection |
 
-The prototype keeps the session private key in the config file, readable only by its owner (mode 0600). `fil logout` removes the local key, but the key stays authorized on chain until you revoke it in the console.
+The prototype saves the session private key in the config file with mode 0600, so only its owner can read it. `fil logout` deletes the local key. The key stays authorized on chain until you revoke it in the console.
 
 ## Development
 
-`src/commands/` holds one definition per command (zod and clipact only), and `src/handlers/` the matching handler, loaded lazily so `--help`, `--version`, and `schema` never import synapse-core. `pnpm build` bundles both with esbuild into `dist/`, with one chunk per handler; `bin/fil.js` enables the compile cache and loads the bundle. Tests run the CLI in process with `clipact/testing` and spawn the built binary for the process contract (`test/contract.test.ts`).
+Each command has a definition in `src/commands/` and a handler in `src/handlers/`. Definitions import only zod and clipact. clipact loads a handler only when its command runs, so `--help`, `--version`, and `schema` never import synapse-core.
+
+`pnpm build` bundles the CLI with esbuild into `dist/`, with one chunk per handler. `bin/fil.js` turns on Node's compile cache, then loads the bundle.
+
+Most tests run the CLI in process with `clipact/testing`. `test/contract.test.ts` spawns the built `bin/fil.js` to test stdout, exit codes, and signals on a real process.

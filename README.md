@@ -1,74 +1,32 @@
-# fil
+# foc-cli
 
-`fil` stores files and folders on [Filecoin Onchain Cloud](https://docs.filecoin.cloud/) and returns Curio retrieval links. It is built for people and for agents: logging in does not require pasting keys, the same `put` command handles a file or a folder, results are structured with stable exit codes, and interrupted jobs can be resumed.
+Tools for [Filecoin Onchain Cloud](https://docs.filecoin.cloud/). This repository holds the `fil` command-line interface, a read-only API with an MCP server, a web explorer and wallet dashboard, and `clipact`, the CLI framework that `fil` uses. It is a pnpm and Turborepo monorepo, and every package is private.
 
-> **Status:** prototype. It stores one copy on one provider and runs on calibration by default.
+## Packages and apps
 
-```sh
-fil login                     # approve a session key in the browser
-fil status                    # scopes, funds, readiness
-fil put ./report.pdf          # file   → https://<sp>/piece/<pieceCid>
-fil put ./site                # folder → https://<sp>/ipfs/<rootCid>/
-fil get res_… --output ./copy # download and verify
-fil ls
-fil delete res_… --yes
-```
+| Directory | Contents |
+| --- | --- |
+| [`packages/fil-cli`](packages/fil-cli/README.md) | `fil`, a prototype CLI that stores files and folders on one Curio provider and returns retrieval URLs. People and agents both run it. |
+| [`packages/clipact`](packages/clipact/README.md) | A framework for Node.js CLIs that agents run. Each command writes one JSON result with stable error codes and `next` steps. |
+| [`apps/fil-api`](apps/fil-api/README.md) | A Cloudflare Worker that serves a REST API and an MCP server for providers, data sets, pieces, Filecoin Pay rails, and session keys. |
+| [`apps/fil-app`](apps/fil-app/README.md) | A React explorer for fil-api data, and a wallet dashboard for Filecoin Pay, Warm Storage approval, data sets, and session keys. |
+| [`examples/launchpad`](examples/launchpad/README.md) | A complete clipact CLI that deploys sites to a mock host, with an esbuild bundle. |
 
-## Quick start
+## Documentation
 
-Requires Node.js 24+ and pnpm 11 (see [development](docs/development.md)).
+| Document | Contents |
+| --- | --- |
+| [Local development](docs/development.md) | Requirements, installation, and validation |
+| [fil architecture](docs/fil-cli/architecture.md) | Modules, login, put, get, and delete flows, state, recovery, and verification |
+| [fil interface research](docs/fil-cli/interface-research.md) | The design of commands, resources, operations, and local state |
+| [Agent-facing CLIs](docs/agent-cli/README.md) | Guidelines for Node.js CLIs that agents run, and the design of clipact |
+
+## Build and check
+
+Use Node.js 24 or newer and pnpm 11. From the repository root:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
-alias fil="node $PWD/packages/fil-cli/bin/fil.js"
-
-fil login
-fil status
-fil put ./docs --json
+pnpm check
 ```
-
-1. **`fil login`** creates a session key on your machine and opens [pay.filecoin.cloud](https://pay.filecoin.cloud/console/session-keys) with the key filled in. Approve it with your wallet. The CLI detects the approval on chain, so there is nothing to copy back.
-2. **`fil status`** shows whether your account has enough USDFC and Warm Storage approval. If it doesn't, it prints a prefilled console link to fund the account.
-3. **`fil put`** uploads the file or folder, commits it on chain, and returns its reference (`res_…`), CIDs, and Curio URLs.
-
-When an agent runs `fil`, every command writes one JSON object to stdout and exits `0` only when it succeeded; `login` returns the approval link as a `next` step for the user instead of waiting. `fil schema --list` describes every command offline, and `fil skills install` installs the bundled agent skill.
-
-## How it works
-
-- **Files** are stored as exact bytes (a raw piece) and verified by PieceCID on download.
-- **Folders** are packed into a UnixFS CAR (IPIP-499 `unixfs-v1-2025`), stored in an IPFS-indexed data set, and served by Curio at `/ipfs/<rootCid>/`.
-- **Signing** uses a session key authorized by your wallet. The provider submits the transactions, and your wallet pays for storage.
-- **State** lives in a local SQLite database. Each `put` and `delete` is saved before it runs, so `fil operations resume <id>` can finish an interrupted job without committing it twice.
-
-Read [the architecture](docs/fil-cli/architecture.md) for details.
-
-## Repository
-
-A pnpm and Turborepo monorepo; all packages are private.
-
-| Directory | Package | Documentation |
-| --- | --- | --- |
-| `packages/fil-cli` | `fil-cli` | [Command reference](packages/fil-cli/README.md) |
-| `packages/clipact` | `clipact` | [Framework for agent-friendly CLIs](packages/clipact/README.md) |
-| `examples/launchpad` | `launchpad-example` | [Example clipact CLI with bundling](examples/launchpad/README.md) |
-
-See [development](docs/development.md) for requirements, installation, and validation.
-
-### fil
-
-| Guide | Contents |
-| --- | --- |
-| [Architecture](docs/fil-cli/architecture.md) | Modules, login, put/get/rm flows, state, recovery, verification |
-| [Interface research](docs/fil-cli/interface-research.md) | Command surface, resources, operations, CLI state, and artifact delivery design |
-
-### Agent-facing CLIs
-
-Generic guidance for any Node.js CLI that agents run, independent of `fil`. See the [index](docs/agent-cli/README.md).
-
-| Guide | Contents |
-| --- | --- |
-| [CLI guidelines for agents](docs/agent-cli/guidelines.md) | Output, error, exit-code, discovery, and startup-performance conventions for agent-facing Node.js CLIs |
-| [CLI framework design](docs/agent-cli/framework-design.md) | Design of `clipact`, the framework that implements the agent CLI guidelines |
-
-Built with [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core), [clipact](packages/clipact/README.md), and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf). The CAR packing follows [Filecoin Pin](https://github.com/filecoin-project/filecoin-pin).
