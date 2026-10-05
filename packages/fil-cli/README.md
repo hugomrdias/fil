@@ -1,10 +1,11 @@
 # fil-cli
 
-Prototype `fil` command-line interface for Filecoin Onchain Cloud. It stores a file or folder with one copy on one Curio provider and returns Curio retrieval URLs. It uses [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly, [clipact](../clipact/README.md) for the agent output contract, and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil-cli/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md).
+Prototype `fil` command-line interface for Filecoin Onchain Cloud. It stores a file or folder with one copy on one Curio provider and returns Curio retrieval URLs. It runs on the calibration network unless you choose mainnet. It uses [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly, [clipact](../clipact/README.md) for the agent output contract, and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil-cli/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md). The [architecture](../../docs/fil-cli/architecture.md) describes the modules and flows.
 
 ```sh
 pnpm --filter fil-cli build
-node packages/fil-cli/bin/fil.js --help
+alias fil="node $PWD/packages/fil-cli/bin/fil.js"
+fil --help
 ```
 
 ## Log in
@@ -13,7 +14,7 @@ node packages/fil-cli/bin/fil.js --help
 fil login
 ```
 
-`fil login` generates a session key and saves it locally. It then opens the pay.filecoin.cloud console, where the wallet owner approves the key. The CLI detects the approval on chain; there is nothing to copy back. By default it requests `createDataSet`, `addPieces`, and `schedulePieceRemovals`; repeat `--scopes` to choose others.
+`fil login` generates a session key and saves it locally. It then opens the pay.filecoin.cloud console, where the wallet owner approves the key. The CLI detects the approval on chain; there is nothing to copy back. By default it requests `createDataSet`, `addPieces`, and `schedulePieceRemovals`. Repeat `--scopes` to choose others. The session key signs each request, the provider submits the transactions, and the wallet pays for storage.
 
 A human at a terminal gets the browser and a wait for approval. An agent, or any run without a terminal, never waits or opens a browser: it gets a `login_pending` error whose `next` steps are the approval link for the user and `fil login` for the agent to run once the user approves. An interrupted login resumes with the same key.
 
@@ -34,7 +35,7 @@ fil inspect res_… --check
 fil delete res_… --yes        # alias rm; schedules removal, state removal_pending
 ```
 
-Files are stored as exact bytes. Folders are packed with the IPIP-499 `unixfs-v1-2025` profile into a data set with `withIPFSIndexing`, so Curio serves them at `/ipfs/<rootCid>/`. Curio's `/ipfs` endpoint is a trustless gateway: it returns blocks and CARs, not rendered pages. Packing skips dotfiles and rejects symlinks. Content must be between 127 bytes and about 1 GiB.
+Files are stored as exact bytes. Folders are packed into a UnixFS CAR with the IPIP-499 `unixfs-v1-2025` profile, the same way as [Filecoin Pin](https://github.com/filecoin-project/filecoin-pin). The CAR goes into a data set with `withIPFSIndexing`, so Curio serves it at `/ipfs/<rootCid>/`. Curio's `/ipfs` endpoint is a trustless gateway: it returns blocks and CARs, not rendered pages. Packing skips dotfiles and rejects symlinks. Content must be between 127 bytes and about 1 GiB.
 
 `delete` is destructive: without `--yes` it asks a human at a terminal, and returns `confirmation_required` with a `by: "user"` step everywhere else, including for agents.
 
