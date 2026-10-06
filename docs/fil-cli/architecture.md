@@ -222,15 +222,15 @@ A failure marks the operation `failed` and becomes an error with a `fil operatio
 
 `fil operations resume <id>` applies these rules:
 
-- **The commit was signed.** When the checkpoint has a saved `commit`, the resume first reads `clientNonces(payer, nonce)` from the FWSS view contract. FWSS stores `((firstAdded + count) << 128) | dataSetId` for every used add-pieces nonce, including the add half of create-and-add. A non-zero value means the commit landed and gives both IDs, so the job completes without sending anything. A zero value means the commit did not land. The resume then sends the **same** `extraData` again, or waits on its `statusUrl` if one was saved. FWSS rejects a second use of a nonce, so at most one commit takes effect, even if the first one lands late ([#1](https://github.com/hugomrdias/foc-cli/issues/1)).
+- **The commit was signed.** When the checkpoint has a saved `commit`, the resume first reads `clientNonces(payer, nonce)` from the FWSS view contract. FWSS stores `((firstAdded + count) << 128) | dataSetId` for every used add-pieces nonce, including the add half of create-and-add. A non-zero value means the commit landed and gives both IDs, so the job completes without sending anything. A zero value means the commit did not land. The resume then sends the **same** `extraData` again, or waits on its `statusUrl` if one was saved. FWSS rejects a second use of a nonce, so at most one commit takes effect, even if the first one lands late ([#1](https://github.com/hugomrdias/fil/issues/1)).
 - **The provider rejected the commit.** When the provider reports a failed transaction, the job clears the saved `statusUrl`. The next resume checks the nonce and sends the same signature again.
 - **The piece is already uploaded.** When `stored` is set, or the provider already has the piece, the resume skips the upload and goes to the commit.
 - **The source changed.** The resume recomputes the PieceCID from the source file, or from the staged CAR for a folder. A mismatch fails with `source_changed`, so the job never stores different bytes.
 - **The staged CAR is missing.** If the CAR is gone after the job saved its PieceCID, the resume fails with `staging_missing`.
 
-The lock is a compare-and-swap `UPDATE` on `(execution_status, pid)`. If an operation is `running` but its process is gone, because `process.kill(pid, 0)` fails, another process can take it over. If a live process holds the lock, the result is `operation_running`. The process also tracks its own locks in memory. A second call for the same operation in the same process is refused. A `running` row left behind with a PID that the system has since reused is taken over ([#3](https://github.com/hugomrdias/foc-cli/issues/3)).
+The lock is a compare-and-swap `UPDATE` on `(execution_status, pid)`. If an operation is `running` but its process is gone, because `process.kill(pid, 0)` fails, another process can take it over. If a live process holds the lock, the result is `operation_running`. The process also tracks its own locks in memory. A second call for the same operation in the same process is refused. A `running` row left behind with a PID that the system has since reused is taken over ([#3](https://github.com/hugomrdias/fil/issues/3)).
 
-`fil` saves the completed operation in the same transaction as the resource. A stop after the commit therefore leaves a completed operation, never one that looks unfinished but cannot resume ([#4](https://github.com/hugomrdias/foc-cli/issues/4)).
+`fil` saves the completed operation in the same transaction as the resource. A stop after the commit therefore leaves a completed operation, never one that looks unfinished but cannot resume ([#4](https://github.com/hugomrdias/fil/issues/4)).
 
 ### Dry run
 
@@ -270,7 +270,7 @@ Extraction checks the bytes of every block against its CID, as `ipfs-car unpack 
 3. Wait for the receipt and check its status.
 4. In one transaction, mark the resource `removal_pending` and complete the operation.
 
-If the transaction reverts, the resource stays `active`. The job clears the saved hash, so a resume signs a new removal, and fails with `removal_reverted` ([#2](https://github.com/hugomrdias/foc-cli/issues/2)).
+If the transaction reverts, the resource stays `active`. The job clears the saved hash, so a resume signs a new removal, and fails with `removal_reverted` ([#2](https://github.com/hugomrdias/fil/issues/2)).
 
 The provider removes the piece later, at a proving boundary. `ls` hides resources that are pending removal unless you pass `--all`.
 
