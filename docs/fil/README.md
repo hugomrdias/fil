@@ -46,7 +46,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 | Document | Contents |
 | --- | --- |
 | [fil architecture](architecture.md) | How the CLI works: modules, login, put, get, delete, local state, recovery, and how the CLI differs from the research |
-| [fil interface research](interface-research.md) | The design research from 2026-09-28 that came before the CLI. The [differences table](architecture.md#differences-from-the-research-design) lists where the CLI differs from it. |
+| [fil interface research](interface-research.md) | The historical design research from 2026-09-28 that came before the CLI. The [differences table](architecture.md#differences-from-the-research-design) lists where the CLI differs from it. |
 | [fil-api README](../../apps/fil-api/README.md) | Routes, retrieval redirects, MCP tools, deploys, and limits |
 | [fil-app README](../../apps/fil-app/README.md) | The explorer, the dashboard, the stack, and deploys |
 | [hooks-synapse README](../../apps/fil-app/src/hooks-synapse/README.md) | React hooks that synapse-react lacks, and the synapse-core and synapse-react bugs found while writing them |
@@ -126,4 +126,3 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **Indexer.** Index `data_sets(payer)` in the early-repair schema ([#13](https://github.com/hugomrdias/fil/issues/13)).
 - **Upstream.** Move `hooks-synapse` into synapse-react. Report the synapse-core and synapse-react bugs listed in its README.
 - **Packaging.** Publish the CLI to npm as `@hugomrdias/fil`. npm is the only distribution channel for now.
-- **Research doc.** Mark the [interface research](interface-research.md) as historical in its status line.

@@ -1,6 +1,6 @@
 # Filecoin CLI interface research
 
-Research date: 2026-09-28. Scope: agent-generated files and shareable artifacts. Status: design recommendation, not an implemented or benchmarked CLI. `fil` is a working executable name; every command below is proposed.
+Research date: 2026-09-28. Scope: agent-generated files and shareable artifacts. Status: historical. This is the design research that came before the `fil` prototype, and every command below is a proposal. The [architecture](architecture.md) describes what was built, and its [differences table](architecture.md#differences-from-the-research-design) lists where the prototype differs from this design.
 
 ## Recommendation
 
