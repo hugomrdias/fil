@@ -95,7 +95,7 @@ export const put = defineCommand({
       }
       return lines.join('\n')
     }
-    return `Stored ${data.resource?.name} (${data.resource?.ref})\n${data.urls?.ipfs ?? data.urls?.piece}`
+    return `Stored ${data.resource?.name} (${data.resource?.ref})\n${data.urls?.browser}`
   },
   handler: () => import('../handlers/put.ts'),
 })

@@ -10,7 +10,7 @@ import {
   downloadPiece,
   outputExists,
 } from '../storage/get.ts'
-import { resourceUrls } from '../storage/urls.ts'
+import { providerPieceUrl } from '../storage/urls.ts'
 import { accountScope, appFor, findResource } from './context.ts'
 
 /** Refuse to overwrite an existing file unless forced. */
@@ -64,11 +64,11 @@ export default defineHandler(get, async (ctx) => {
     return ctx.ok({ kind: 'file', pieceCid: target, output, size, url })
   }
 
-  const urls = resourceUrls(resource)
+  const url = providerPieceUrl(resource)
   const output = resolve(input.output ?? resource.name)
   if (resource.kind === 'artifact' && resource.rootCid) {
     const { size, files } = await downloadArtifact({
-      url: urls.piece,
+      url,
       pieceCid: resource.pieceCid,
       rootCid: resource.rootCid,
       output,
@@ -81,12 +81,12 @@ export default defineHandler(get, async (ctx) => {
       output,
       size,
       files,
-      url: urls.piece,
+      url,
     })
   }
   await assertWritable(output, input.force)
   const { size } = await downloadPiece({
-    url: urls.piece,
+    url,
     pieceCid: resource.pieceCid,
     output,
     signal: ctx.signal,
@@ -97,6 +97,6 @@ export default defineHandler(get, async (ctx) => {
     pieceCid: resource.pieceCid,
     output,
     size,
-    url: urls.piece,
+    url,
   })
 })

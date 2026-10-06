@@ -1,6 +1,6 @@
 ---
 name: fil
-description: Store files and folders on Filecoin Onchain Cloud with the fil CLI and return Curio retrieval links; download, list, delete, and resume interrupted uploads. Use when the user asks to publish, store, share, or retrieve content on Filecoin or FOC.
+description: Store files and folders on Filecoin Onchain Cloud with the fil CLI and return retrieval links; download, list, delete, and resume interrupted uploads. Use when the user asks to publish, store, share, or retrieve content on Filecoin or FOC.
 ---
 
 # fil
@@ -16,7 +16,7 @@ description: Store files and folders on Filecoin Onchain Cloud with the fil CLI 
 
 1. `fil status` shows whether a session key is active and the account is funded.
 2. `fil put <path> --dry-run` shows the size, provider, cost, and any missing authorization without storing anything.
-3. `fil put <path>` (or `fil publish <path>`) stores it. Return `data.urls.ipfs` for a folder or `data.urls.piece` for a file to the user exactly as given, with `data.resource.ref`.
+3. `fil put <path>` (or `fil publish <path>`) stores it. Return `data.urls.browser` to the user exactly as given, with `data.resource.ref`. `data.urls.piece` serves the exact stored bytes. A new link can return 404 until the indexer behind it has the piece; `fil inspect <ref> --check` reports when it answers.
 4. `fil get <ref>` downloads and verifies content; `fil ls` and `fil inspect <ref>` find what was stored.
 
 ## Rules

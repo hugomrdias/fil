@@ -62,6 +62,8 @@ export type JobContext = {
   backend: StorageBackend
   chainId: string
   payer: string
+  /** fil-api origin for retrieval links. */
+  apiUrl: string
   /** Staging directory for an operation. */
   stagingDir: (operationId: string) => string
   /** Aborted on SIGINT, SIGTERM, or SIGHUP; stops at the next step. */
@@ -204,7 +206,7 @@ export async function runOperation(
 ): Promise<JobResult> {
   const saved = getOperation(ctx.db, operationId)
   if (!saved) throw notFound(`Operation ${operationId} not found.`)
-  if (saved.executionStatus === 'completed') return savedOutcome(ctx.db, saved)
+  if (saved.executionStatus === 'completed') return savedOutcome(ctx, saved)
   const op = acquireOperation(ctx.db, operationId)
   try {
     ctx.onOperation?.(op)
@@ -230,21 +232,28 @@ export async function runOperation(
 }
 
 /** The saved outcome of a completed operation; nothing is re-run. */
-export function savedOutcome(db: DatabaseSync, op: Operation): JobResult {
-  const resource = getResource(db, op.resourceRef)
+export function savedOutcome(
+  ctx: Pick<JobContext, 'db' | 'apiUrl'>,
+  op: Operation
+): JobResult {
+  const resource = getResource(ctx.db, op.resourceRef)
   if (!resource) {
     throw notFound(`Resource ${op.resourceRef} of ${op.id} no longer exists.`)
   }
-  return jobResult(op, resource)
+  return jobResult(ctx, op, resource)
 }
 
 /** Shape a finished operation and its resource for command output. */
-function jobResult(op: Operation, resource: Resource): JobResult {
+function jobResult(
+  ctx: Pick<JobContext, 'apiUrl'>,
+  op: Operation,
+  resource: Resource
+): JobResult {
   return {
     operationId: op.id,
     state: op.action === 'put' ? 'ready' : 'removal_pending',
     resource,
-    urls: resourceUrls(resource),
+    urls: resourceUrls(resource, ctx.apiUrl),
   }
 }
 
@@ -426,7 +435,8 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
   const committed = await commit(ctx, op, placement, { pieceCid, name })
 
   const urls = retrievalUrls({
-    serviceURL: placement.serviceURL,
+    apiUrl: ctx.apiUrl,
+    chainId: op.chainId,
     pieceCid,
     rootCid: op.checkpoint.rootCid,
   })
@@ -447,7 +457,7 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
         serviceURL: placement.serviceURL,
       },
     ],
-    url: urls.ipfs ?? urls.piece,
+    url: urls.browser,
     status: 'active',
     createdAt: new Date().toISOString(),
   }
@@ -655,5 +665,5 @@ async function runRemove(ctx: JobContext, op: Operation): Promise<JobResult> {
   }
   const updated: Resource = { ...resource, status: 'removal_pending' }
   complete(ctx, op, updated)
-  return jobResult(op, updated)
+  return jobResult(ctx, op, updated)
 }

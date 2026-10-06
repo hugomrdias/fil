@@ -3,17 +3,17 @@ import * as z from 'zod'
 import { ErrorCodes } from '../errors.ts'
 import { account, accountEnv, resource, urls } from './shared.ts'
 
-/** `fil inspect <ref>`: show a resource and its Curio URLs. */
+/** `fil inspect <ref>`: show a resource and its retrieval URLs. */
 export const inspect = defineCommand({
   name: 'inspect',
-  description: 'Show a managed resource and its Curio URLs',
+  description: 'Show a managed resource and its retrieval URLs',
   examples: ['fil inspect res_abc123', 'fil inspect res_abc123 --check'],
   input: z.strictObject({
     ref: z.string().describe('Resource ref (res_…)'),
     check: z
       .boolean()
       .default(false)
-      .describe('Probe the retrieval URL with a HEAD request'),
+      .describe('Probe the piece URL with a HEAD request'),
     ...account,
   }),
   positionals: ['ref'],
@@ -43,7 +43,7 @@ export const inspect = defineCommand({
       `pieceCid: ${r.pieceCid}`,
       ...(r.rootCid ? [`rootCid: ${r.rootCid}`] : []),
       `piece: ${u.piece}`,
-      ...(u.ipfs ? [`ipfs: ${u.ipfs}`] : []),
+      `browser: ${u.browser}`,
       ...(retrieval
         ? [`retrieval: ${retrieval.state} (HTTP ${retrieval.status})`]
         : []),

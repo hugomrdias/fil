@@ -84,6 +84,10 @@ export default defineHandler(doctor, async (ctx) => {
       value: app.consoleUrl,
       source: env.FIL_CONSOLE_URL ? 'env' : 'default',
     },
+    apiUrl: {
+      value: app.apiUrl,
+      source: env.FIL_API_URL ? 'env' : 'default',
+    },
     configFile: app.config.path,
     stateDir: {
       value: stateDir(env),

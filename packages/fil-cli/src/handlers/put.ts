@@ -103,7 +103,7 @@ export default defineHandler(put, async (ctx) => {
         {
           by: 'agent',
           command: `fil inspect ${result.resource.ref} --check`,
-          description: 'Check that the retrieval URL answers',
+          description: 'Check that the piece URL answers',
         },
       ],
     }

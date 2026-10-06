@@ -27,6 +27,7 @@ flowchart LR
   cli -- reads --> chain[(Filecoin chain)]
   cli --- local[(Local SQLite)]
   app -- reads --> api[fil-api<br/>REST and MCP]
+  cli -- retrieval links --> api
   cli -. planned reads .-> api
   app -- wallet transactions --> chain
   app -- uploads, signed by wallet or session key --> curio
@@ -37,7 +38,7 @@ flowchart LR
 
 All parts use the same chain and the same providers, but each part keeps its own state:
 
-- **The CLI does not use fil-api yet.** It reads the chain through synapse-core. It keeps its resources and operations in a local SQLite database.
+- **The CLI does not read from fil-api yet.** It reads the chain through synapse-core. It keeps its resources and operations in a local SQLite database. Its retrieval links point to fil-api's `/get/{cid}` route, which redirects to a provider or to inbrowser.link.
 - **The app reads through fil-api.** It writes with the connected wallet or with a session key made in the dashboard. The app stores those session keys in the browser's `localStorage`.
 - **`fil login` sends the owner to fil-app.** The CLI keeps its session key on the machine and sends only the key's address, name, scopes, and expiry in a [setup link](../../apps/fil-app/README.md#setup-links). The owner reviews the prefilled page and signs the approval with their wallet. `fil status` and `put` send funding requests to the same page.
 
@@ -74,7 +75,8 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **Local view only.** `fil ls` lists only the resources in this machine's state database. It cannot see content stored from another machine or from the app.
 - **Piece removal stops at `removal_pending`.** Nothing tracks when the provider removes the piece.
 - **Slow hashing.** PieceCID hashing takes about 70 seconds per GiB. `put`, `operations resume`, and `get` each hash the whole content ([#6](https://github.com/hugomrdias/fil/issues/6)).
-- **Shallow folder check.** `inspect --check` probes only the root URL of a folder, not each file.
+- **Shallow folder check.** `inspect --check` probes only the piece URL, not each file of a folder.
+- **Links wait for the indexer.** The piece link, and a file's browser link, return 404 until fil-api's indexer has the new piece. A folder's browser link names the root CID, so it works at once. `fil get` downloads from the provider directly.
 - **No `--events`, `--fields`, or `operations inspect --refresh`.** The research proposed all three.
 
 ### REST API and MCP server
@@ -118,7 +120,6 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **Agent plugins.** Build plugins for Claude and ChatGPT. Each plugin bundles the CLI, the agent skill, and the MCP server.
 - **Two copies.** Store two copies by default in the CLI and the app's upload, as synapse-sdk does.
 - **CLI reads.** Move most CLI reads to fil-api. Keep synapse-core chain reads as the fallback.
-- **CLI retrieval.** Return two fil-api `/get/{cid}` URLs for each resource. `/get/{pieceCid}` redirects to the raw piece on a provider. `/get/{cid}?browser=true` redirects to inbrowser.link for a folder and to the `/piece` URL for a file, and a browser renders both. Today the CLI builds Curio `/piece` and `/ipfs` URLs itself.
 - **CLI performance.** Hash PieceCIDs with `@hugomrdias/commp-wasm` ([#6](https://github.com/hugomrdias/fil/issues/6)).
 - **CLI keys.** Store the session key in the OS keychain. Revoke the key on chain from `logout`.
 - **CLI state.** Track a removal until the provider deletes the piece. Check every file of a folder in `inspect --check`.
