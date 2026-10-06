@@ -15,7 +15,7 @@ export const cli = defineCli({
   name: 'fil',
   version: pkg.version,
   description:
-    'Store files and folders on Filecoin Onchain Cloud and get Curio links',
+    'Store files and folders on Filecoin Onchain Cloud and get retrieval links',
   envPrefix: 'FIL',
   commands,
   aliases: { publish: 'put', rm: 'delete' },

@@ -168,6 +168,7 @@ async function context(
     backend,
     chainId: '314159',
     payer: '0xpayer',
+    apiUrl: 'https://api.example',
     stagingDir: (id) => join(root, 'state', 'staging', id),
     onOperation: (op) => started.push(op.id),
   }
@@ -208,10 +209,11 @@ test('put stores a file in a new data set and records the resource', async () =>
       serviceURL: 'https://sp.example',
     },
   ])
-  assert.equal(
-    result.urls.piece,
-    `https://sp.example/piece/${result.resource.pieceCid}`
-  )
+  assert.deepEqual(result.urls, {
+    piece: `https://api.example/get/${result.resource.pieceCid}?network=calibration`,
+    browser: `https://api.example/get/${result.resource.pieceCid}?network=calibration&browser=true`,
+  })
+  assert.equal(result.resource.url, result.urls.browser)
   assert.deepEqual(calls.select, [FILE_DATA_SET_METADATA])
   // On-chain namespace: changing it orphans existing data sets.
   assert.deepEqual(FILE_DATA_SET_METADATA, { source: 'fil' })
@@ -237,11 +239,11 @@ test('put packs a directory, adds to an existing data set, and cleans staging', 
   const result = await startPut(ctx, { path: dir })
   assert.equal(result.resource.kind, 'artifact')
   assert.ok(result.resource.rootCid)
-  assert.equal(
-    result.urls.ipfs,
-    `https://sp.example/ipfs/${result.resource.rootCid}/`
-  )
-  assert.equal(result.resource.url, result.urls.ipfs)
+  assert.deepEqual(result.urls, {
+    piece: `https://api.example/get/${result.resource.pieceCid}?network=calibration`,
+    browser: `https://api.example/get/${result.resource.rootCid}?network=calibration&browser=true`,
+  })
+  assert.equal(result.resource.url, result.urls.browser)
   assert.deepEqual(calls.select, [ARTIFACT_DATA_SET_METADATA])
   assert.equal(result.resource.copies[0]?.dataSetId, '42')
   await assert.rejects(stat(ctx.stagingDir(result.operationId)), {

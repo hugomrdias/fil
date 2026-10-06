@@ -68,6 +68,7 @@ export async function jobContext(
     backend: createSynapseBackend(app, sessionKey),
     chainId: app.chain.id.toString(),
     payer: sessionKey.rootAddress,
+    apiUrl: app.apiUrl,
     stagingDir: app.stagingDir,
     signal: ctx.signal,
     progress: (event) => ctx.progress(event),

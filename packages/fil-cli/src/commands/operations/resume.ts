@@ -24,7 +24,7 @@ export const resume = defineCommand({
   idempotent: true,
   human: (data) =>
     data.state === 'ready'
-      ? `Stored ${data.resource.name} (${data.resource.ref})\n${data.urls.ipfs ?? data.urls.piece}`
+      ? `Stored ${data.resource.name} (${data.resource.ref})\n${data.urls.browser}`
       : `Removal of ${data.resource.ref} (${data.resource.name}) scheduled.`,
   handler: () => import('../../handlers/operations/resume.ts'),
 })

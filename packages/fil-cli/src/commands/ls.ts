@@ -27,7 +27,7 @@ export const ls = defineCommand({
         name: z.string(),
         size: z.number().int(),
         status: z.enum(['active', 'removal_pending']),
-        url: z.string().optional(),
+        url: z.string().describe('fil-api link a browser renders'),
         createdAt: z.string(),
       })
     ),

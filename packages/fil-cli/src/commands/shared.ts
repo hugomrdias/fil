@@ -69,10 +69,12 @@ export const resource = z.object({
   createdAt: z.string(),
 })
 
-/** Curio retrieval URLs. */
+/** fil-api retrieval URLs, which redirect to a provider or a gateway. */
 export const urls = z.object({
   piece: z.string().describe('Exact stored bytes'),
-  ipfs: z.string().optional().describe('UnixFS content of an artifact'),
+  browser: z
+    .string()
+    .describe('Link a browser renders: a folder through inbrowser.link'),
 })
 
 /** Result of a put, a delete, or a resumed operation. */

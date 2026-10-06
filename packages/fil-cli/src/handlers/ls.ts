@@ -1,6 +1,7 @@
 import { defineHandler } from 'clipact'
 import { ls } from '../commands/ls.ts'
 import { listResources } from '../state/resources.ts'
+import { resourceUrls } from '../storage/urls.ts'
 import { accountScope, appFor } from './context.ts'
 
 /** List managed resources, newest first, one page at a time. */
@@ -20,7 +21,7 @@ export default defineHandler(ls, (ctx) => {
       name: resource.name,
       size: resource.size,
       status: resource.status,
-      ...(resource.url ? { url: resource.url } : {}),
+      url: resourceUrls(resource, app.apiUrl).browser,
       createdAt: resource.createdAt,
     })),
     ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),

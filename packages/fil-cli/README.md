@@ -1,6 +1,6 @@
 # fil-cli
 
-`fil` is a prototype command-line interface for Filecoin Onchain Cloud. It stores a file or a folder as one copy on one Curio provider and returns Curio retrieval URLs. It runs on the calibration network unless you choose mainnet.
+`fil` is a prototype command-line interface for Filecoin Onchain Cloud. It stores a file or a folder as one copy on one Curio provider and returns retrieval URLs on [fil-api](../../apps/fil-api/README.md#retrieval). It runs on the calibration network unless you choose mainnet.
 
 `fil` calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly. It uses [clipact](../clipact/README.md) for the agent output contract and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md). The [architecture](../../docs/fil/architecture.md) describes the modules and flows.
 
@@ -32,22 +32,29 @@ For CI, set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS` instead of running `fil log
 
 The session key cannot fund the account. `fil status` reports the expiry of each scope, the USDFC funds, and the Warm Storage (FWSS) approval. When the account needs a deposit, `fil status` also returns a prefilled funding link to the fil-app setup page.
 
-`fil doctor` shows the network, RPC, fil-app origin (`console`), and state directory that `fil` resolved, with the source of each value. It also checks the database and the RPC.
+`fil doctor` shows the network, RPC, fil-app origin (`console`), fil-api origin (`api`), and state directory that `fil` resolved, with the source of each value. It also checks the database and the RPC.
 
 ## Store and retrieve
 
 ```sh
-fil put ./report.pdf          # raw piece   → <serviceURL>/piece/<pieceCid>
-fil put ./site                # UnixFS CAR  → <serviceURL>/ipfs/<rootCid>/
+fil put ./report.pdf          # raw piece   → <api>/get/<pieceCid>
+fil put ./site                # UnixFS CAR  → <api>/get/<rootCid>?browser=true
 fil put ./site --dry-run      # size, provider, cost, and authorization; stores nothing
 fil publish ./site            # alias of put
 fil get res_… --output ./copy # verifies the PieceCID and extracts folders
 fil ls                        # add --all to include resources pending removal
-fil inspect res_… --check     # sends a HEAD request to the retrieval URL
+fil inspect res_… --check     # sends a HEAD request to the piece URL
 fil delete res_… --yes        # alias rm; schedules removal
 ```
 
 `fil` stores a file as its exact bytes. It packs a folder into a UnixFS CAR with the IPIP-499 `unixfs-v1-2025` profile, the same way as [Filecoin Pin](https://github.com/filecoin-project/filecoin-pin). The CAR goes into a data set with `withIPFSIndexing`, so Curio serves it at `/ipfs/<rootCid>/`. Curio's `/ipfs` endpoint is a trustless gateway. It returns blocks and CARs, not rendered pages.
+
+`put` returns two links on fil-api's `/get/{cid}` route, which redirects without proxying the bytes:
+
+- `urls.piece` redirects to the exact stored bytes at a provider's `/piece/<pieceCid>`.
+- `urls.browser` is the link to share. A browser renders a file from the same `/piece` URL. A folder goes through [inbrowser.link](https://inbrowser.link), which verifies the blocks in the browser.
+
+fil-api finds providers through its indexer, so a new piece link returns 404 until the indexer has the piece. A folder's browser link works at once. `fil get` downloads from the provider directly.
 
 Packing skips dotfiles and rejects symlinks. The file or the packed CAR must be between 127 and 1,065,353,216 bytes (1016 MiB).
 
@@ -109,6 +116,7 @@ Ctrl+C, SIGTERM, or SIGHUP stops the work at the next step. `fil` returns an `in
 | `FIL_STATE_DIR` | SQLite state and staged CARs. Default: the platform data directory for `fil` |
 | `FIL_RPC_URL` | RPC endpoint. Default: synapse-core's fallback transport for the chain |
 | `FIL_CONSOLE_URL` | fil-app origin for approval and funding links, such as `http://localhost:5173` for a local app. Default: `https://fil-app.hugomrdias.dev` |
+| `FIL_API_URL` | fil-api origin for retrieval links, such as `http://localhost:8787` for a local API. Default: `https://fil-api.hugomrdias.dev` |
 | `FIL_OUTPUT`, `FIL_AGENT` | Override clipact's output mode and agent detection |
 
 The prototype saves the session private key in the config file with mode 0600, so only its owner can read it. `fil logout` deletes the local key. The key stays authorized on chain until it expires or you revoke it on the fil-app session keys page.

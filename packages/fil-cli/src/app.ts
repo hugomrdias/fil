@@ -19,6 +19,9 @@ import { openDatabase, stateDir } from './state/db.ts'
 /** Default fil-app origin, whose dashboard approves keys and funds accounts. */
 const DEFAULT_CONSOLE_URL = 'https://fil-app.hugomrdias.dev'
 
+/** Default fil-api origin, whose `/get/{cid}` route redirects to providers. */
+const DEFAULT_API_URL = 'https://fil-api.hugomrdias.dev'
+
 /**
  * Shared per-invocation context: resolved network, chain client, config, and
  * lazily opened local state.
@@ -32,6 +35,8 @@ export type App = {
   credentials: { sessionKey?: string; rootAddress?: string }
   /** fil-app origin for session-key approval and funding links. */
   consoleUrl: string
+  /** fil-api origin for retrieval links. */
+  apiUrl: string
   /** Aborted on SIGINT, SIGTERM, or SIGHUP; cancels chain and provider calls. */
   signal: AbortSignal | undefined
   /** RPC transport for the resolved chain, bound to `signal`. */
@@ -52,7 +57,7 @@ export type CreateAppOptions = {
   sessionKey?: string | undefined
   /** `FIL_ROOT_ADDRESS`, the wallet that authorized `sessionKey`. */
   rootAddress?: string | undefined
-  /** Process environment for state, config, RPC, and console overrides. */
+  /** Process environment for state, config, RPC, console, and API overrides. */
   env?: NodeJS.ProcessEnv
   /** The handler's signal; every RPC request rejects once it aborts. */
   signal?: AbortSignal
@@ -105,6 +110,7 @@ export function createApp(options: CreateAppOptions = {}): App {
       rootAddress: options.rootAddress,
     },
     consoleUrl: env.FIL_CONSOLE_URL ?? DEFAULT_CONSOLE_URL,
+    apiUrl: env.FIL_API_URL ?? DEFAULT_API_URL,
     signal: options.signal,
     transport,
     client: createPublicClient({ chain, transport }),

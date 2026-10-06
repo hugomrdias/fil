@@ -7,15 +7,17 @@ import { appFor, findResource } from './context.ts'
 const PROBE_TIMEOUT = 15_000
 
 /**
- * Show a managed resource with its URLs. With `--check`, probe the Curio URL
- * with a HEAD request.
+ * Show a managed resource with its fil-api URLs. With `--check`, send a HEAD
+ * request to the piece URL and follow fil-api's redirect to the provider, so
+ * the check fails until fil-api's indexer has the piece. The browser URL of
+ * a folder always redirects to inbrowser.link, so probing it proves nothing.
  */
 export default defineHandler(inspect, async (ctx) => {
   const app = appFor(ctx)
   const resource = findResource(app, ctx.input.ref)
-  const urls = resourceUrls(resource)
+  const urls = resourceUrls(resource, app.apiUrl)
   if (!ctx.input.check) return ctx.ok({ resource, urls })
-  const probe = urls.ipfs ?? urls.piece
+  const probe = urls.piece
   const response = await fetch(probe, {
     method: 'HEAD',
     signal: AbortSignal.any([ctx.signal, AbortSignal.timeout(PROBE_TIMEOUT)]),

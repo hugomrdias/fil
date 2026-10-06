@@ -12,7 +12,7 @@ export default defineHandler(resume, async (ctx) => {
   const app = appFor(ctx)
   const op = findOperation(app, ctx.input.id)
   if (op.executionStatus === 'completed') {
-    return ctx.ok(savedOutcome(app.db(), op))
+    return ctx.ok(savedOutcome({ db: app.db(), apiUrl: app.apiUrl }, op))
   }
   const scopes = op.action === 'put' ? PUT_SCOPES : RM_SCOPES
   const job = await jobContext(app, scopes, ctx)
