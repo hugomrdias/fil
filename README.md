@@ -16,17 +16,18 @@ Tools for [Filecoin Onchain Cloud](https://docs.filecoin.cloud/). This repositor
 
 | Document | Contents |
 | --- | --- |
-| [Local development](docs/development.md) | Requirements, installation, and validation |
-| [fil architecture](docs/fil-cli/architecture.md) | Modules, login, put, get, and delete flows, state, recovery, and verification |
-| [fil interface research](docs/fil-cli/interface-research.md) | The design of commands, resources, operations, and local state |
+| [fil architecture](docs/fil/architecture.md) | Modules, login, put, get, and delete flows, state, recovery, and verification |
+| [fil interface research](docs/fil/interface-research.md) | The design of commands, resources, operations, and local state |
 | [Agent-facing CLIs](docs/agent-cli/README.md) | Guidelines for Node.js CLIs that agents run, and the design of clipact |
 
 ## Build and check
 
-Use Node.js 24 or newer and pnpm 11. From the repository root:
+Use Node.js 24 or newer and pnpm 11.24.0, which provisions the configured Node.js 24 runtime. Run commands from the repository root:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
 pnpm check
 ```
+
+`pnpm check` runs TypeScript, tests, and Biome in every workspace through Turborepo, then lints the root configuration. `pnpm check:fix` applies Biome fixes. Each app's README covers its own development commands.
