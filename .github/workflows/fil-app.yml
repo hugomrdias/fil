@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - apps/fil-app/**
+      # The site serves the fil agent skill.
+      - packages/fil-cli/skills/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - turbo.json
@@ -13,6 +15,8 @@ on:
     types: [opened, synchronize, reopened, closed]
     paths:
       - apps/fil-app/**
+      # The site serves the fil agent skill.
+      - packages/fil-cli/skills/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - turbo.json

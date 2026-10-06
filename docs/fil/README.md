@@ -9,12 +9,12 @@ The table lists the four parts, the agent skill that comes with the CLI, and the
 | Part | What it does | Code | Where it runs |
 | --- | --- | --- | --- |
 | CLI | `fil` stores a file or folder as one copy on one Curio provider and returns retrieval URLs. It resumes an interrupted put or delete without paying twice. | [`packages/fil-cli`](../../packages/fil-cli/README.md) | Locally, after a build from source |
-| Agent skill | Teaches an agent to use `fil` | [`skills/fil/SKILL.md`](../../packages/fil-cli/skills/fil/SKILL.md) | In the agent, after `fil skills install` |
+| Agent skill | Teaches an agent to use `fil` | [`skills/fil/SKILL.md`](../../packages/fil-cli/skills/fil/SKILL.md) | In the agent, after `fil skills install`. Also served at https://fil-app.hugomrdias.dev/.well-known/agent-skills/index.json |
 | REST API | Serves read-only data on providers, data sets, pieces, Filecoin Pay rails, and session keys. `/get/{cid}` redirects to where a CID can be retrieved. | [`apps/fil-api`](../../apps/fil-api/README.md) | https://fil-api.hugomrdias.dev, with a reference at [`/docs`](https://fil-api.hugomrdias.dev/docs) |
 | MCP server | Offers one read-only tool for each REST API data route, over stateless Streamable HTTP | [`apps/fil-api/src/mcp`](../../apps/fil-api/src/mcp/server.ts) | `POST https://fil-api.hugomrdias.dev/mcp` |
 | Web app | Shows the REST API's data in an explorer, which a Worker renders on the server. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. Its setup page approves `fil login` keys and funding requests. Browser agents can fill it and read the account, data sets, pieces, and session keys through WebMCP. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
 | Agent plugins | Bundle the CLI, the agent skill, and the MCP server for Claude and ChatGPT | Not started | Planned |
-| Website | Presents the brand, marketing, and docs for every part | Not started. It will be part of fil-app | Planned |
+| Website | The landing page, the docs, and the agent setup page. Every page also has a Markdown version, and `llms.txt` and well-known paths describe the API, the MCP server, and the skill to agents | [`apps/fil-app`](../../apps/fil-app/README.md#website) | https://fil-app.hugomrdias.dev |
 
 ## How the parts connect
 
@@ -93,6 +93,8 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **WebMCP is an early preview.** The app's WebMCP tools work in Chrome 149 and later on fil-app.hugomrdias.dev through an origin-trial token that expires on 2027-03-30. Elsewhere they need Chromium's `#enable-webmcp-testing` flag. The ChatGPT Chrome extension finds the tools, and OpenAI documents WebMCP support, under the name site tools, in the ChatGPT desktop app's built-in browser. Other browsers ignore the tools, and agents use the setup link instead. Testing with real agents is tracked in [#34](https://github.com/hugomrdias/fil/issues/34).
 - **Explorer lists load in the browser.** The server renders each page, but only detail pages, such as a rail or a data set, include their data. Lists and tables still fetch their rows after the page loads, so an agent that fetches a list page gets no rows.
 - **Server rendering hides the visitor from fil-api.** When the Worker fetches from fil-api during server rendering, fil-api's per-IP rate limit counts the Worker, not the visitor.
+- **Site content is a copy.** The site's pages in `apps/fil-app/src/content` are edited copies of the READMEs. Nothing keeps them in sync, so they can fall behind the code.
+- **Draft discovery formats.** The MCP server card (SEP-2127) and agent skills discovery are drafts. The site serves the server card at both `/.well-known/mcp/server-card.json` and `/.well-known/mcp-server-card`, because clients check one or the other. fil-api's own origin serves none of the discovery files.
 - **Upstream hooks kept in the app.** `hooks-synapse` adds hooks that synapse-react 0.5.0 lacks. It also works around the bugs listed in [its README](../../apps/fil-app/src/hooks-synapse/README.md).
 
 ### Project
@@ -115,10 +117,10 @@ All parts use the same chain and the same providers, but each part keeps its own
 
 ## Follow-up work
 
-- **Website.** Add the brand, marketing, and docs pages to fil-app, with a landing page at `/`. The READMEs and `docs/` stay the source, and the site holds edited copies of the user-facing parts. Nothing from `docs/` is published.
+- **Brand.** Apply a brand to the site once the product name and domain are decided.
 - **Evaluation.** Run the [acceptance scenarios](interface-research.md#first-release-and-validation) with Claude and ChatGPT. Count duplicate paid mutations, and check that each share link works.
 - **Agent files at the repository root.** Move the agent skill out of `packages/fil-cli/skills` to the repository root, and add the agent plugins there too. `fil skills install` reads the skill from the package, so the build must copy it from the root into `packages/fil-cli/skills`.
-- **Agent setup on the web.** Add an agent setup page to fil-app, an `llms.txt` file, Markdown versions of pages through content negotiation and `.md` paths, and well-known paths for the OpenAPI document (`/.well-known/api-catalog`), the MCP server card, and the agent skill (`/.well-known/agent-skills/index.json`).
+- **Explorer for agents.** Render explorer lists on the server, and serve explorer pages as Markdown, so agents can read them like the docs.
 - **Agent plugins.** Build plugins for Claude and ChatGPT. Each plugin bundles the CLI, the agent skill, and the MCP server.
 - **Two copies.** Store two copies by default in the CLI and the app's upload, as synapse-sdk does.
 - **CLI reads.** Move most CLI reads to fil-api. Keep synapse-core chain reads as the fallback.

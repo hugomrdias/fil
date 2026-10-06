@@ -21,6 +21,12 @@
           "suspicious": { "noArrayIndexKey": "off" }
         }
       }
+    },
+    {
+      "includes": ["src/routes/**/*\\[.\\]*"],
+      "linter": {
+        "rules": { "style": { "useFilenamingConvention": "off" } }
+      }
     }
   ]
 }

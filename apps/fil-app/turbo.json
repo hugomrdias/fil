@@ -4,6 +4,7 @@
   "tasks": {
     "build": {
       "env": ["VITE_*"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/fil-cli/skills/**"],
       "outputs": ["dist/**"]
     },
     "deploy": {

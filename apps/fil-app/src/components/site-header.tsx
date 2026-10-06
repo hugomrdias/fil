@@ -18,7 +18,9 @@ import {
 import { useExplorerNetwork } from '@/hooks/use-explorer-network'
 import { shortHex } from '@/lib/format'
 
+/** Explorer sections. Overview is active only on the explorer home. */
 const NAV = [
+  { to: '/$network', label: 'Overview', exact: true },
   { to: '/$network/data-sets', label: 'Data sets' },
   { to: '/$network/providers', label: 'Providers' },
   { to: '/$network/rails', label: 'Rails' },
@@ -30,7 +32,7 @@ const NAV = [
  *
  * @param props.className - Extra classes.
  */
-function DashboardButton(props: { className?: string }) {
+export function DashboardButton(props: { className?: string }) {
   const connection = useConnection()
   const address = connection.status === 'connected' && connection.address
   return (
@@ -58,12 +60,13 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
-        <Link className="mr-3 shrink-0" params={{ network }} to="/$network">
+        <Link aria-label="Home" className="mr-3 shrink-0" to="/">
           <Wordmark />
         </Link>
         <nav className="hidden items-center gap-0.5 lg:flex">
           {NAV.map((item) => (
             <Link
+              activeOptions={{ exact: 'exact' in item }}
               className="rounded-4xl px-3 py-1.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground data-[status=active]:bg-muted data-[status=active]:text-foreground"
               key={item.to}
               params={{ network }}
@@ -117,6 +120,7 @@ function MobileMenu(props: { network: ReturnType<typeof useExplorerNetwork> }) {
               nativeButton={false}
               render={
                 <Link
+                  activeOptions={{ exact: 'exact' in item }}
                   className="rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground data-[status=active]:bg-muted data-[status=active]:font-medium data-[status=active]:text-foreground"
                   params={{ network }}
                   to={item.to}
@@ -150,7 +154,7 @@ function MobileMenu(props: { network: ReturnType<typeof useExplorerNetwork> }) {
  * @param props.label - Row label.
  * @param props.children - Control.
  */
-function MenuRow(props: { label: string; children: ReactNode }) {
+export function MenuRow(props: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <span className="text-muted-foreground">{props.label}</span>
@@ -174,14 +178,9 @@ export function SiteFooter() {
           >
             API
           </a>
-          <a
-            className="transition-colors hover:text-foreground"
-            href="https://docs.filecoin.cloud"
-            rel="noreferrer"
-            target="_blank"
-          >
+          <Link className="transition-colors hover:text-foreground" to="/docs">
             Docs
-          </a>
+          </Link>
         </div>
       </div>
     </footer>
