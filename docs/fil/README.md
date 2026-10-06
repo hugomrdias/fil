@@ -88,7 +88,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 ### App
 
 - **Session keys in `localStorage`.** The app scopes them by chain and wallet, but any script on the origin can read them.
-- **WebMCP is an early preview.** The setup page's WebMCP tools work in Chrome 149 and later on fil-app.hugomrdias.dev through an origin-trial token that expires on 2027-03-30. Elsewhere they need Chromium's `#enable-webmcp-testing` flag. Other browsers ignore them, and agents use the setup link instead.
+- **WebMCP is an early preview.** The setup page's WebMCP tools work in Chrome 149 and later on fil-app.hugomrdias.dev through an origin-trial token that expires on 2027-03-30. Elsewhere they need Chromium's `#enable-webmcp-testing` flag. The ChatGPT Chrome extension finds the tools, and OpenAI documents WebMCP support, under the name site tools, in the ChatGPT desktop app's built-in browser. Other browsers ignore the tools, and agents use the setup link instead. Testing with real agents is tracked in [#34](https://github.com/hugomrdias/fil/issues/34).
 - **Upstream hooks kept in the app.** `hooks-synapse` adds hooks that synapse-react 0.5.0 lacks. It also works around the bugs listed in [its README](../../apps/fil-app/src/hooks-synapse/README.md).
 
 ### Project

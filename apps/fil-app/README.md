@@ -45,7 +45,7 @@ Session keys created in the dashboard are stored in the browser's `localStorage`
 | --- | --- |
 | `network` | `mainnet` or `calibration`. The page asks to switch the wallet when it is on the other network |
 | `signer` | Session key address to authorize. The private key stays with the tool that made it, such as `fil`; the app never sees it |
-| `name` | Session key name, up to 64 characters, recorded on chain as the authorization's `origin`. Default: `fil` |
+| `name` | Session key name, up to 64 characters, recorded on chain as the authorization's `origin`. Default: `fil-app` |
 | `scopes` | Comma-separated scope IDs: `createDataSet`, `addPieces`, `schedulePieceRemovals`, `terminateService`. Default: the first three |
 | `days` | Days until the authorization expires, from 1 to 365. Default: 30 |
 | `deposit` | USDFC to deposit, as a decimal amount |
@@ -59,9 +59,11 @@ The app registers [WebMCP](https://webmachinelearning.github.io/webmcp/) tools, 
 | Tool | Where | What it does |
 | --- | --- | --- |
 | `prepare_setup_request` | Every page | Validates a request with the params above (`scopes` as an array, `days` as a number) and opens the prefilled setup page. It never signs anything |
-| `get_setup_status` | `/dashboard/setup`, once a wallet is connected | Read-only. Reports which requested scopes are authorized and until when, the Warm Storage approval and the Pay balance |
+| `get_setup_status` | `/dashboard/setup` | Read-only. Reports whether a wallet is connected and on Filecoin. Once it is, also reports which requested scopes are authorized and until when, the Warm Storage approval and the Pay balance |
 
 WebMCP is an early preview. Production turns it on for Chrome 149 and later through the [WebMCP origin trial](https://developer.chrome.com/origintrials/#/register_trial/4163014905550602241): `public/_headers` sends the `Origin-Trial` token for `https://fil-app.hugomrdias.dev`, which expires on 2027-03-30. Renew the token before then, or remove the header when the trial ends. The token does not cover other origins, such as PR previews and local dev, so use `chrome://flags/#enable-webmcp-testing` there. Other browsers skip the tools, and the page works the same.
+
+The ChatGPT desktop app's built-in browser calls WebMCP tools "site tools", and the ChatGPT Chrome extension also finds them. That runtime does not check input against `inputSchema` and passes no `options` to `execute`, so each tool validates its own input. See the [Codex site tools compatibility notes](https://docs.mcp-b.ai/reference/webmcp/codex-site-tools).
 
 ## Deploy
 

@@ -53,7 +53,7 @@ export const MAX_DAYS = 365
 export const MAX_NAME_LENGTH = 64
 
 /** Session-key name when a link does not set one. */
-export const DEFAULT_NAME = 'fil'
+export const DEFAULT_NAME = 'fil-app'
 
 /**
  * Whether a value is a known scope ID.
@@ -147,23 +147,36 @@ export type SetupRequestErrors = string[]
 
 /**
  * Validate a setup request and turn it into `/dashboard/setup` search params.
+ * The input is checked by shape as well as value, because browser agents do
+ * not all enforce a tool's input schema before calling it.
  *
- * @param request - Request from an agent tool call.
+ * @param input - Request from an agent tool call, expected to be a {@link SetupRequest}.
  * @returns The search params, or the problems that make the request invalid.
+ * @see https://docs.mcp-b.ai/reference/webmcp/codex-site-tools
  */
 export function toSetupSearch(
-  request: SetupRequest
+  input: unknown
 ): { search: SetupSearch } | { errors: SetupRequestErrors } {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    return { errors: ['The request must be an object.'] }
+  }
+  const request = input as Partial<Record<keyof SetupRequest, unknown>>
   const errors: SetupRequestErrors = []
-  const raw: Record<string, string> = {}
+  const raw: Record<string, unknown> = {}
   if (request.network !== undefined) raw.network = request.network
   if (request.signer !== undefined) raw.signer = request.signer
   if (request.name !== undefined) raw.name = request.name
-  if (request.scopes !== undefined) raw.scopes = request.scopes.join(',')
+  if (Array.isArray(request.scopes)) {
+    raw.scopes = request.scopes.join(',')
+  } else if (request.scopes !== undefined) {
+    errors.push(`scopes must be an array of: ${SCOPE_IDS.join(', ')}.`)
+  }
   if (request.days !== undefined) raw.days = String(request.days)
   if (request.deposit !== undefined) raw.deposit = request.deposit
   const search = setupSearchSchema.parse(raw)
-  const unknown = (request.scopes ?? []).filter((scope) => !isScopeId(scope))
+  const unknown = (Array.isArray(request.scopes) ? request.scopes : []).filter(
+    (scope) => typeof scope !== 'string' || !isScopeId(scope)
+  )
   for (const key of Object.keys(raw) as (keyof SetupSearch)[]) {
     // Unknown scopes get a more specific message below.
     if (search[key] === undefined && !(key === 'scopes' && unknown.length)) {

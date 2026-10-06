@@ -19,6 +19,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { ConnectGate, GateFrame } from '@/components/wallet-gate'
+import { SetupGateStatusTool } from '@/components/webmcp-tools'
 import { useStoredSessionKeys } from '@/hooks/use-session-key-store'
 import { useSessionKey } from '@/hooks-synapse'
 import {
@@ -42,13 +43,17 @@ function DashboardLayout() {
   const connection = useConnection()
   const { mutate: switchChain, isPending } = useSwitchChain()
   const pathname = useLocation({ select: (location) => location.pathname })
+  const isSetup = pathname === '/dashboard/setup'
 
   if (connection.status !== 'connected' || !connection.address) {
-    return pathname === '/dashboard/setup' ? (
-      <ConnectGate
-        description="A tool or agent asked to set up your wallet. Connect the wallet that should approve it; you review every step before anything is signed."
-        title="Connect a wallet to review a setup request"
-      />
+    return isSetup ? (
+      <>
+        <SetupGateStatusTool />
+        <ConnectGate
+          description="A tool or agent asked to set up your wallet. Connect the wallet that should approve it; you review every step before anything is signed."
+          title="Connect a wallet to review a setup request"
+        />
+      </>
     ) : (
       <ConnectGate />
     )
@@ -61,6 +66,7 @@ function DashboardLayout() {
         description={`Your wallet is on chain ${connection.chainId}. The dashboard works on Filecoin Mainnet and the Calibration testnet.`}
         title="Switch your wallet to Filecoin"
       >
+        {isSetup && <SetupGateStatusTool />}
         {NETWORKS.map((name) => (
           <Button
             className="h-12 justify-start gap-3 px-4"

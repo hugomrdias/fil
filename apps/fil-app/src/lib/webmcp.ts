@@ -28,7 +28,14 @@ export type ModelContextTool<Input = Record<string, unknown>> = {
   name: string
   description: string
   inputSchema: ToolInputSchema
-  execute: (input: Input, options: { signal: AbortSignal }) => unknown
+  /**
+   * Runs the tool. Some agents, such as Codex in the ChatGPT desktop app,
+   * skip schema validation and pass no `options`, so `input` may not match
+   * `inputSchema`.
+   *
+   * @see https://docs.mcp-b.ai/reference/webmcp/codex-site-tools
+   */
+  execute: (input: Input, options?: { signal: AbortSignal }) => unknown
   annotations?: ToolAnnotations
 }
 
