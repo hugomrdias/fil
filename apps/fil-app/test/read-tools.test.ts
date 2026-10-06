@@ -85,6 +85,11 @@ describe('toInputSchema', () => {
     const schema = toInputSchema(listPiecesInput)
     assert.equal(schema.type, 'object')
     assert.deepEqual(schema.required, ['dataSetId'])
+    assert.deepEqual(
+      (schema.properties.dataSetId as { anyOf: { pattern?: string }[] })
+        .anyOf[0].pattern,
+      '^[0-9]{1,19}$'
+    )
     assert.deepEqual(Object.keys(schema.properties), [
       'network',
       'dataSetId',
