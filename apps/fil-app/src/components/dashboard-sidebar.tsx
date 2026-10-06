@@ -1,9 +1,11 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   ArrowLeftRightIcon,
+  BookOpenIcon,
   ChevronsUpDownIcon,
   CompassIcon,
   DatabaseIcon,
+  HouseIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
   LogOutIcon,
@@ -123,6 +125,42 @@ function Brand() {
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
+  )
+}
+
+/** Links out of the dashboard, to the site and the explorer. */
+function SiteLinks() {
+  const { network } = useDashboard()
+  const { isMobile, setOpenMobile } = useSidebar()
+  const close = () => isMobile && setOpenMobile(false)
+  return (
+    <SidebarGroup className="mt-auto">
+      <SidebarGroupContent>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={close} render={<Link to="/" />}>
+              <HouseIcon />
+              <span>Home</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={close}
+              render={<Link params={{ network }} to="/$network" />}
+            >
+              <CompassIcon />
+              <span>Explorer</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={close} render={<Link to="/docs" />}>
+              <BookOpenIcon />
+              <span>Docs</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   )
 }
 
@@ -292,8 +330,8 @@ function AccountMenu() {
 }
 
 /**
- * Dashboard sidebar: brand and network, search, grouped navigation and
- * the account menu. Becomes a sheet on mobile.
+ * Dashboard sidebar: brand and network, search, grouped navigation, links
+ * back to the site and the explorer, and the account menu. Becomes a sheet on mobile.
  *
  * @see https://ui.shadcn.com/blocks/sidebar#sidebar-01
  */
@@ -330,6 +368,7 @@ export function DashboardSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+        <SiteLinks />
       </SidebarContent>
       <SidebarFooter>
         <AccountMenu />
