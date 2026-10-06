@@ -9,7 +9,7 @@ This document describes how the `fil` prototype in [`packages/fil-cli`](../../pa
 - **One command for files and folders.** `fil put <path>` stores a file as a raw piece. It packs a folder into a UnixFS CAR.
 - **One copy.** Each upload has one copy on one provider.
 - **synapse-core only.** The CLI calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly and does not use synapse-sdk.
-- **Delegated signing.** A session key signs uploads and removals. The wallet owner approves the key in the [pay.filecoin.cloud console](https://pay.filecoin.cloud/console/session-keys), and the owner's wallet pays for storage.
+- **Delegated signing.** A session key signs uploads and removals. The wallet owner approves the key on the [fil-app setup page](../../apps/fil-app/README.md#setup-links), and the owner's wallet pays for storage.
 - **Recoverable operations.** `fil` saves each `put` and `delete` as an operation in SQLite before it changes anything outside the machine. `fil operations resume` never commits an interrupted operation twice.
 - **Machine contract.** [clipact](../../packages/clipact/README.md) implements the [CLI guidelines for agents](../agent-cli/guidelines.md). It gives `fil` one JSON result on stdout, exit codes `0` and `1`, and errors with `retryable` and `next` steps marked `by: "agent"` or `by: "user"`. It also provides an offline `schema` command, confirmation prompts, signal handling, and lazily loaded handlers.
 
@@ -19,13 +19,13 @@ flowchart LR
   cli -- session key signs EIP-712 --> curio[Curio provider<br/>PDP API]
   cli -- reads --> chain[(Filecoin chain<br/>FWSS, PDP, Pay,<br/>SessionKeyRegistry)]
   curio -- submits and pays gas --> chain
-  owner([Wallet owner]) -- approves key, funds account --> console[pay.filecoin.cloud]
-  console -- login tx --> chain
+  owner([Wallet owner]) -- approves key, funds account --> app[fil-app<br/>/dashboard/setup]
+  app -- login tx --> chain
   cli -- /piece and /ipfs --> curio
   cli --- local[(config.json<br/>state.db<br/>staging/)]
 ```
 
-The CLI never sends a chain transaction itself. It signs typed data and reads chain state. Curio submits the data set and piece transactions, and the owner's wallet submits the session key approval from the console.
+The CLI never sends a chain transaction itself. It signs typed data and reads chain state. Curio submits the data set and piece transactions, and the owner's wallet submits the session key approval from fil-app.
 
 ## Modules
 
@@ -53,9 +53,9 @@ packages/fil-cli/
     ├── errors.ts         error codes, operationError(), abortable()
     ├── usdfc.ts          USDFC amount formatting
     ├── auth/
-    │   ├── scope-ids.ts  console scope IDs, free of imports
+    │   ├── scope-ids.ts  scope IDs and the default key name, free of imports
     │   ├── scopes.ts     scope IDs ↔ FWSS permission typehashes
-    │   ├── login.ts      console URLs, on-chain approval discovery and polling
+    │   ├── login.ts      fil-app setup links, on-chain approval discovery and polling
     │   ├── session.ts    credentials from input or config; permission check before mutations
     │   └── open-browser.ts
     ├── storage/
@@ -96,6 +96,8 @@ We measured startup on Node 26 as the median of 20 runs after 5 warmups, with a 
       "address": "0x…",           // session key address
       "rootAddress": "0x…",       // owner; absent while approval is pending
       "scopes": ["createDataSet", "addPieces", "schedulePieceRemovals"],
+      "name": "fil-cli",          // key name requested as the on-chain origin
+      "days": 30,                 // requested expiry; absent means fil-app's default
       "fromBlock": "4112865",     // block when the key was created
       "expiresAt": "1793304656",  // earliest granted scope expiry
       "createdAt": "…"
@@ -118,15 +120,15 @@ We measured startup on Node 26 as the median of 20 runs after 5 warmups, with a 
 sequenceDiagram
   participant CLI as fil login
   participant Cfg as config.json
-  participant Console as pay.filecoin.cloud
+  participant App as fil-app /dashboard/setup
   participant Reg as SessionKeyRegistry
 
   CLI->>CLI: generatePrivateKey()
   CLI->>Reg: eth_blockNumber → fromBlock
-  CLI->>Cfg: save {privateKey, address, scopes, fromBlock}
-  CLI->>Console: open /console/session-keys?authorize=&scopes=&network=
-  Note over Console: owner connects wallet and approves
-  Console->>Reg: login(signer, expiry, typehashes, origin)
+  CLI->>Cfg: save {privateKey, address, scopes, name, days, fromBlock}
+  CLI->>App: open ?network=&signer=&name=&scopes=&days=
+  Note over App: owner connects wallet, reviews, and approves
+  App->>Reg: login(signer, expiry, typehashes, origin = name)
   loop every 3 s until approved or timeout
     CLI->>Reg: eth_getLogs AuthorizationsUpdated [fromBlock…latest]
   end
@@ -139,9 +141,10 @@ The login code lives in `auth/login.ts` and `handlers/login.ts`. It behaves as f
 
 - **`fil login` saves the key first.** Running `fil login` again resumes a pending login with the same key and scopes. `fil login` reuses an approved session that already covers the requested scopes. In any other case, or with `--fresh`, it generates a new key.
 - **The approval event names the owner.** In `AuthorizationsUpdated`, `identity` is indexed but `signer` is not. The CLI scans events from `fromBlock` in windows of at most 2,000 blocks and matches the signer locally. The matching event names the owner in `identity`, so the user never enters an address.
-- **The owner can grant fewer scopes.** The console lets the owner untick scopes. After it finds the owner, the CLI reads the expiry of each scope. If a requested scope is missing, the CLI still saves the session and returns `permission_denied`. The error lists the missing scopes in `error.details` and has a `by: "user"` step to log in again.
+- **Only the address leaves the machine.** The private key stays in `config.json`. The setup link carries the key's address, and fil-app never sees or stores the private key. fil-app keeps its own browser session keys separately in `localStorage`.
+- **The owner can change the request.** The setup page prefills the name, scopes, and expiry from the link, and the owner can change each one before signing. After the CLI finds the owner, it reads the expiry of each scope. If a requested scope is missing, the CLI still saves the session and returns `permission_denied`. The error lists the missing scopes in `error.details` and has a `by: "user"` step to log in again.
 - **Only a human waits.** A human is present when clipact's `mode.interactive` is true and no agent is detected. In that case, login opens the browser and waits for up to 600 seconds, and `ctx.signal` stops the wait. Otherwise, login checks once and returns `login_pending` with two `next` steps. The first is the approval link, `by: "user"`. The second is `fil login`, `by: "agent"`, to check again. Login never opens a browser for an agent.
-- **The console link has a fixed format.** `fil` lowercases the address, because the console rejects mixed-case addresses with a bad checksum. The scopes use console IDs, and the network is required. The funding link is `/console?deposit=<decimal>&operator=fwss&network=<net>`, and `fil` adds it only when the account needs a deposit.
+- **The setup link has a fixed format.** The approval link is `/dashboard/setup?network=<net>&signer=<address>&name=<name>&scopes=<ids>&days=<n>`. `fil` lowercases the address, so the link never carries a bad mixed-case checksum. The scopes are comma-separated scope IDs. `--name` defaults to `fil-cli`, and the page uses 30 days when `--days` is not given. The funding link is `/dashboard/setup?network=<net>&deposit=<decimal>`, and `fil status` adds it only when the account needs a deposit. The same page offers the Warm Storage approval when the wallet lacks it. `FIL_CONSOLE_URL` changes the origin.
 - **Only the owner can fund the account.** The session key cannot deposit or approve. `fil status` and the `put` funding check return a prefilled funding link instead.
 
 The default scopes are `createDataSet`, `addPieces`, and `schedulePieceRemovals`. `fil` never requests `terminateService` by default.
@@ -182,7 +185,7 @@ The phase is separate from the operation's execution status, which is `pending`,
    - `--provider` selects the provider directly.
    - Without `--provider`, the CLI calls `fetchProviderSelectionInput` and then `selectProviders({count: 1})`, which prefers an existing data set with matching metadata.
    - The CLI checks each candidate with `SP.ping`. It excludes a provider that does not answer and runs selection again.
-   - `getUploadCosts` then checks the funding. If the account is short, the result is `insufficient_funds` with the console link as a `by: "user"` step.
+   - `getUploadCosts` then checks the funding. If the account is short, the result is `insufficient_funds` with the fil-app funding link as a `by: "user"` step.
 4. **Upload.** Call `SP.findPiece` first. If the provider does not have the piece yet, call `SP.uploadPieceStreaming` from a file stream. Then call `findPiece({poll: true})` until the provider has parked the piece. Save `stored`.
 5. **Sign.** Choose a random add-pieces `nonce`. For a new data set, also choose a `clientDataSetId`. Sign the payload with `signAddPieces` or `signCreateDataSetAndAddPieces`, with `payee = provider.payee` and `payer = rootAddress`. Save the signed `extraData` and the nonce before sending the commit.
 6. **Send.** Pass the saved `extraData` to `SP.addPieces` or `SP.createDataSetAndAddPieces`. Curio submits the transaction and pays gas. Save `statusUrl` and `transactionHash`.
@@ -299,7 +302,7 @@ Errors are clipact `CliError`s with a stable snake_case `code`, a `retryable` fl
 | Code | Next step | Raised by |
 | --- | --- | --- |
 | `auth_required`, `login_pending`, `session_expired`, `permission_denied` | The user logs in or approves scopes | Session checks, login |
-| `insufficient_funds` | The user funds the account at the console link | The put funding check |
+| `insufficient_funds` | The user funds the account at the fil-app funding link | The put funding check |
 | `not_found` | The agent lists resources or operations | Lookups |
 | `output_exists` | The agent chooses another path or passes `--force` | get |
 | `operation_failed`, `commit_rejected`, `removal_reverted`, `source_changed`, `staging_missing`, `operation_running` | The agent resumes or inspects the operation | put, delete, resume |
@@ -313,7 +316,7 @@ The tests use the Node test runner and need no network. `pnpm --filter fil-cli t
 | Test | Covers |
 | --- | --- |
 | `state.test.ts` | Migrations, including `rm` → `delete`, account-scoped queries, cursor paging, checkpoint merging, the lock against a live child process, a second caller in the same process, and a reused PID |
-| `login.test.ts` | The console URL format, scope classification, and the windowed event scan against a fake viem transport |
+| `login.test.ts` | The setup link format, scope classification, and the windowed event scan against a fake viem transport |
 | `pack.test.ts` | A deterministic root CID, byte-exact extraction, no unreferenced blocks, empty directories, rejection of a tampered block, and the dotfile and symlink rules |
 | `jobs.test.ts` | A fake `StorageBackend` that simulates FWSS nonces. It covers new and existing data sets, a lost commit response, a commit that never landed, a rejected commit, a resume of a completed job, insufficient funds, a reverted removal, interruption, dry-run estimates, and the operation ID and resume step on every job error |
 | `cli.test.ts` | The whole CLI in process through `clipact/testing` in strict mode. It covers definitions, schemas and aliases, auth and pending-login errors, confirmation, a dry run without a session, and secrets kept out of flags and output |
@@ -323,7 +326,7 @@ The tests use the Node test runner and need no network. `pnpm --filter fil-cli t
 
 ### Calibration run on 2026-09-29
 
-- `login` took about 1 minute 40 seconds through the production console. The CLI found all three scopes on chain, with nothing copied.
+- `login` took about 1 minute 40 seconds through the production pay.filecoin.cloud console, before `fil login` moved to fil-app. The CLI found all three scopes on chain, with nothing copied.
 - `put ./docs` used provider 9 (`calib.ezpdpz.net`) and created data set 39723 with piece 0, in about 1 minute 20 seconds.
 - `get` matched the PieceCID, and the extracted tree was byte-identical to the source.
 - `/ipfs/<rootCid>/` answered HTTP 200 seconds after the commit. Curio returns a CAR for `Accept: */*` and a raw block for any block CID. A raw request with a path gets HTTP 400. A recheck on 2026-10-06 gave the same results.
@@ -347,5 +350,5 @@ The tests use the Node test runner and need no network. `pnpm --filter fil-cli t
 - `fil` rejects content smaller than 127 bytes or larger than 1,065,353,216 bytes.
 - A put that fails before any external change, such as with `insufficient_funds`, stays listed as an incomplete operation.
 - `inspect --check` probes only the root URL, not each file in the folder.
-- `logout` deletes the local key but does not revoke it on chain. Revoke it in the console.
+- `logout` deletes the local key but does not revoke it on chain. Revoke it on the fil-app session keys page.
 - A pending login that resumes much later scans every block since `fromBlock`. `--fresh` starts over with a new key.

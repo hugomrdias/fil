@@ -54,9 +54,11 @@ export function GateFrame(props: {
 /**
  * Connect screen listing every detected browser wallet (EIP-6963).
  *
+ * @param props.title - Heading; defaults to the dashboard's.
+ * @param props.description - What connecting unlocks; defaults to the dashboard's.
  * @see https://wagmi.sh/react/api/hooks/useConnect
  */
-export function ConnectGate() {
+export function ConnectGate(props: { title?: string; description?: string }) {
   const connectors: readonly Connector[] = useConnectors()
   const {
     mutate: connect,
@@ -67,8 +69,11 @@ export function ConnectGate() {
   })
   return (
     <GateFrame
-      description="Your dashboard manages your Filecoin Pay account, Warm Storage approval, data sets, uploads, rails and session keys."
-      title="Connect a wallet to open your dashboard"
+      description={
+        props.description ??
+        'Your dashboard manages your Filecoin Pay account, Warm Storage approval, data sets, uploads, rails and session keys.'
+      }
+      title={props.title ?? 'Connect a wallet to open your dashboard'}
     >
       {connectors.length === 0 ? (
         <p className="rounded-3xl border border-dashed p-5 text-sm text-muted-foreground">

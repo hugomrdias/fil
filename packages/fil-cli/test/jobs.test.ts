@@ -81,7 +81,8 @@ function fakeBackend(options: FakeOptions = {}) {
         needsApproval: false,
         ratePerMonth: 123n,
         lockup: 456n,
-        fundingUrl: 'https://pay.example/console',
+        fundingUrl:
+          'https://fil-app.example/dashboard/setup?network=calibration',
       }),
     hasPiece: () => Promise.resolve(options.stored ?? false),
     upload() {

@@ -4,6 +4,7 @@ import { CommandMenuProvider } from '@/components/command-menu'
 import { ErrorState, NotFound } from '@/components/empty-state'
 import { ExplorerShell } from '@/components/site-header'
 import { Toaster } from '@/components/ui/sonner'
+import { WebMcpTools } from '@/components/webmcp-tools'
 
 /** Router context shared by all routes. */
 export interface RouterContext {
@@ -27,13 +28,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 })
 
 /**
- * App root: the command menu and toasts. The explorer and the dashboard
- * each render their own frame.
+ * App root: the command menu, toasts, and WebMCP tools. The explorer and
+ * the dashboard each render their own frame.
  */
 function RootLayout() {
   return (
     <CommandMenuProvider>
       <Outlet />
+      <WebMcpTools />
       <Toaster position="bottom-right" richColors />
     </CommandMenuProvider>
   )

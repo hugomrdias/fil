@@ -33,6 +33,8 @@ export interface AmountFormProps {
   description?: string
   /** Disable submission. */
   disabled?: boolean
+  /** Decimal amount to prefill, e.g. from a deep link. */
+  defaultValue?: string
   /**
    * Submit handler with the parsed amount. A rejection keeps the input; the
    * caller reports the error (e.g. in its mutation `onError`).
@@ -48,7 +50,7 @@ export interface AmountFormProps {
 export function AmountForm(props: AmountFormProps) {
   const decimals = props.decimals ?? 18
   const form = useForm({
-    defaultValues: { amount: '' },
+    defaultValues: { amount: props.defaultValue ?? '' },
     onSubmit: async ({ value, formApi }) => {
       const amount = parseUnitsSafe(value.amount, decimals)
       if (amount === undefined) {
@@ -56,7 +58,8 @@ export function AmountForm(props: AmountFormProps) {
       }
       try {
         await props.onSubmit(amount)
-        formApi.reset()
+        // Clear rather than restore a prefill, so it is not submitted twice.
+        formApi.reset({ amount: '' })
       } catch {
         // The caller's mutation onError reports the failure; keep the input.
       }

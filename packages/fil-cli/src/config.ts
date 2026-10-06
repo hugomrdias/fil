@@ -9,13 +9,17 @@ export type { Network } from './network.ts'
 
 /**
  * A session key saved by `fil login`. `rootAddress` is absent while the
- * login is pending approval in the console.
+ * login is pending approval in fil-app.
  */
 export const SessionSchema = z.object({
   privateKey: z.string(),
   address: z.string(),
   rootAddress: z.string().optional(),
   scopes: z.array(z.string()),
+  /** Name requested for the key, recorded on chain as its origin. */
+  name: z.string().optional(),
+  /** Days until the requested authorization expires. */
+  days: z.number().int().optional(),
   /** Block height when the key was created, used to scan for its approval. */
   fromBlock: z.string(),
   /** Earliest expiry among the granted scopes, in Unix seconds. */

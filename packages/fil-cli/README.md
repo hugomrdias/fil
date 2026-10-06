@@ -18,7 +18,9 @@ fil --help
 fil login
 ```
 
-`fil login` generates a session key and saves it locally. It then opens the [pay.filecoin.cloud](https://pay.filecoin.cloud) console, where the wallet owner approves the key. The CLI finds the approval on chain, so there is nothing to copy back. By default, it requests the `createDataSet`, `addPieces`, and `schedulePieceRemovals` scopes. To request other scopes, repeat `--scopes`.
+`fil login` generates a session key and saves it locally. It then opens the [fil-app](https://fil-app.hugomrdias.dev) setup page with the key's address. The wallet owner reviews the request there and approves it with their wallet. The private key never leaves the machine, and the CLI finds the approval on chain, so there is nothing to copy back.
+
+By default, `fil login` requests the `createDataSet`, `addPieces`, and `schedulePieceRemovals` scopes for 30 days, under the name `fil-cli`. To request other scopes, repeat `--scopes`. `--name` sets the name the owner sees, which is recorded on chain, and `--days` sets the expiry. The owner can change all three on the page before approving.
 
 The session key signs each request, the provider submits the transactions, and the wallet pays for storage.
 
@@ -28,9 +30,9 @@ For CI, set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS` instead of running `fil log
 
 ## Check the account
 
-The session key cannot fund the account. `fil status` reports the expiry of each scope, the USDFC funds, and the Warm Storage (FWSS) approval. When the account needs a deposit, `fil status` also returns a prefilled funding link to the console.
+The session key cannot fund the account. `fil status` reports the expiry of each scope, the USDFC funds, and the Warm Storage (FWSS) approval. When the account needs a deposit, `fil status` also returns a prefilled funding link to the fil-app setup page.
 
-`fil doctor` shows the network, RPC, console, and state directory that `fil` resolved, with the source of each value. It also checks the database and the RPC.
+`fil doctor` shows the network, RPC, fil-app origin (`console`), and state directory that `fil` resolved, with the source of each value. It also checks the database and the RPC.
 
 ## Store and retrieve
 
@@ -89,7 +91,7 @@ Ctrl+C, SIGTERM, or SIGHUP stops the work at the next step. `fil` returns an `in
 | Error code | Meaning |
 | --- | --- |
 | `auth_required`, `login_pending`, `session_expired`, `permission_denied` | The user must log in or approve scopes |
-| `insufficient_funds` | The user must fund the account at the console link |
+| `insufficient_funds` | The user must fund the account at the fil-app link |
 | `not_found` | No resource, operation, provider, or piece has that name |
 | `output_exists` | The `fil get` output path exists. Pass `--force` to overwrite it |
 | `operation_failed`, `commit_rejected`, `removal_reverted`, `source_changed`, `staging_missing`, `operation_running` | A put or delete stopped. Follow the `next` steps |
@@ -106,10 +108,10 @@ Ctrl+C, SIGTERM, or SIGHUP stops the work at the next step. `fil` returns an `in
 | `FIL_CONFIG_DIR` | Config directory. Default: the platform config directory for `fil` |
 | `FIL_STATE_DIR` | SQLite state and staged CARs. Default: the platform data directory for `fil` |
 | `FIL_RPC_URL` | RPC endpoint. Default: synapse-core's fallback transport for the chain |
-| `FIL_CONSOLE_URL` | Console origin. Default: `https://pay.filecoin.cloud` |
+| `FIL_CONSOLE_URL` | fil-app origin for approval and funding links, such as `http://localhost:5173` for a local app. Default: `https://fil-app.hugomrdias.dev` |
 | `FIL_OUTPUT`, `FIL_AGENT` | Override clipact's output mode and agent detection |
 
-The prototype saves the session private key in the config file with mode 0600, so only its owner can read it. `fil logout` deletes the local key. The key stays authorized on chain until you revoke it in the console.
+The prototype saves the session private key in the config file with mode 0600, so only its owner can read it. `fil logout` deletes the local key. The key stays authorized on chain until it expires or you revoke it on the fil-app session keys page.
 
 ## Development
 

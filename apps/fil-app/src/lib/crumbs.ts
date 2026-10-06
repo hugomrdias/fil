@@ -18,6 +18,7 @@ const SECTIONS: Record<string, string> = {
   account: 'Pay account',
   approvals: 'Approvals',
   upload: 'Upload',
+  setup: 'Setup request',
   search: 'Search',
 }
 

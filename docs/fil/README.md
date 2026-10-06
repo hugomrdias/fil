@@ -12,7 +12,7 @@ The table lists the four parts, the agent skill that comes with the CLI, and the
 | Agent skill | Teaches an agent to use `fil` | [`skills/fil/SKILL.md`](../../packages/fil-cli/skills/fil/SKILL.md) | In the agent, after `fil skills install` |
 | REST API | Serves read-only data on providers, data sets, pieces, Filecoin Pay rails, and session keys. `/get/{cid}` redirects to where a CID can be retrieved. | [`apps/fil-api`](../../apps/fil-api/README.md) | https://fil-api.hugomrdias.dev, with a reference at [`/docs`](https://fil-api.hugomrdias.dev/docs) |
 | MCP server | Offers one read-only tool for each REST API data route, over stateless Streamable HTTP | [`apps/fil-api/src/mcp`](../../apps/fil-api/src/mcp/server.ts) | `POST https://fil-api.hugomrdias.dev/mcp` |
-| Web app | Shows the REST API's data in an explorer. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
+| Web app | Shows the REST API's data in an explorer. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. Its setup page approves `fil login` keys and funding requests, and browser agents can fill it through WebMCP. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
 | Agent plugins | Bundle the CLI, the agent skill, and the MCP server for Claude and ChatGPT | Not started | Planned |
 | Website | Presents the brand, marketing, and docs for every part | Not started | Planned |
 
@@ -32,14 +32,14 @@ flowchart LR
   app -- uploads, signed by wallet or session key --> curio
   api -- Hyperdrive --> db[(Ponder indexer<br/>Postgres)]
   db -- indexes --> chain
-  owner([Wallet owner]) -- approves CLI key --> console[pay.filecoin.cloud<br/>moving to fil-app]
+  owner([Wallet owner]) -- approves CLI key --> app
 ```
 
 All parts use the same chain and the same providers, but each part keeps its own state:
 
 - **The CLI does not use fil-api yet.** It reads the chain through synapse-core. It keeps its resources and operations in a local SQLite database.
 - **The app reads through fil-api.** It writes with the connected wallet or with a session key made in the dashboard. The app stores those session keys in the browser's `localStorage`.
-- **`fil login` sends the owner to pay.filecoin.cloud for now.** The CLI will move to the fil-app dashboard, which already authorizes session keys.
+- **`fil login` sends the owner to fil-app.** The CLI keeps its session key on the machine and sends only the key's address, name, scopes, and expiry in a [setup link](../../apps/fil-app/README.md#setup-links). The owner reviews the prefilled page and signs the approval with their wallet. `fil status` and `put` send funding requests to the same page.
 
 ## Related documents
 
@@ -53,7 +53,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 
 ## Assumptions behind the proof of concept
 
-- **We test with our own app and website.** For testing, the CLI will use fil-app instead of pay.filecoin.cloud. For the same reason, the planned website takes the place of filecoin.cloud and filecoin.io. The results of this prototype will inform improvements to pay.filecoin.cloud, filecoin.cloud, and filecoin.io.
+- **We test with our own app and website.** For testing, the CLI uses fil-app instead of pay.filecoin.cloud. For the same reason, the planned website takes the place of filecoin.cloud and filecoin.io. The results of this prototype will inform improvements to pay.filecoin.cloud, filecoin.cloud, and filecoin.io.
 - **Two kinds of user.** An agent runs `fil` in a shell or calls the MCP server. A human owns the wallet, approves the agent's session key, and funds the account. The agent never holds the wallet key.
 - **Claude and ChatGPT first.** Plugins for Claude and ChatGPT will be the main way to add `fil` to an agent. Other agents get a manual fallback. The user runs `fil skills install` to copy the skill into `.agents/skills` and `.claude/skills`. The user can also add the MCP server URL to the agent's settings.
 - **A session key is enough for storage.** A key with the `createDataSet`, `addPieces`, and `schedulePieceRemovals` scopes can store and delete data. Only the owner can deposit, approve operators, or terminate service.
@@ -88,6 +88,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 ### App
 
 - **Session keys in `localStorage`.** The app scopes them by chain and wallet, but any script on the origin can read them.
+- **WebMCP is an early preview.** The setup page's WebMCP tools work in Chrome 149 and later on fil-app.hugomrdias.dev through an origin-trial token that expires on 2027-03-30. Elsewhere they need Chromium's `#enable-webmcp-testing` flag. Other browsers ignore them, and agents use the setup link instead.
 - **Upstream hooks kept in the app.** `hooks-synapse` adds hooks that synapse-react 0.5.0 lacks. It also works around the bugs listed in [its README](../../apps/fil-app/src/hooks-synapse/README.md).
 
 ### Project
@@ -115,7 +116,6 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **Agent files at the repository root.** Move the agent skill out of `packages/fil-cli/skills` to the repository root, and add the agent plugins there too. `fil skills install` reads the skill from the package, so the build must copy it from the root into `packages/fil-cli/skills`.
 - **Agent setup on the web.** Add agent setup to the website, and probably to fil-app: an `llms.txt` file and well-known paths for the REST API, the MCP server, and the agent skill.
 - **Agent plugins.** Build plugins for Claude and ChatGPT. Each plugin bundles the CLI, the agent skill, and the MCP server.
-- **CLI login.** Point `fil login` at the fil-app dashboard instead of pay.filecoin.cloud. The dashboard must accept the approval and funding links that `fil` builds.
 - **Two copies.** Store two copies by default in the CLI and the app's upload, as synapse-sdk does.
 - **CLI reads.** Move most CLI reads to fil-api. Keep synapse-core chain reads as the fallback.
 - **CLI retrieval.** Return two fil-api `/get/{cid}` URLs for each resource. `/get/{pieceCid}` redirects to the raw piece on a provider. `/get/{cid}?browser=true` redirects to inbrowser.link for a folder and to the `/piece` URL for a file, and a browser renders both. Today the CLI builds Curio `/piece` and `/ipfs` URLs itself.

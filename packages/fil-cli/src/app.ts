@@ -16,8 +16,8 @@ import {
 import { abortable } from './errors.ts'
 import { openDatabase, stateDir } from './state/db.ts'
 
-/** Default pay.filecoin.cloud console origin. */
-const DEFAULT_CONSOLE_URL = 'https://pay.filecoin.cloud'
+/** Default fil-app origin, whose dashboard approves keys and funds accounts. */
+const DEFAULT_CONSOLE_URL = 'https://fil-app.hugomrdias.dev'
 
 /**
  * Shared per-invocation context: resolved network, chain client, config, and
@@ -30,7 +30,7 @@ export type App = {
   config: Config
   /** Session key and owner given as input (`FIL_SESSION_KEY`, `FIL_ROOT_ADDRESS`). */
   credentials: { sessionKey?: string; rootAddress?: string }
-  /** Console origin for session-key approval and funding links. */
+  /** fil-app origin for session-key approval and funding links. */
   consoleUrl: string
   /** Aborted on SIGINT, SIGTERM, or SIGHUP; cancels chain and provider calls. */
   signal: AbortSignal | undefined

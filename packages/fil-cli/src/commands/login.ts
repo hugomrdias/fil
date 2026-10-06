@@ -1,20 +1,21 @@
 import { defineCommand } from 'clipact'
 import * as z from 'zod'
-import { SCOPE_IDS } from '../auth/scope-ids.ts'
+import { DEFAULT_KEY_NAME, SCOPE_IDS } from '../auth/scope-ids.ts'
 import { ErrorCodes } from '../errors.ts'
 import { account, accountEnv } from './shared.ts'
 
 /**
- * `fil login`: authorize a session key in the pay.filecoin.cloud console. A
- * human waits for approval; an agent gets the approval link back as a
+ * `fil login`: authorize a session key in the fil-app dashboard. A human
+ * waits for approval; an agent gets the approval link back as a
  * `login_pending` error and runs `fil login` again once the user approves.
  */
 export const login = defineCommand({
   name: 'login',
-  description: 'Authorize a session key in the pay.filecoin.cloud console',
+  description: 'Authorize a session key in the fil-app dashboard',
   examples: [
     'fil login',
     'fil login --scopes createDataSet --scopes addPieces',
+    'fil login --name "fil on laptop" --days 7',
     'fil login --network mainnet --fresh',
   ],
   input: z.strictObject({
@@ -27,6 +28,22 @@ export const login = defineCommand({
       .describe(
         'Scopes to request (default: createDataSet, addPieces, schedulePieceRemovals)'
       ),
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(64)
+      .optional()
+      .describe(
+        `Key name the owner sees, recorded on chain (default: ${DEFAULT_KEY_NAME})`
+      ),
+    days: z
+      .number()
+      .int()
+      .min(1)
+      .max(365)
+      .optional()
+      .describe('Days until the approval expires (default: 30)'),
     wait: z
       .boolean()
       .optional()
@@ -34,7 +51,7 @@ export const login = defineCommand({
     open: z
       .boolean()
       .default(true)
-      .describe('Open the console in a browser; never for agents'),
+      .describe('Open the approval page in a browser; never for agents'),
     fresh: z.boolean().default(false).describe('Always generate a new key'),
     timeout: z
       .number()

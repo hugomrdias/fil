@@ -1,5 +1,5 @@
 import type { Permission } from '@filoz/synapse-core/session-key'
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { useConnection, useSwitchChain } from 'wagmi'
 import { SearchTrigger } from '@/components/command-menu'
@@ -41,9 +41,17 @@ export const Route = createFileRoute('/dashboard')({
 function DashboardLayout() {
   const connection = useConnection()
   const { mutate: switchChain, isPending } = useSwitchChain()
+  const pathname = useLocation({ select: (location) => location.pathname })
 
   if (connection.status !== 'connected' || !connection.address) {
-    return <ConnectGate />
+    return pathname === '/dashboard/setup' ? (
+      <ConnectGate
+        description="A tool or agent asked to set up your wallet. Connect the wallet that should approve it; you review every step before anything is signed."
+        title="Connect a wallet to review a setup request"
+      />
+    ) : (
+      <ConnectGate />
+    )
   }
 
   const network = networkForChainId(connection.chainId)

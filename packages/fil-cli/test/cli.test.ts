@@ -86,7 +86,7 @@ test('reads without a session ask the user to log in', async () => {
       by: 'user',
       command: 'fil login',
       description:
-        'Authorize a session key in the pay.filecoin.cloud console, then retry',
+        'Authorize a session key in the fil-app dashboard, then retry',
     },
   ])
 })
@@ -166,13 +166,20 @@ test('a pending login is reported with the approval link', async () => {
     privateKey: SESSION_KEY,
     address: '0x2222222222222222222222222222222222222222',
     scopes: ['addPieces'],
+    name: 'fil on laptop',
     fromBlock: '1',
     createdAt: new Date(0).toISOString(),
   })
   const status = await run(['status', '--network', network])
   const session = status.data.session as Record<string, unknown>
   assert.equal(session.state, 'pending')
-  assert.match(String(session.url), /authorize=0x2222/)
+  const url = new URL(String(session.url))
+  assert.equal(url.pathname, '/dashboard/setup')
+  assert.equal(
+    url.searchParams.get('signer'),
+    '0x2222222222222222222222222222222222222222'
+  )
+  assert.equal(url.searchParams.get('name'), 'fil on laptop')
 
   const ls = await run(['ls', '--network', network])
   assert.equal(code(ls.json), 'login_pending')

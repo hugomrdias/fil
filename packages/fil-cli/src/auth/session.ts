@@ -54,6 +54,8 @@ export function resolveCredentials(app: App): SessionCredentials | undefined {
         address: session.address as Address,
         scopes: session.scopes.filter(isScopeId),
         network: app.network,
+        name: session.name,
+        days: session.days,
       })
     )
   }
@@ -68,7 +70,7 @@ export function resolveCredentials(app: App): SessionCredentials | undefined {
 export function loginPending(url: string): CliError {
   return new CliError({
     code: ErrorCodes.loginPending,
-    message: 'The session key is waiting for approval in the console.',
+    message: 'The session key is waiting for approval in fil-app.',
     details: { url },
     next: [
       {
@@ -94,7 +96,7 @@ export function notLoggedIn(): CliError {
         by: 'user',
         command: 'fil login',
         description:
-          'Authorize a session key in the pay.filecoin.cloud console, then retry',
+          'Authorize a session key in the fil-app dashboard, then retry',
       },
     ],
   })
