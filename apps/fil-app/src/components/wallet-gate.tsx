@@ -30,7 +30,7 @@ export function GateFrame(props: {
           variant="ghost"
         >
           <ArrowLeftIcon />
-          Explorer
+          Home
         </Button>
       </header>
       <main className="flex flex-1 items-start justify-center px-4 pt-[12svh] pb-16">
