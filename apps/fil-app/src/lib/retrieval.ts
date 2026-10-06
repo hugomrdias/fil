@@ -7,7 +7,7 @@ import type { Network } from './networks.ts'
  * @param baseUrl - fil-api base URL.
  * @param network - Filecoin network.
  * @param cid - PieceCID or IPFS root CID.
- * @see https://github.com/hugomrdias/foc-cli/tree/main/apps/fil-api#retrieval
+ * @see https://github.com/hugomrdias/fil/tree/main/apps/fil-api#retrieval
  */
 export function retrievalUrl(baseUrl: string, network: Network, cid: string) {
   const url = new URL(

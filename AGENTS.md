@@ -1,4 +1,4 @@
-# foc-cli repository instructions
+# fil repository instructions
 
 - Development: read [development.md](docs/development.md) when setting up the local environment or running validation.
 
