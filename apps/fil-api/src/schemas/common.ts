@@ -1,5 +1,5 @@
 import { z } from '@hono/zod-openapi'
-import { parseRetrievalCid } from '../cid.ts'
+import { parsePieceCid, parseRetrievalCid } from '../cid.ts'
 import { NETWORK_NAMES } from '../networks.ts'
 import { isInt8 } from '../pagination.ts'
 
@@ -48,6 +48,26 @@ export const RetrievalCidInput = z
   .openapi({
     type: 'string',
     description: 'PieceCID v2 or IPFS root CID',
+    example:
+      'bafkzcibfq263oaytvzyzerkprzkwx5l3ek3dwyngge4sim2o3ahsk7shfendo7jvdm7a',
+  })
+
+/**
+ * PieceCID v2 filter, normalized to the canonical string the indexer stores
+ * with {@link parsePieceCid}.
+ */
+export const PieceCidInput = z
+  .string()
+  .transform((value, ctx) => {
+    try {
+      return parsePieceCid(value)
+    } catch (error) {
+      ctx.addIssue({ code: 'custom', message: (error as Error).message })
+      return z.NEVER
+    }
+  })
+  .openapi({
+    type: 'string',
     example:
       'bafkzcibfq263oaytvzyzerkprzkwx5l3ek3dwyngge4sim2o3ahsk7shfendo7jvdm7a',
   })

@@ -45,7 +45,7 @@ describe('rest routes', () => {
     ['/calibration/data-sets/1/pieces?removed=false', rows.piece],
     ['/calibration/data-sets/1/pieces/0', rows.piece],
     [
-      '/calibration/pieces?cid=bafk',
+      `/calibration/pieces?cid=${rows.piece.cid}`,
       { ...rows.piece, ...rows.dataSet, data_set_id: '1' },
     ],
     ['/calibration/rails?state=active', rows.rail],
@@ -93,6 +93,26 @@ describe('rest routes', () => {
     expect(fake.queries[0]?.params[0]).toBe(rows.dataSet.payer)
   })
 
+  it('queries pieces by the canonical PieceCID v2 string', async () => {
+    const { request, fake } = testApp(() => [])
+    const hex =
+      '0x015591202586bdb70313ae7192454f8e556bf57b22b63b61a6313924334ed80f257e47291a377d351b3e'
+    const res = await request(`/calibration/pieces?cid=${hex}`)
+    expect(res.status).toBe(200)
+    expect(fake.queries[0]?.params[0]).toBe(rows.piece.cid)
+  })
+
+  it('names legacy v1 PieceCIDs in the error', async () => {
+    const { request } = testApp()
+    const res = await request(
+      '/calibration/pieces?cid=baga6ea4seaqao7s73y24kcutaosvacpdjgfe5pw76ooefnyqw4ynr3d2y6x2mpq'
+    )
+    const { error } = (await res.json()) as { error: { message: string } }
+    expect(error.message).toContain(
+      'Legacy v1 PieceCIDs are not supported, use v2'
+    )
+  })
+
   it('lowercases checksummed provider addresses', async () => {
     const { request } = testApp(() => [
       {
@@ -117,6 +137,15 @@ describe('rest routes', () => {
 
   it.each([
     ['/calibration/pieces', 'invalid_request'],
+    ['/calibration/pieces?cid=notacid', 'invalid_request'],
+    [
+      '/calibration/pieces?cid=baga6ea4seaqao7s73y24kcutaosvacpdjgfe5pw76ooefnyqw4ynr3d2y6x2mpq',
+      'invalid_request',
+    ],
+    [
+      '/calibration/pieces?cid=bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy',
+      'invalid_request',
+    ],
     ['/calibration/data-sets?owner=nope', 'invalid_request'],
     ['/calibration/providers?limit=500', 'invalid_request'],
     ['/calibration/providers/abc', 'invalid_request'],

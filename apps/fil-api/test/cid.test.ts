@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cidForms, parseRetrievalCid } from '../src/cid.ts'
+import { cidForms, parsePieceCid, parseRetrievalCid } from '../src/cid.ts'
 import { rows } from './helpers.ts'
 
 describe('parseRetrievalCid', () => {
@@ -34,6 +34,30 @@ describe('parseRetrievalCid', () => {
     ['', 'Expected a CID'],
   ])('rejects %s', (input, message) => {
     expect(() => parseRetrievalCid(input)).toThrow(message)
+  })
+})
+
+describe('parsePieceCid', () => {
+  it.each([
+    rows.piece.cid,
+    '0x015591202586bdb70313ae7192454f8e556bf57b22b63b61a6313924334ed80f257e47291a377d351b3e',
+  ])('normalizes %s to the canonical string', (input) => {
+    expect(parsePieceCid(input)).toBe(rows.piece.cid)
+  })
+
+  it.each([
+    [
+      'baga6ea4seaqao7s73y24kcutaosvacpdjgfe5pw76ooefnyqw4ynr3d2y6x2mpq',
+      'Legacy v1 PieceCIDs are not supported, use v2',
+    ],
+    ['bafkzcibfq263', 'Expected a PieceCID v2'],
+    [
+      'bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy',
+      'Expected a PieceCID v2',
+    ],
+    ['notacid', 'Expected a PieceCID v2'],
+  ])('rejects %s', (input, message) => {
+    expect(() => parsePieceCid(input)).toThrow(message)
   })
 })
 

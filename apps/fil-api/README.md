@@ -25,7 +25,7 @@ Every data route is namespaced by network: `/calibration/...` or `/mainnet/...`.
 | `/{network}/data-sets/{dataSetId}` | none |
 | `/{network}/data-sets/{dataSetId}/pieces` | `removed` |
 | `/{network}/data-sets/{dataSetId}/pieces/{pieceId}` | none |
-| `/{network}/pieces` | `owner`, `cid`, `provider_id`, `removed` (at least one of the first three is required) |
+| `/{network}/pieces` | `owner`, `cid` (a PieceCID v2; legacy v1 PieceCIDs and other strings return `400`), `provider_id`, `removed` (at least one of the first three is required) |
 | `/{network}/rails` | `payer`, `payee`, `operator`, `token`, `state` (`active`, `terminated` or `finalized`) |
 | `/{network}/rails/{railId}` | none |
 | `/{network}/rails/{railId}/settlements` | none |

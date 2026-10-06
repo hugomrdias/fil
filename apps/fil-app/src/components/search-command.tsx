@@ -154,6 +154,13 @@ export function SearchCommandItems(props: {
         </CommandEmpty>
       ) : null}
 
+      {target.type === 'legacy-piece' ? (
+        <CommandEmpty>
+          Legacy v1 PieceCIDs (baga…) aren't supported. Search for the PieceCID
+          v2 (bafkzcib…).
+        </CommandEmpty>
+      ) : null}
+
       {target.type === 'address' ? (
         <CommandGroup forceMount heading="Look up">
           <Row
