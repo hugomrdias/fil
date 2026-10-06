@@ -4,6 +4,7 @@ import { CommandMenuProvider } from '@/components/command-menu'
 import { ErrorState, NotFound } from '@/components/empty-state'
 import { ExplorerShell } from '@/components/site-header'
 import { Toaster } from '@/components/ui/sonner'
+import { WebMcpReadTools } from '@/components/webmcp-read-tools'
 import { WebMcpTools } from '@/components/webmcp-tools'
 
 /** Router context shared by all routes. */
@@ -36,6 +37,7 @@ function RootLayout() {
     <CommandMenuProvider>
       <Outlet />
       <WebMcpTools />
+      <WebMcpReadTools />
       <Toaster position="bottom-right" richColors />
     </CommandMenuProvider>
   )

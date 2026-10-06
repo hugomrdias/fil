@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 /**
  * Minimal types for the WebMCP imperative API, which TypeScript's DOM types
  * do not include yet. WebMCP is an early preview in Chromium behind
@@ -83,4 +85,47 @@ export function registerTool<Input>(
   } catch {
     ignore()
   }
+}
+
+/** Tool input after {@link parseToolInput}: the parsed value, or what is wrong with it. */
+export type ParsedToolInput<T> =
+  | { ok: true; data: T }
+  | { ok: false; errors: string[] }
+
+/**
+ * Parse a tool's input with its zod schema. Some agents skip schema
+ * validation, so tools parse their own input and return the problems
+ * instead of throwing. A missing input counts as `{}`.
+ *
+ * @param schema - Input schema.
+ * @param input - Input the agent sent.
+ * @see https://docs.mcp-b.ai/reference/webmcp/codex-site-tools
+ */
+export function parseToolInput<Schema extends z.ZodType>(
+  schema: Schema,
+  input: unknown
+): ParsedToolInput<z.output<Schema>> {
+  const result = schema.safeParse(input ?? {})
+  if (result.success) {
+    return { ok: true, data: result.data }
+  }
+  return {
+    ok: false,
+    errors: result.error.issues.map((issue) =>
+      issue.path.length > 0
+        ? `${issue.path.join('.')}: ${issue.message}`
+        : issue.message
+    ),
+  }
+}
+
+/**
+ * JSON Schema for a tool's input, from the zod schema that parses it.
+ *
+ * @param schema - Input schema, a zod object.
+ * @see https://zod.dev/json-schema
+ */
+export function toInputSchema(schema: z.ZodObject): ToolInputSchema {
+  const { $schema: _, ...json } = z.toJSONSchema(schema, { io: 'input' })
+  return json as ToolInputSchema
 }
