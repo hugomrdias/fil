@@ -9,7 +9,7 @@ import { errors } from './errors.ts'
  * handler is imported when its command runs.
  *
  * @see ../../../docs/agent-cli/framework-design.md
- * @see ../../../docs/fil-cli/interface-research.md
+ * @see ../../../docs/fil/interface-research.md
  */
 export const cli = defineCli({
   name: 'fil',

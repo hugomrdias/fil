@@ -1,6 +1,6 @@
 # fil repository instructions
 
-- Development: read [development.md](docs/development.md) when setting up the local environment or running validation.
+- Development: read the [root README](README.md#build-and-check) when setting up the local environment or running validation.
 
 ## Changes and validation
 

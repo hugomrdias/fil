@@ -71,7 +71,7 @@ export type Checkpoint = {
  * A saved `put` or `delete` job with enough progress to continue after an
  * interruption.
  *
- * @see ../../../../docs/fil-cli/interface-research.md#operations
+ * @see ../../../../docs/fil/interface-research.md#operations
  */
 export type Operation = {
   id: string

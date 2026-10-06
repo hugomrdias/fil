@@ -20,7 +20,7 @@ export type ResourceStatus = 'active' | 'removal_pending'
  * A file or artifact managed by this CLI. A file stores original bytes; an
  * artifact stores a UnixFS CAR and adds an IPFS root CID.
  *
- * @see ../../../../docs/fil-cli/interface-research.md#resources
+ * @see ../../../../docs/fil/interface-research.md#resources
  */
 export type Resource = {
   ref: string
