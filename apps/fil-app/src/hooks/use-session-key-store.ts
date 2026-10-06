@@ -36,12 +36,15 @@ function resolveStorage() {
 
 const sessionKeyStore = new SessionKeyStore(resolveStorage())
 
-// One listener for the whole app: changes made in other tabs.
-window.addEventListener('storage', (event) => {
-  if (event.key === null || event.key.startsWith('fil-app:session-keys')) {
-    sessionKeyStore.notify()
-  }
-})
+// One listener for the whole app: changes made in other tabs. The module
+// also loads during server rendering, where there is no window.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === null || event.key.startsWith('fil-app:session-keys')) {
+      sessionKeyStore.notify()
+    }
+  })
+}
 
 /**
  * Subscribe a component to the session key store.

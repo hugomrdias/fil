@@ -33,6 +33,13 @@ function resolve(preference: ThemePreference): 'light' | 'dark' {
     : 'light'
 }
 
+/**
+ * Inline script that applies the stored theme before the first paint. The
+ * server always renders the dark theme, because it cannot read
+ * `localStorage`. Keep it in sync with `readPreference` and `resolve`.
+ */
+export const THEME_SCRIPT = `(function(){try{var p=localStorage.getItem(${JSON.stringify(STORAGE_KEY)});var t=p==='light'?'light':p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):'dark';var e=document.documentElement;e.classList.toggle('dark',t==='dark');e.style.colorScheme=t}catch(_){}})()`
+
 /** Apply the current preference to `<html>`. */
 export function applyTheme() {
   const theme = resolve(readPreference())

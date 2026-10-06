@@ -68,10 +68,10 @@ jobs:
       - name: Probe production
         run: |
           for attempt in $(seq 1 12); do
-            # The SPA fallback only answers browser navigations.
-            if curl --fail --show-error --silent \
-              -H 'Sec-Fetch-Mode: navigate' "$PRODUCTION_URL/mainnet/rails" \
-              | grep -q '<div id="root">'; then
+            # The Worker renders pages on the server, so the heading is
+            # in the HTML.
+            if curl --fail --show-error --silent "$PRODUCTION_URL/mainnet/rails" \
+              | grep -q 'Rails</h1>'; then
               exit 0
             fi
             echo "attempt $attempt failed, retrying in 15s"
@@ -145,10 +145,10 @@ jobs:
         # A new Preview URL can return 404 for a few seconds after creation.
         run: |
           for attempt in $(seq 1 12); do
-            # The SPA fallback only answers browser navigations.
-            if curl --fail --show-error --silent \
-              -H 'Sec-Fetch-Mode: navigate' "$PREVIEW_URL/mainnet/rails" \
-              | grep -q '<div id="root">'; then
+            # The Worker renders pages on the server, so the heading is
+            # in the HTML.
+            if curl --fail --show-error --silent "$PREVIEW_URL/mainnet/rails" \
+              | grep -q 'Rails</h1>'; then
               exit 0
             fi
             echo "attempt $attempt failed, retrying in 5s"

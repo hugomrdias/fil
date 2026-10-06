@@ -13,6 +13,7 @@ import { settlementColumns } from '@/components/columns'
 import { DataTable } from '@/components/data-table'
 import { type DetailItem, Details } from '@/components/details'
 import { ErrorState, NotFound } from '@/components/empty-state'
+import { LocalTime } from '@/components/local-time'
 import { PageHeader } from '@/components/page-header'
 import { RailStateBadge } from '@/components/status-badge'
 import { TokenAmount } from '@/components/token-amount'
@@ -26,7 +27,6 @@ import {
   epochToDate,
   formatBps,
   formatEpochs,
-  formatTimestamp,
   ratePerDay,
   toBigInt,
 } from '@/lib/format'
@@ -105,9 +105,17 @@ interface RailFields {
 function railItems(network: Network, rail: RailFields): DetailItem[] {
   const genesis = CHAINS[network].genesisTimestamp
   const epoch = (value: bigint | string | null) =>
-    value && toBigInt(value) > 0n
-      ? `${value} (${epochToDate(value, genesis).toLocaleString()})`
-      : '—'
+    value && toBigInt(value) > 0n ? (
+      <>
+        {String(value)} (
+        <LocalTime
+          seconds={Math.floor(epochToDate(value, genesis).getTime() / 1000)}
+        />
+        )
+      </>
+    ) : (
+      '—'
+    )
   return [
     { label: 'Payer', value: <Address network={network} value={rail.payer} /> },
     { label: 'Payee', value: <Address network={network} value={rail.payee} /> },
@@ -249,7 +257,7 @@ function RailPage(props: { network: Network; rail: Rail }) {
             label: 'Terminated by',
             value: <Address network={network} value={rail.terminatedBy} />,
           },
-          { label: 'Created', value: formatTimestamp(rail.createdAt) },
+          { label: 'Created', value: <LocalTime seconds={rail.createdAt} /> },
           {
             label: 'Creation tx',
             value: <TxLink hash={rail.txHash} network={network} />,

@@ -19,6 +19,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.13",
     "@hugomrdias/configs": "1.1.3",
+    "@tanstack/intent": "0.5.4",
     "turbo": "2.10.13",
     "typescript": "catalog:"
   },
@@ -28,5 +29,10 @@
       "version": "^24.14.0",
       "onFail": "download"
     }
+  },
+  "intent": {
+    "skills": [
+      "@tanstack/*"
+    ]
   }
 }

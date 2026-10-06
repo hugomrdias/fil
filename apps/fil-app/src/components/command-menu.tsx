@@ -1,3 +1,4 @@
+import { useHydrated } from '@tanstack/react-router'
 import { SearchIcon } from 'lucide-react'
 import {
   createContext,
@@ -121,11 +122,15 @@ export function useCommandMenu() {
   return context
 }
 
-/** The platform's command menu shortcut as keycaps. */
+/**
+ * The platform's command menu shortcut as keycaps. The server cannot see the
+ * platform, so it and the first browser render show Ctrl.
+ */
 export function CommandShortcutKeys() {
+  const isMac = useHydrated() && IS_MAC
   return (
     <KbdGroup>
-      <Kbd>{IS_MAC ? '⌘' : 'Ctrl'}</Kbd>
+      <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
       <Kbd>K</Kbd>
     </KbdGroup>
   )

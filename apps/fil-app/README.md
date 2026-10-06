@@ -1,12 +1,13 @@
 # fil-app
 
-A Vite + React single-page app for Filecoin Onchain Cloud. It has two parts:
+A React app for Filecoin Onchain Cloud, built with [TanStack Start](https://tanstack.com/start) and rendered on a Cloudflare Worker. It has three parts:
 
-- **Explorer** (`/mainnet`, `/calibration`): public pages for data sets, pieces, storage providers, Filecoin Pay rails and settlements, session keys, and per-address views. All data comes from [fil-api](../fil-api).
-- **Dashboard** (`/dashboard`): gated on a connected wallet. Manage your Filecoin Pay account (deposit, withdraw), the Warm Storage (FWSS) operator approval, data sets (create, terminate, delete pieces), uploads, rails (settle) and session keys (generate, authorize, revoke, sign with them).
+- **Explorer** (`/mainnet`, `/calibration`): public pages for data sets, pieces, storage providers, Filecoin Pay rails and settlements, session keys, and per-address views. All data comes from [fil-api](../fil-api). The Worker renders these pages on the server.
+- **Dashboard** (`/dashboard`): gated on a connected wallet, and rendered only in the browser. Manage your Filecoin Pay account (deposit, withdraw), the Warm Storage (FWSS) operator approval, data sets (create, terminate, delete pieces), uploads, rails (settle) and session keys (generate, authorize, revoke, sign with them).
 - **Setup page** (`/dashboard/setup`): reviews a request from a [setup link](#setup-links) or an agent to authorize a session key, approve Warm Storage and deposit USDFC.
 
 Built with:
+- [TanStack Start](https://tanstack.com/start) on [Cloudflare Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/)
 - [TanStack Router](https://tanstack.com/router), [Query](https://tanstack.com/query), [Table](https://tanstack.com/table) and [Form](https://tanstack.com/form)
 - [shadcn/ui](https://ui.shadcn.com) (preset `beEhf1ou`: Base UI, luma style, Inter, lucide) recoloured with the Filecoin brand ramp (`#0090FF` is `brand-700`), with the [command menu](https://ui.shadcn.com/docs/components/base/command) (`⌘K` or `/` from any page) and the [sidebar](https://ui.shadcn.com/blocks/sidebar) for the dashboard
 - [wagmi](https://wagmi.sh) and [viem](https://viem.sh) with EIP-6963 injected wallets
@@ -16,7 +17,9 @@ Built with:
 
 | Path | Contents |
 | --- | --- |
-| `src/routes` | File-based routes. `$network/*` is the explorer and `dashboard/*` is the wallet dashboard |
+| `src/routes` | File-based routes. `__root.tsx` is the HTML document, `$network/*` is the explorer, and `dashboard/*` is the wallet dashboard |
+| `src/router.tsx` | Router factory. Start creates a router and a query client for each request |
+| `src/start.ts` | Request middleware that adds the security and WebMCP origin-trial headers |
 | `src/lib/api` | fil-api client (`openapi-fetch`), query factories, and the generated `schema.d.ts` |
 | `src/hooks-synapse` | Hooks missing from `@filoz/synapse-react`, kept here until they move upstream. See [its README](src/hooks-synapse/README.md) |
 | `src/components/ui` | shadcn components |
@@ -28,6 +31,8 @@ Built with:
 pnpm --filter fil-app dev
 ```
 
+The dev server runs the app in workerd through the [Cloudflare Vite plugin](https://developers.cloudflare.com/workers/vite-plugin/), as in production.
+
 The app calls `https://fil-api.hugomrdias.dev` by default. Set `VITE_FIL_API_URL` to point it elsewhere, for example a local `wrangler dev` of fil-api (see `.env.example`).
 
 Scripts:
@@ -36,6 +41,15 @@ Scripts:
 - `pnpm typecheck` and `pnpm lint`
 
 Session keys created in the dashboard are stored in the browser's `localStorage`, scoped by chain and wallet. They can only sign Warm Storage operations (create data set, add pieces, schedule piece removals, terminate service), never move funds. The "Sign storage actions with" choice in the dashboard account menu (bottom of the sidebar) chooses whether those operations use the session key or the wallet. The wallet is used whenever the key lacks the needed permission.
+
+### Server rendering
+
+Any module can run in the Worker as well as in the browser:
+
+- Use browser APIs such as `window`, `localStorage`, and `navigator` only in effects, in event handlers, or under `/dashboard`, which sets `ssr: false`.
+- The server cannot know the visitor's time zone, locale, platform, or clock. `LocalTime` in `src/components/local-time.tsx` formats timestamps in UTC until the page hydrates, then in local time. Render other values that depend on the browser after hydration with `useHydrated`, or React reports a hydration mismatch.
+- Loaders run on the server for the first request and in the browser after that. `@tanstack/react-router-ssr-query` sends the queries fetched during server rendering to the browser with the page.
+- The server renders the dark theme. An inline script in `<head>` applies a stored light theme before the first paint.
 
 ## Setup links
 
@@ -68,17 +82,17 @@ The app registers [WebMCP](https://webmachinelearning.github.io/webmcp/) tools, 
 
 The read-only tools default to the connected wallet and to the network in the page URL, else the wallet's network. Their input schemas come from the zod schemas in `src/lib/read-tools.ts`, which also parse each call. Bad input and failed reads return `{ ok: false, errors }` instead of throwing. Lists take `limit` (up to 100) and the previous page's `nextCursor`.
 
-WebMCP is an early preview. Production turns it on for Chrome 149 and later through the [WebMCP origin trial](https://developer.chrome.com/origintrials/#/register_trial/4163014905550602241): `public/_headers` sends the `Origin-Trial` token for `https://fil-app.hugomrdias.dev`, which expires on 2027-03-30. Renew the token before then, or remove the header when the trial ends. The token does not cover other origins, such as PR previews and local dev, so use `chrome://flags/#enable-webmcp-testing` there. Other browsers skip the tools, and the page works the same.
+WebMCP is an early preview. Production turns it on for Chrome 149 and later through the [WebMCP origin trial](https://developer.chrome.com/origintrials/#/register_trial/4163014905550602241): `src/start.ts` sends the `Origin-Trial` token for `https://fil-app.hugomrdias.dev`, which expires on 2027-03-30. Renew the token before then, or remove the header when the trial ends. The token does not cover other origins, such as PR previews and local dev, so use `chrome://flags/#enable-webmcp-testing` there. Other browsers skip the tools, and the page works the same.
 
 The ChatGPT desktop app's built-in browser calls WebMCP tools "site tools", and the ChatGPT Chrome extension also finds them. That runtime does not check input against `inputSchema` and passes no `options` to `execute`, so each tool validates its own input. See the [Codex site tools compatibility notes](https://docs.mcp-b.ai/reference/webmcp/codex-site-tools).
 
 ## Deploy
 
-The app deploys as a static-assets Worker (`wrangler.jsonc`, SPA fallback) at https://fil-app.hugomrdias.dev. [`.github/workflows/fil-app.yml`](../../.github/workflows/fil-app.yml) mirrors fil-api's workflow:
+The app deploys as a Worker (`wrangler.jsonc`) at https://fil-app.hugomrdias.dev. The Worker renders pages, and Cloudflare serves the client build from `dist/client` as static assets. `public/_headers` sets the cache headers for those assets. [`.github/workflows/fil-app.yml`](../../.github/workflows/fil-app.yml) mirrors fil-api's workflow:
 
 | Trigger | Result |
 | --- | --- |
-| Push to `main` | Runs typecheck, tests, lint and build, then `wrangler deploy` and probes a deep link |
+| Push to `main` | Runs typecheck, tests, lint and build, then `wrangler deploy` and probes a server-rendered page |
 | Pull request opened or updated | Builds, creates a `wrangler preview --name pr-<number>`, probes it and comments the URL on the PR |
 | Pull request closed | `wrangler preview delete` |
 

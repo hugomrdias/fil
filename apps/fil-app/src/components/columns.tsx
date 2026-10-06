@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Address } from '@/components/address'
 import { type Column, columnHelper } from '@/components/data-table'
+import { LocalTime, useLocalTime } from '@/components/local-time'
 import { RetrievalLink } from '@/components/retrieval-link'
 import {
   FlagBadge,
@@ -19,13 +20,7 @@ import type {
   SessionKeyEvent,
   Settlement,
 } from '@/lib/api/client'
-import {
-  formatBytes,
-  formatTimestamp,
-  ratePerDay,
-  shortId,
-  urlHost,
-} from '@/lib/format'
+import { formatBytes, ratePerDay, shortId, urlHost } from '@/lib/format'
 import type { Network } from '@/lib/networks'
 import { permissionLabel } from '@/lib/permissions'
 
@@ -349,7 +344,7 @@ export function railColumns(network: Network): Column<Rail>[] {
     }),
     c.accessor('createdAt', {
       header: 'Created',
-      cell: (info) => formatTimestamp(info.getValue()),
+      cell: (info) => <LocalTime seconds={info.getValue()} />,
     }),
   ])
 }
@@ -368,7 +363,7 @@ export function settlementColumns(
   return c.columns([
     c.accessor('timestamp', {
       header: 'Date',
-      cell: (info) => formatTimestamp(info.getValue()),
+      cell: (info) => <LocalTime seconds={info.getValue()} />,
     }),
     c.accessor('totalSettledAmount', {
       header: 'Settled',
@@ -407,6 +402,7 @@ export function settlementColumns(
 
 /** Comma-separated permission names with expiry state. */
 function PermissionList(props: { permissions: SessionKey['permissions'] }) {
+  const formatTime = useLocalTime()
   return (
     <span className="flex flex-wrap gap-1">
       {props.permissions.map((permission) => (
@@ -417,7 +413,7 @@ function PermissionList(props: { permissions: SessionKey['permissions'] }) {
               : 'rounded-md border px-1.5 text-xs text-muted-foreground line-through'
           }
           key={permission.permission}
-          title={`Expires ${formatTimestamp(permission.expiry)}`}
+          title={`Expires ${formatTime(permission.expiry)}`}
         >
           {permission.name ?? permissionLabel(permission.permission)}
         </span>
@@ -451,7 +447,7 @@ export function sessionKeyColumns(network: Network): Column<SessionKey>[] {
     c.accessor('expiry', {
       header: 'Expires',
       cell: (info) =>
-        info.getValue() === '0' ? '—' : formatTimestamp(info.getValue()),
+        info.getValue() === '0' ? '—' : <LocalTime seconds={info.getValue()} />,
     }),
     c.accessor('permissions', {
       header: 'Permissions',
@@ -484,7 +480,7 @@ export function sessionKeyEventColumns(
   return c.columns([
     c.accessor('timestamp', {
       header: 'Date',
-      cell: (info) => formatTimestamp(info.getValue()),
+      cell: (info) => <LocalTime seconds={info.getValue()} />,
     }),
     c.accessor('identity', {
       header: 'Identity',
@@ -501,7 +497,7 @@ export function sessionKeyEventColumns(
           <StatusBadge tone="danger">Revoked</StatusBadge>
         ) : (
           <StatusBadge tone="success">
-            Authorized until {formatTimestamp(info.getValue())}
+            Authorized until <LocalTime seconds={info.getValue()} />
           </StatusBadge>
         ),
     }),

@@ -1,12 +1,20 @@
 import { fileURLToPath, URL } from 'node:url'
+import { cloudflare } from '@cloudflare/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+/**
+ * TanStack Start on Cloudflare Workers. The Start plugin must come before
+ * the React plugin.
+ *
+ * @see https://tanstack.com/start/latest/docs/framework/react/guide/hosting
+ */
 export default defineConfig({
   plugins: [
-    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    tanstackStart(),
     react(),
     tailwindcss(),
   ],
