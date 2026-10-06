@@ -54,12 +54,19 @@ Every param is optional, and the page drops an invalid value instead of failing.
 
 ### WebMCP
 
-The app registers [WebMCP](https://webmachinelearning.github.io/webmcp/) tools, so a browser agent can prepare the same request without building a URL:
+The app registers [WebMCP](https://webmachinelearning.github.io/webmcp/) tools, so a browser agent can prepare the same request without building a URL, and read the account and its storage:
 
 | Tool | Where | What it does |
 | --- | --- | --- |
 | `prepare_setup_request` | Every page | Validates a request with the params above (`scopes` as an array, `days` as a number) and opens the prefilled setup page. It never signs anything |
 | `get_setup_status` | `/dashboard/setup` | Read-only. Reports whether a wallet is connected and on Filecoin. Once it is, also reports which requested scopes are authorized and until when, the Warm Storage approval and the Pay balance |
+| `get_account_summary` | Every page | Read-only. Reports a wallet's Filecoin Pay funds, monthly spend and runway, the Warm Storage approval, and whether it can pay for a new upload. When it cannot, it returns a prefilled setup link |
+| `list_data_sets` | Every page | Read-only. Lists a wallet's data sets |
+| `list_pieces` | Every page | Read-only. Lists a data set's pieces, each with a retrieval URL |
+| `lookup_piece` | Every page | Read-only. Finds the data sets that hold a PieceCID v2 |
+| `list_session_keys` | Every page | Read-only. Lists the session keys a wallet authorized, with each permission's expiry and on-chain name |
+
+The read-only tools default to the connected wallet and to the network in the page URL, else the wallet's network. Their input schemas come from the zod schemas in `src/lib/read-tools.ts`, which also parse each call. Bad input and failed reads return `{ ok: false, errors }` instead of throwing. Lists take `limit` (up to 100) and the previous page's `nextCursor`.
 
 WebMCP is an early preview. Production turns it on for Chrome 149 and later through the [WebMCP origin trial](https://developer.chrome.com/origintrials/#/register_trial/4163014905550602241): `public/_headers` sends the `Origin-Trial` token for `https://fil-app.hugomrdias.dev`, which expires on 2027-03-30. Renew the token before then, or remove the header when the trial ends. The token does not cover other origins, such as PR previews and local dev, so use `chrome://flags/#enable-webmcp-testing` there. Other browsers skip the tools, and the page works the same.
 
