@@ -16,6 +16,7 @@ Tools for [Filecoin Onchain Cloud](https://docs.filecoin.cloud/). This repositor
 
 | Document | Contents |
 | --- | --- |
+| [fil overview](docs/fil/README.md) | The CLI, REST API, MCP server, and app, with the assumptions, compromises, open questions, and follow-up work of the proof of concept |
 | [fil architecture](docs/fil/architecture.md) | Modules, login, put, get, and delete flows, state, recovery, and verification |
 | [fil interface research](docs/fil/interface-research.md) | The design of commands, resources, operations, and local state |
 | [Agent-facing CLIs](docs/agent-cli/README.md) | Guidelines for Node.js CLIs that agents run, and the design of clipact |
