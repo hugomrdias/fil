@@ -19,6 +19,7 @@ import { Route as DashboardAccountRouteImport } from './routes/dashboard/account
 import { Route as DashboardApprovalsRouteImport } from './routes/dashboard/approvals'
 import { Route as DashboardRailsRouteImport } from './routes/dashboard/rails'
 import { Route as DashboardSessionKeysRouteImport } from './routes/dashboard/session-keys'
+import { Route as DashboardSetupRouteImport } from './routes/dashboard/setup'
 import { Route as DashboardUploadRouteImport } from './routes/dashboard/upload'
 import { Route as NetworkAddressAddressRouteImport } from './routes/$network/address/$address'
 import { Route as NetworkDataSetsIndexRouteImport } from './routes/$network/data-sets/index'
@@ -80,6 +81,11 @@ const DashboardRailsRoute = DashboardRailsRouteImport.update({
 const DashboardSessionKeysRoute = DashboardSessionKeysRouteImport.update({
   id: '/session-keys',
   path: '/session-keys',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardSetupRoute = DashboardSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardUploadRoute = DashboardUploadRouteImport.update({
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/approvals': typeof DashboardApprovalsRoute
   '/dashboard/rails': typeof DashboardRailsRoute
   '/dashboard/session-keys': typeof DashboardSessionKeysRoute
+  '/dashboard/setup': typeof DashboardSetupRoute
   '/dashboard/upload': typeof DashboardUploadRoute
   '/$network/': typeof NetworkIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/dashboard/approvals': typeof DashboardApprovalsRoute
   '/dashboard/rails': typeof DashboardRailsRoute
   '/dashboard/session-keys': typeof DashboardSessionKeysRoute
+  '/dashboard/setup': typeof DashboardSetupRoute
   '/dashboard/upload': typeof DashboardUploadRoute
   '/$network': typeof NetworkIndexRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/dashboard/approvals': typeof DashboardApprovalsRoute
   '/dashboard/rails': typeof DashboardRailsRoute
   '/dashboard/session-keys': typeof DashboardSessionKeysRoute
+  '/dashboard/setup': typeof DashboardSetupRoute
   '/dashboard/upload': typeof DashboardUploadRoute
   '/$network/': typeof NetworkIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/dashboard/approvals'
     | '/dashboard/rails'
     | '/dashboard/session-keys'
+    | '/dashboard/setup'
     | '/dashboard/upload'
     | '/$network/'
     | '/dashboard/'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/dashboard/approvals'
     | '/dashboard/rails'
     | '/dashboard/session-keys'
+    | '/dashboard/setup'
     | '/dashboard/upload'
     | '/$network'
     | '/dashboard'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/dashboard/approvals'
     | '/dashboard/rails'
     | '/dashboard/session-keys'
+    | '/dashboard/setup'
     | '/dashboard/upload'
     | '/$network/'
     | '/dashboard/'
@@ -363,6 +375,13 @@ declare module '@tanstack/react-router' {
       path: '/session-keys'
       fullPath: '/dashboard/session-keys'
       preLoaderRoute: typeof DashboardSessionKeysRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/setup': {
+      id: '/dashboard/setup'
+      path: '/setup'
+      fullPath: '/dashboard/setup'
+      preLoaderRoute: typeof DashboardSetupRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/upload': {
@@ -489,6 +508,7 @@ interface DashboardRouteRouteChildren {
   DashboardApprovalsRoute: typeof DashboardApprovalsRoute
   DashboardRailsRoute: typeof DashboardRailsRoute
   DashboardSessionKeysRoute: typeof DashboardSessionKeysRoute
+  DashboardSetupRoute: typeof DashboardSetupRoute
   DashboardUploadRoute: typeof DashboardUploadRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardDataSetsIdRoute: typeof DashboardDataSetsIdRoute
@@ -500,6 +520,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardApprovalsRoute: DashboardApprovalsRoute,
   DashboardRailsRoute: DashboardRailsRoute,
   DashboardSessionKeysRoute: DashboardSessionKeysRoute,
+  DashboardSetupRoute: DashboardSetupRoute,
   DashboardUploadRoute: DashboardUploadRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardDataSetsIdRoute: DashboardDataSetsIdRoute,

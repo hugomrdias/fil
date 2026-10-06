@@ -10,7 +10,7 @@ import type { ScopeId } from './scope-ids.ts'
 export { DEFAULT_SCOPES, type ScopeId } from './scope-ids.ts'
 
 /**
- * Session-key scopes by the IDs the pay.filecoin.cloud console accepts in its
+ * Session-key scopes by the IDs the fil-app setup page accepts in its
  * `scopes` link parameter, mapped to FWSS permission typehashes.
  *
  * @see https://github.com/FilOzone/synapse-sdk/blob/master/docs/src/content/docs/developer-guides/session-keys.mdx

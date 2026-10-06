@@ -21,7 +21,7 @@ description: Store files and folders on Filecoin Onchain Cloud with the fil CLI 
 
 ## Rules
 
-- Never ask for or pass a private key. Logging in needs the user: `auth_required` or `login_pending` means relay the `by: "user"` step (the console link) and stop. After the user approves, run `fil login` once to confirm.
+- Never ask for or pass a private key. Logging in needs the user: `auth_required` or `login_pending` means relay the `by: "user"` step (the fil-app approval link) and stop. After the user approves, run `fil login` once to confirm.
 - `insufficient_funds` and `session_expired` also need the user; relay their `next` steps.
 - `fil delete <ref>` needs `--yes`. On `confirmation_required`, relay the reason and rerun with `--yes` only after the user agrees.
 - Never repeat a failed or interrupted `put` or `delete`: that starts a new paid operation. Run the `fil operations resume <id>` command from `next` instead; errors with a fil code also carry the ID in `error.details.operationId`. Find lost operation IDs with `fil operations ls --incomplete`.

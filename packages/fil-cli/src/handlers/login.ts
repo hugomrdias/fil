@@ -11,6 +11,7 @@ import {
   waitForAuthorization,
 } from '../auth/login.ts'
 import { openBrowser } from '../auth/open-browser.ts'
+import { DEFAULT_KEY_NAME } from '../auth/scope-ids.ts'
 import { DEFAULT_SCOPES, type ScopeId } from '../auth/scopes.ts'
 import { loginPending } from '../auth/session.ts'
 import { login } from '../commands/login.ts'
@@ -69,21 +70,23 @@ function finishLogin(
 }
 
 /**
- * Authorize a session key through the pay.filecoin.cloud console.
+ * Authorize a session key through the fil-app dashboard.
  *
  * The key is generated and saved locally before anything is opened, so an
- * interrupted login resumes with the same key. The owner approves it in the
- * browser; the CLI finds the approval on chain, so nothing is copied back.
- * Agents and pipes never wait or open a browser: they get the approval link
- * as a `login_pending` error and run `fil login` again to check.
+ * interrupted login resumes with the same key. Only its address leaves this
+ * machine: the owner reviews a prefilled setup page and signs the approval
+ * with their wallet. The CLI finds the approval on chain, so nothing is
+ * copied back. Agents and pipes never wait or open a browser: they get the
+ * approval link as a `login_pending` error and run `fil login` again to
+ * check.
  *
- * @see https://pay.filecoin.cloud/console/session-keys
+ * @see ../../../../apps/fil-app/src/routes/dashboard/setup.tsx
  */
 export default defineHandler(login, async (ctx) => {
   const { input } = ctx
   if (input.sessionKey) {
     throw invalidInput(
-      'FIL_SESSION_KEY is set; unset it to log in with the console.',
+      'FIL_SESSION_KEY is set; unset it to log in with fil-app.',
       'sessionKey'
     )
   }
@@ -128,15 +131,22 @@ export default defineHandler(login, async (ctx) => {
       fromBlock: fromBlock.toString(),
       createdAt: new Date().toISOString(),
     }
-    app.config.set(key, session)
   }
 
-  const pending = session
+  // A resumed login keeps its name and expiry unless the input changes them.
+  const pending: StoredSession = {
+    ...session,
+    name: input.name ?? session.name ?? DEFAULT_KEY_NAME,
+    ...(input.days == null ? {} : { days: input.days }),
+  }
+  app.config.set(key, pending)
   const url = buildAuthorizeUrl({
     consoleUrl: app.consoleUrl,
     address: pending.address as Address,
     scopes,
     network: app.network,
+    name: pending.name,
+    days: pending.days,
   })
   const check = {
     client: app.client,

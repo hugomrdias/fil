@@ -20,6 +20,9 @@ import { SCOPES, type ScopeId, toPermissions } from './scopes.ts'
 /** Read client for the target chain. */
 type ChainClient = Client<Transport, FilecoinChain>
 
+/** fil-app page that reviews session-key, approval, and deposit requests. */
+const SETUP_PATH = '/dashboard/setup'
+
 /** Options for {@link buildAuthorizeUrl}. */
 export type AuthorizeUrlOptions = {
   consoleUrl: string
@@ -27,18 +30,27 @@ export type AuthorizeUrlOptions = {
   address: Address
   scopes: readonly ScopeId[]
   network: Network
+  /** Session-key name, recorded on chain as the authorization's origin. */
+  name?: string | undefined
+  /** Days until the authorization expires; fil-app defaults to 30. */
+  days?: number | undefined
 }
 
 /**
- * Build the console link that asks the wallet owner to authorize a session
- * key. The address is lowercased because the console rejects addresses with
- * an invalid mixed-case checksum and accepts all-lowercase input.
+ * Build the fil-app link that asks the wallet owner to authorize a session
+ * key. The owner reviews the prefilled request and signs it with their
+ * wallet. The address is lowercased so the link never carries an invalid
+ * mixed-case checksum.
+ *
+ * @see ../../../../apps/fil-app/src/lib/setup-request.ts
  */
 export function buildAuthorizeUrl(options: AuthorizeUrlOptions): string {
-  const url = new URL('/console/session-keys', options.consoleUrl)
-  url.searchParams.set('authorize', options.address.toLowerCase())
-  url.searchParams.set('scopes', options.scopes.join(','))
+  const url = new URL(SETUP_PATH, options.consoleUrl)
   url.searchParams.set('network', options.network)
+  url.searchParams.set('signer', options.address.toLowerCase())
+  if (options.name) url.searchParams.set('name', options.name)
+  url.searchParams.set('scopes', options.scopes.join(','))
+  if (options.days != null) url.searchParams.set('days', String(options.days))
   return url.toString()
 }
 
@@ -46,21 +58,21 @@ export function buildAuthorizeUrl(options: AuthorizeUrlOptions): string {
 export type FundingUrlOptions = {
   consoleUrl: string
   network: Network
-  /** USDFC base units to deposit; omit to open the console without a prefill. */
+  /** USDFC base units to deposit; omit to open the page without a prefill. */
   deposit?: bigint
 }
 
 /**
- * Build the console link that prefills a USDFC deposit and FWSS operator
- * approval. The console requires `deposit`, `operator`, and `network`
- * together, with a positive decimal amount.
+ * Build the fil-app link that prefills a USDFC deposit. The page also offers
+ * the Warm Storage (FWSS) operator approval when the wallet lacks it.
+ *
+ * @see ../../../../apps/fil-app/src/lib/setup-request.ts
  */
 export function buildFundingUrl(options: FundingUrlOptions): string {
-  const url = new URL('/console', options.consoleUrl)
+  const url = new URL(SETUP_PATH, options.consoleUrl)
+  url.searchParams.set('network', options.network)
   if (options.deposit != null && options.deposit > 0n) {
     url.searchParams.set('deposit', formatUsdfc(options.deposit))
-    url.searchParams.set('operator', 'fwss')
-    url.searchParams.set('network', options.network)
   }
   return url.toString()
 }

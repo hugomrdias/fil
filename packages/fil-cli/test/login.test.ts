@@ -25,42 +25,59 @@ const OWNER = '0x1111111111111111111111111111111111111111' as Address
 const SIGNER = '0x2222222222222222222222222222222222222222' as Address
 const OTHER = '0x3333333333333333333333333333333333333333' as Address
 
-test('buildAuthorizeUrl matches the console link contract', () => {
+test('buildAuthorizeUrl matches the fil-app setup link contract', () => {
   const url = new URL(
     buildAuthorizeUrl({
-      consoleUrl: 'https://pay.filecoin.cloud',
+      consoleUrl: 'https://fil-app.example',
       address: '0xAbCdEf0000000000000000000000000000000001',
       scopes: ['createDataSet', 'addPieces'],
       network: 'calibration',
+      name: 'fil on laptop',
+      days: 7,
     })
   )
-  assert.equal(url.pathname, '/console/session-keys')
+  assert.equal(url.pathname, '/dashboard/setup')
+  assert.equal(url.searchParams.get('network'), 'calibration')
   assert.equal(
-    url.searchParams.get('authorize'),
+    url.searchParams.get('signer'),
     '0xabcdef0000000000000000000000000000000001'
   )
+  assert.equal(url.searchParams.get('name'), 'fil on laptop')
   assert.equal(url.searchParams.get('scopes'), 'createDataSet,addPieces')
-  assert.equal(url.searchParams.get('network'), 'calibration')
+  assert.equal(url.searchParams.get('days'), '7')
+})
+
+test('buildAuthorizeUrl leaves out an unset name and expiry', () => {
+  const url = new URL(
+    buildAuthorizeUrl({
+      consoleUrl: 'https://fil-app.example',
+      address: SIGNER,
+      scopes: ['addPieces'],
+      network: 'mainnet',
+    })
+  )
+  assert.equal(url.searchParams.has('name'), false)
+  assert.equal(url.searchParams.has('days'), false)
 })
 
 test('buildFundingUrl prefills a decimal deposit only when positive', () => {
   const url = new URL(
     buildFundingUrl({
-      consoleUrl: 'https://pay.filecoin.cloud',
+      consoleUrl: 'https://fil-app.example',
       network: 'mainnet',
       deposit: parseUnits('1.5', 18),
     })
   )
+  assert.equal(url.pathname, '/dashboard/setup')
   assert.equal(url.searchParams.get('deposit'), '1.5')
-  assert.equal(url.searchParams.get('operator'), 'fwss')
   assert.equal(url.searchParams.get('network'), 'mainnet')
   assert.equal(
     buildFundingUrl({
-      consoleUrl: 'https://pay.filecoin.cloud',
+      consoleUrl: 'https://fil-app.example',
       network: 'mainnet',
       deposit: 0n,
     }),
-    'https://pay.filecoin.cloud/console'
+    'https://fil-app.example/dashboard/setup?network=mainnet'
   )
 })
 
