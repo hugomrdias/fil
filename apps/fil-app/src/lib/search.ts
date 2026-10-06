@@ -7,8 +7,12 @@ export type SearchTarget =
   | { type: 'id'; id: string }
   | { type: 'invalid' }
 
-/** Unsigned integer id that fits a uint64-sized fil-api id. */
-export const ID_RE = /^\d{1,19}$/
+/**
+ * Unsigned integer id that fits a uint64-sized fil-api id. It is spelled
+ * `[0-9]` rather than `\d` because WebMCP tool schemas expose it as a JSON
+ * Schema `pattern`, where `\d` is escaped and agents misread it.
+ */
+export const ID_RE = /^[0-9]{1,19}$/
 // PieceCID v2 (bafkzcib…) and legacy v1 CommP (baga6ea4seaq…).
 const PIECE_RE = /^(bafkzcib|baga6ea4seaq)[a-z2-7]+$/
 
