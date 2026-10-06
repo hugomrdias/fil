@@ -1,5 +1,11 @@
 import { z } from '@hono/zod-openapi'
-import { Address, BooleanQuery, PageQuery, UintInput } from './common.ts'
+import {
+  Address,
+  BooleanQuery,
+  PageQuery,
+  PieceCidInput,
+  UintInput,
+} from './common.ts'
 import { RailStateSchema } from './resources.ts'
 
 type Bool = typeof BooleanQuery | z.ZodBoolean
@@ -26,7 +32,7 @@ export const filters = {
   }),
   pieces: <B extends Bool>(bool: B) => ({
     owner: Address.optional().describe('Client address that owns the data set'),
-    cid: z.string().min(1).max(256).optional().describe('PieceCID'),
+    cid: PieceCidInput.optional().describe('PieceCID v2'),
     provider_id: UintInput.optional().describe('Storage provider id'),
     removed: bool.optional().describe('Removed pieces'),
   }),

@@ -51,6 +51,28 @@ export function parseRetrievalCid(value: string): RetrievalCid {
 }
 
 /**
+ * Parse a PieceCID v2 given as a multibase string or `0x` hex bytes and
+ * return its canonical base32 string, the form the indexer stores. Throws a
+ * `RangeError` for legacy v1 PieceCIDs and for anything else.
+ *
+ * @see https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0069.md
+ */
+export function parsePieceCid(value: string): string {
+  const piece = tryPieceCid(value)
+  if (piece) return piece.toString()
+  let legacy = false
+  try {
+    legacy = CID.parse(value).code === LEGACY_PIECE_CODEC
+  } catch {
+    // Not a CID either; fall through to the generic message.
+  }
+  if (legacy) {
+    throw new RangeError('Legacy v1 PieceCIDs are not supported, use v2')
+  }
+  throw new RangeError('Expected a PieceCID v2')
+}
+
+/**
  * Every string form a CIDv1 may be recorded under: itself and, for dag-pb
  * sha2-256 CIDs, the equivalent CIDv0 (`Qm…`), which older tools emit.
  *
