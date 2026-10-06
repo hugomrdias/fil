@@ -30,7 +30,7 @@ const NAV = [
  *
  * @param props.className - Extra classes.
  */
-function DashboardButton(props: { className?: string }) {
+export function DashboardButton(props: { className?: string }) {
   const connection = useConnection()
   const address = connection.status === 'connected' && connection.address
   return (
@@ -150,7 +150,7 @@ function MobileMenu(props: { network: ReturnType<typeof useExplorerNetwork> }) {
  * @param props.label - Row label.
  * @param props.children - Control.
  */
-function MenuRow(props: { label: string; children: ReactNode }) {
+export function MenuRow(props: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <span className="text-muted-foreground">{props.label}</span>

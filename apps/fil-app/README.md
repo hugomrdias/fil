@@ -1,6 +1,8 @@
 # fil-app
 
-A React app for Filecoin Onchain Cloud, built with [TanStack Start](https://tanstack.com/start) and rendered on a Cloudflare Worker. It has three parts:
+A React app for Filecoin Onchain Cloud, built with [TanStack Start](https://tanstack.com/start) and rendered on a Cloudflare Worker. It has four parts:
+
+- **Website** (`/`, `/docs`, `/agents`): the landing page, the docs, and the agent setup page. See [Website](#website).
 
 - **Explorer** (`/mainnet`, `/calibration`): public pages for data sets, pieces, storage providers, Filecoin Pay rails and settlements, session keys, and per-address views. All data comes from [fil-api](../fil-api). The Worker renders these pages on the server.
 - **Dashboard** (`/dashboard`): gated on a connected wallet, and rendered only in the browser. Manage your Filecoin Pay account (deposit, withdraw), the Warm Storage (FWSS) operator approval, data sets (create, terminate, delete pieces), uploads, rails (settle) and session keys (generate, authorize, revoke, sign with them).
@@ -19,7 +21,9 @@ Built with:
 | --- | --- |
 | `src/routes` | File-based routes. `__root.tsx` is the HTML document, `$network/*` is the explorer, and `dashboard/*` is the wallet dashboard |
 | `src/router.tsx` | Router factory. Start creates a router and a query client for each request |
-| `src/start.ts` | Request middleware that adds the security and WebMCP origin-trial headers |
+| `src/start.ts` | Request middleware that adds the security and WebMCP origin-trial headers, and serves site pages as Markdown |
+| `src/content` | Markdown for the website's pages |
+| `src/lib/site` | Page list, Markdown rendering, content negotiation, and the agent discovery files |
 | `src/lib/api` | fil-api client (`openapi-fetch`), query factories, and the generated `schema.d.ts` |
 | `src/hooks-synapse` | Hooks missing from `@filoz/synapse-react`, kept here until they move upstream. See [its README](src/hooks-synapse/README.md) |
 | `src/components/ui` | shadcn components |
@@ -50,6 +54,31 @@ Any module can run in the Worker as well as in the browser:
 - The server cannot know the visitor's time zone, locale, platform, or clock. `LocalTime` in `src/components/local-time.tsx` formats timestamps in UTC until the page hydrates, then in local time. Render other values that depend on the browser after hydration with `useHydrated`, or React reports a hydration mismatch.
 - Loaders run on the server for the first request and in the browser after that. `@tanstack/react-router-ssr-query` sends the queries fetched during server rendering to the browser with the page.
 - The server renders the dark theme. An inline script in `<head>` applies a stored light theme before the first paint.
+
+## Website
+
+The landing page at `/` is a React page. The docs under `/docs` and the agent setup page at `/agents` render Markdown from `src/content` on the server, with [marked](https://marked.js.org). `src/lib/site/pages.ts` lists the pages and their order.
+
+The Markdown files are edited copies of the READMEs, written for people who use `fil`, not for contributors. When a user-facing behavior changes, update both. Nothing from `docs/` is published.
+
+Every page in `src/lib/site/pages.ts` also serves its Markdown:
+
+- at `<path>.md`, such as `/docs/cli.md`, and `/index.md` for the landing page.
+- at its own path when the request's `Accept` header names `text/markdown` at least as high as `text/html`. A browser's `*/*` still gets HTML.
+
+The HTML responses send `Vary: Accept` and a `Link` header to the Markdown version.
+
+Server routes serve the files that agents use to discover the site:
+
+| Path | Contents |
+| --- | --- |
+| `/llms.txt`, `/llms-full.txt` | An [llms.txt](https://llmstxt.org) index of the docs, and every docs page in one file |
+| `/.well-known/api-catalog` | An [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727) linkset to fil-api's OpenAPI document, reference, and health check. `HEAD` returns the `api-catalog` link relation |
+| `/.well-known/mcp/server-card.json`, `/.well-known/mcp-server-card` | fil-api's MCP server card, in the [SEP-2127](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/seps/2127-mcp-server-cards.md) format |
+| `/.well-known/agent-skills/index.json` | The [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) index, with the SHA-256 digest of the `fil` skill |
+| `/.well-known/agent-skills/fil/SKILL.md` | `packages/fil-cli/skills/fil/SKILL.md`, bundled at build time |
+
+The API URLs in these files come from `VITE_FIL_API_URL`.
 
 ## Setup links
 

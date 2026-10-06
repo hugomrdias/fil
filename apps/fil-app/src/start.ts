@@ -1,4 +1,8 @@
 import { createMiddleware, createStart } from '@tanstack/react-start'
+import { markdownResponse } from '@/lib/site/content.server'
+import { markdownPath } from '@/lib/site/discovery'
+import { prefersMarkdown } from '@/lib/site/negotiate'
+import { findSitePage } from '@/lib/site/pages'
 
 /**
  * WebMCP origin-trial token for `https://fil-app.hugomrdias.dev`, which
@@ -33,10 +37,37 @@ const responseHeaders = createMiddleware().server(async ({ next }) => {
 })
 
 /**
+ * Serve a site page's Markdown at `<path>.md`, or at the page's own path when
+ * the request prefers `text/markdown`. HTML responses for those pages say
+ * where the Markdown is, and that they vary by `Accept`.
+ *
+ * @see https://www.rfc-editor.org/rfc/rfc9110#name-content-negotiation
+ */
+const markdownPages = createMiddleware().server(async ({ request, next }) => {
+  const match =
+    request.method === 'GET' || request.method === 'HEAD'
+      ? findSitePage(new URL(request.url).pathname)
+      : undefined
+  if (!match) {
+    return next()
+  }
+  if (match.suffixed || prefersMarkdown(request.headers.get('accept'))) {
+    return markdownResponse(match.page, request.method)
+  }
+  const result = await next()
+  result.response.headers.append('Vary', 'Accept')
+  result.response.headers.set(
+    'Link',
+    `<${markdownPath(match.page.path)}>; rel="alternate"; type="text/markdown"`
+  )
+  return result
+})
+
+/**
  * TanStack Start instance with the global request middleware.
  *
  * @see https://tanstack.com/start/latest/docs/framework/react/guide/middleware#global-middleware
  */
 export const startInstance = createStart(() => ({
-  requestMiddleware: [responseHeaders],
+  requestMiddleware: [responseHeaders, markdownPages],
 }))
