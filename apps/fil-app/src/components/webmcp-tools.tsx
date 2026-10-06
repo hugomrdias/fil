@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useConnection } from 'wagmi'
 import { useWebMcpTool } from '@/hooks/use-webmcp-tool'
 import { NETWORKS, networkForChainId } from '@/lib/networks'
@@ -8,9 +8,12 @@ import {
   MAX_DAYS,
   MAX_NAME_LENGTH,
   SCOPE_IDS,
-  type SetupRequest,
   toSetupSearch,
 } from '@/lib/setup-request'
+
+/** Description of `get_setup_status`, the same at every stage of the setup page. */
+export const SETUP_STATUS_DESCRIPTION =
+  'Report the state of the setup request on this page: whether a wallet is connected and on Filecoin, which requested session-key permissions are authorized and until when, whether Warm Storage is approved, and the Filecoin Pay balance. Amounts are USDFC decimal strings. Read-only: the user approves each step in their wallet.'
 
 /**
  * WebMCP tools available on every page. `prepare_setup_request` fills the
@@ -23,10 +26,10 @@ export function WebMcpTools() {
   const navigate = useNavigate()
   const connection = useConnection()
 
-  useWebMcpTool<SetupRequest>({
+  useWebMcpTool<unknown>({
     name: 'prepare_setup_request',
     description:
-      "Open fil-app's setup page prefilled for the wallet owner to review: authorize a session key (for example the address that `fil login` printed), approve Warm Storage, and deposit USDFC into Filecoin Pay. Nothing is signed or sent. The user reviews the page and approves each step in their wallet. After calling this, ask the user to review the page, then call get_setup_status to check.",
+      "Open fil-app's setup page prefilled for the wallet owner to review: authorize a session key (for example the address that `fil login` printed), approve Warm Storage, and deposit USDFC into Filecoin Pay. Nothing is signed or sent. The user reviews the page and approves each step in their wallet. The setup page registers get_setup_status, so after calling this, ask the user to review the page, then call get_setup_status to check progress.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -85,6 +88,49 @@ export function WebMcpTools() {
             : 'Ask the user to connect their wallet on the setup page, then review and approve each step.',
       }
     },
+  })
+
+  return null
+}
+
+/**
+ * `get_setup_status` while `/dashboard/setup` waits for the wallet to connect
+ * or switch to Filecoin. The setup page registers the full tool once the
+ * wallet is ready, so an agent can call the same tool at every stage.
+ *
+ * @see https://webmachinelearning.github.io/webmcp/
+ */
+export function SetupGateStatusTool() {
+  const connection = useConnection()
+  const search = useSearch({ strict: false })
+
+  useWebMcpTool({
+    name: 'get_setup_status',
+    description: SETUP_STATUS_DESCRIPTION,
+    inputSchema: { type: 'object', properties: {} },
+    execute: () => {
+      const requestedNetwork = search.network ?? null
+      if (connection.status !== 'connected') {
+        return {
+          walletConnected: false,
+          wallet: null,
+          network: null,
+          requestedNetwork,
+          nextStep:
+            'Ask the user to connect their wallet on this page, then call get_setup_status again.',
+        }
+      }
+      return {
+        walletConnected: true,
+        wallet: connection.address,
+        network: null,
+        chainId: connection.chainId,
+        requestedNetwork,
+        nextStep:
+          'The wallet is not on Filecoin. Ask the user to switch networks on this page, then call get_setup_status again.',
+      }
+    },
+    annotations: { readOnlyHint: true },
   })
 
   return null

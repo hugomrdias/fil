@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { SETUP_STATUS_DESCRIPTION } from '@/components/webmcp-tools'
 import { useWebMcpTool } from '@/hooks/use-webmcp-tool'
 import {
   useAccountSummary,
@@ -428,14 +429,14 @@ function SetupPage() {
 
   useWebMcpTool({
     name: 'get_setup_status',
-    description:
-      'Report the state of the setup request on this page: the connected wallet and network, which requested session-key permissions are authorized and until when, whether Warm Storage is approved, and the Filecoin Pay balance. Amounts are USDFC decimal strings.',
+    description: SETUP_STATUS_DESCRIPTION,
     inputSchema: { type: 'object', properties: {} },
     execute: () => {
       const now = BigInt(Math.floor(Date.now() / 1000))
       const scopes = requestedScopes(search.scopes)
       const status = scopeStatus(scopes, expirations.data, now)
       return {
+        walletConnected: true,
         wallet: address,
         network,
         requestedNetwork: search.network ?? network,

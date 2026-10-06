@@ -99,6 +99,26 @@ describe('toSetupSearch', () => {
       'name, scopes, and days need a signer.',
     ])
   })
+
+  it('reports a request of the wrong shape instead of throwing', () => {
+    assert.deepEqual(toSetupSearch(null), {
+      errors: ['The request must be an object.'],
+    })
+    assert.deepEqual(
+      toSetupSearch({ signer: SIGNER, scopes: 'createDataSet,addPieces' }),
+      {
+        errors: [
+          'scopes must be an array of: createDataSet, addPieces, schedulePieceRemovals, terminateService.',
+        ],
+      }
+    )
+    assert.deepEqual(toSetupSearch({ network: 1, deposit: 2 }), {
+      errors: [
+        'network must be one of: mainnet, calibration.',
+        'deposit must be a positive USDFC amount, e.g. "1.5".',
+      ],
+    })
+  })
 })
 
 describe('expiryFromDays', () => {
