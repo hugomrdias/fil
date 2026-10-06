@@ -10,6 +10,7 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": false,
     "types": ["node", "vite/client"],
     "paths": { "@/*": ["./src/*"] }
   },

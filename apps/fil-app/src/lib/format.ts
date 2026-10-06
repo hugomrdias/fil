@@ -18,6 +18,16 @@ const TIMESTAMP_FORMAT = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
   timeStyle: 'short',
 })
+/**
+ * Locale- and time-zone-independent timestamp format. The server and the
+ * browser's first render both use it, so hydration matches; see
+ * `LocalTime`.
+ */
+export const UTC_TIMESTAMP_FORMAT = new Intl.DateTimeFormat('en-US', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'UTC',
+})
 const RELATIVE_FORMAT = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 
 /**
@@ -211,9 +221,13 @@ export function formatBytes(
  * Label timestamps outside JavaScript's date range without throwing.
  *
  * @param seconds - Unix seconds; integer strings and bigints retain precision.
+ * @param format - Date formatter. Default: the browser's locale and time zone.
  * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#the_epoch_timestamps_and_invalid_date
  */
-export function formatTimestamp(seconds: number | bigint | string) {
+export function formatTimestamp(
+  seconds: number | bigint | string,
+  format: Intl.DateTimeFormat = TIMESTAMP_FORMAT
+) {
   const timestamp = typeof seconds === 'string' ? BigInt(seconds) : seconds
   if (
     typeof timestamp === 'bigint' &&
@@ -224,7 +238,7 @@ export function formatTimestamp(seconds: number | bigint | string) {
   const date = new Date(Number(timestamp) * 1000)
   return Number.isNaN(date.getTime())
     ? 'Beyond date range'
-    : TIMESTAMP_FORMAT.format(date)
+    : format.format(date)
 }
 
 /**

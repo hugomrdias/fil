@@ -10,18 +10,24 @@ const SYNCED_EPOCHS = 5
 
 /**
  * Current chain epoch from the wall clock, updated at each epoch boundary.
+ * It is undefined until the page hydrates, because the server's clock would
+ * not match the browser's.
  *
  * @param network - Filecoin network.
- * @returns The epoch and the seconds elapsed within it when it started.
+ * @returns The epoch, and `delay`: the animation delay that puts the epoch
+ *   bar in phase with the chain clock, fixed at the first tick.
  */
 function useChainEpoch(network: Network) {
   const genesis = CHAINS[network].genesisTimestamp
-  const [state, setState] = useState(() => epochAt(genesis, Date.now()))
+  const [state, setState] = useState<{ epoch: number; delay: number }>()
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>
     const tick = () => {
       const next = epochAt(genesis, Date.now())
-      setState(next)
+      setState((prev) => ({
+        epoch: next.epoch,
+        delay: prev?.delay ?? -next.elapsed,
+      }))
       timer = setTimeout(tick, (30 - next.elapsed) * 1000 + 50)
     }
     tick()
@@ -39,15 +45,16 @@ function useChainEpoch(network: Network) {
  * @param props.className - Extra classes.
  */
 export function ChainPulse(props: { network: Network; className?: string }) {
-  const { epoch, elapsed } = useChainEpoch(props.network)
-  // Fix the phase once; the infinite animation then stays on the chain clock.
-  const [delay] = useState(() => -elapsed)
+  const clock = useChainEpoch(props.network)
   const status = useQuery(statusQuery(props.network))
   const indexed = status.data?.indexers
     .map((indexer) => indexer.latest?.blockNumber)
     .filter((block) => block !== undefined)
   const head = indexed?.length ? Math.min(...indexed) : undefined
-  const behind = head === undefined ? undefined : Math.max(epoch - head, 0)
+  const behind =
+    head === undefined || clock === undefined
+      ? undefined
+      : Math.max(clock.epoch - head, 0)
 
   return (
     <div
@@ -59,16 +66,18 @@ export function ChainPulse(props: { network: Network; className?: string }) {
       <div className="flex items-center gap-3">
         <span className="text-muted-foreground">Epoch</span>
         <span className="font-medium tabular-nums">
-          {epoch.toLocaleString()}
+          {clock ? clock.epoch.toLocaleString() : '—'}
         </span>
         <span
           aria-hidden
           className="relative h-1 w-16 overflow-hidden rounded-full bg-muted"
         >
-          <span
-            className="absolute inset-0 origin-left animate-epoch rounded-full bg-primary"
-            style={{ animationDelay: `${delay}s` }}
-          />
+          {clock && (
+            <span
+              className="absolute inset-0 origin-left animate-epoch rounded-full bg-primary"
+              style={{ animationDelay: `${clock.delay}s` }}
+            />
+          )}
         </span>
       </div>
       <IndexerState behind={behind} error={status.isError} head={head} />

@@ -30,6 +30,9 @@ import {
 } from '@/lib/networks'
 
 export const Route = createFileRoute('/dashboard')({
+  // The dashboard depends on the connected wallet and on session keys in
+  // localStorage, so it renders only in the browser.
+  ssr: false,
   component: DashboardLayout,
   errorComponent: ({ error, reset }) => (
     <div className="mx-auto w-full max-w-3xl px-4 py-16">
