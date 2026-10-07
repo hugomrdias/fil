@@ -12,6 +12,7 @@ Before editing files for a substantial task:
 - Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
 <!-- intent-skills:end -->
 
+- Cloudflare Workers: `apps/fil-api` and `apps/fil-app` deploy to Workers, and Intent does not list Cloudflare's skills. Before changing either app's server code, its `wrangler.jsonc`, or a Cloudflare resource such as a Hyperdrive config, load the `cloudflare:workers-best-practices` and `cloudflare:wrangler` skills.
 - Development: read the [root README](README.md#build-and-check) when setting up the local environment or running validation.
 
 ## Changes and validation
