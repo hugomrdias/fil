@@ -3,7 +3,10 @@ import { testApp } from './helpers.ts'
 
 interface OpenApiDoc {
   openapi: string
-  paths: Record<string, Record<string, { parameters?: { name: string }[] }>>
+  paths: Record<
+    string,
+    Record<string, { operationId?: string; parameters?: { name: string }[] }>
+  >
 }
 
 describe('openapi', () => {
@@ -41,6 +44,17 @@ describe('openapi', () => {
         'limit',
       ])
     )
+  })
+
+  it('gives every operation a unique operationId', async () => {
+    const { request } = testApp()
+    const doc = (await (await request('/openapi.json')).json()) as OpenApiDoc
+    const ids = Object.values(doc.paths).flatMap((methods) =>
+      Object.values(methods).map((operation) => operation.operationId)
+    )
+    expect(ids).toHaveLength(14)
+    expect(ids.every((id) => typeof id === 'string' && id !== '')).toBe(true)
+    expect(new Set(ids).size).toBe(ids.length)
   })
 
   it('serves the API reference', async () => {

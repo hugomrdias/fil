@@ -15,56 +15,7 @@ export interface paths {
          * Indexer status
          * @description Chain id and latest, safe and finalized indexed blocks.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Network status */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["StatusResponse"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["status"];
         put?: never;
         post?: never;
         delete?: never;
@@ -81,67 +32,7 @@ export interface paths {
             cookie?: never;
         };
         /** List storage providers */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page size (1-200) */
-                    limit?: number;
-                    /** @description Opaque cursor from a previous response `nextCursor` */
-                    cursor?: string;
-                    /** @description Approved for Warm Storage */
-                    approved?: "true" | "false";
-                    /** @description Active in the provider registry */
-                    active?: "true" | "false";
-                    /** @description Endorsed provider */
-                    endorsed?: "true" | "false";
-                };
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Providers */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProviderPage"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["listProviders"];
         put?: never;
         post?: never;
         delete?: never;
@@ -158,66 +49,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get a storage provider */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                    providerId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Provider */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProviderResponse"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["getProvider"];
         put?: never;
         post?: never;
         delete?: never;
@@ -234,69 +66,7 @@ export interface paths {
             cookie?: never;
         };
         /** List data sets */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page size (1-200) */
-                    limit?: number;
-                    /** @description Opaque cursor from a previous response `nextCursor` */
-                    cursor?: string;
-                    /** @description Client address that owns the data set */
-                    owner?: string;
-                    /** @description Storage provider id */
-                    provider_id?: string;
-                    /** @description Deleted data sets */
-                    deleted?: "true" | "false";
-                    /** @description Data sets with CDN enabled */
-                    with_cdn?: "true" | "false";
-                };
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Data sets */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DataSetPage"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["listDataSets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -313,66 +83,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get a data set */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                    dataSetId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Data set */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DataSetResponse"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["getDataSet"];
         put?: never;
         post?: never;
         delete?: never;
@@ -389,64 +100,7 @@ export interface paths {
             cookie?: never;
         };
         /** List pieces in a data set */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page size (1-200) */
-                    limit?: number;
-                    /** @description Opaque cursor from a previous response `nextCursor` */
-                    cursor?: string;
-                    /** @description Removed pieces */
-                    removed?: "true" | "false";
-                };
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                    dataSetId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Pieces */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PiecePage"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["listDataSetPieces"];
         put?: never;
         post?: never;
         delete?: never;
@@ -463,67 +117,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get a piece */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                    dataSetId: string;
-                    pieceId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Piece */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PieceResponse"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["getPiece"];
         put?: never;
         post?: never;
         delete?: never;
@@ -543,69 +137,7 @@ export interface paths {
          * Find pieces by owner, PieceCID or provider
          * @description Requires at least one of owner, cid or provider_id.
          */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page size (1-200) */
-                    limit?: number;
-                    /** @description Opaque cursor from a previous response `nextCursor` */
-                    cursor?: string;
-                    /** @description Client address that owns the data set */
-                    owner?: string;
-                    /** @description PieceCID */
-                    cid?: string;
-                    /** @description Storage provider id */
-                    provider_id?: string;
-                    /** @description Removed pieces */
-                    removed?: "true" | "false";
-                };
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Pieces with data set owner and provider */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PieceWithDataSetPage"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["listPieces"];
         put?: never;
         post?: never;
         delete?: never;
@@ -622,71 +154,7 @@ export interface paths {
             cookie?: never;
         };
         /** List payment rails */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page size (1-200) */
-                    limit?: number;
-                    /** @description Opaque cursor from a previous response `nextCursor` */
-                    cursor?: string;
-                    /** @description Payer address */
-                    payer?: string;
-                    /** @description Payee address */
-                    payee?: string;
-                    /** @description Operator contract address */
-                    operator?: string;
-                    /** @description Payment token address */
-                    token?: string;
-                    /** @description Rail lifecycle state */
-                    state?: "active" | "terminated" | "finalized";
-                };
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Rails */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RailPage"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["listRails"];
         put?: never;
         post?: never;
         delete?: never;
@@ -703,66 +171,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get a payment rail */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                    railId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Rail */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RailResponse"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["getRail"];
         put?: never;
         post?: never;
         delete?: never;
@@ -779,62 +188,7 @@ export interface paths {
             cookie?: never;
         };
         /** List rail settlements */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page size (1-200) */
-                    limit?: number;
-                    /** @description Opaque cursor from a previous response `nextCursor` */
-                    cursor?: string;
-                };
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                    railId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Settlements */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SettlementPage"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["listRailSettlements"];
         put?: never;
         post?: never;
         delete?: never;
@@ -854,67 +208,7 @@ export interface paths {
          * List session keys
          * @description Latest expiry per permission for each (identity, signer) pair.
          */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page size (1-200) */
-                    limit?: number;
-                    /** @description Opaque cursor from a previous response `nextCursor` */
-                    cursor?: string;
-                    /** @description Identity that authorized the key */
-                    identity?: string;
-                    /** @description Session key signer address */
-                    signer?: string;
-                    /** @description Keys with any unexpired permission */
-                    active?: "true" | "false";
-                };
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Session keys */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SessionKeyPage"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
+        get: operations["listSessionKeys"];
         put?: never;
         post?: never;
         delete?: never;
@@ -931,65 +225,27 @@ export interface paths {
             cookie?: never;
         };
         /** List session key authorization events */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page size (1-200) */
-                    limit?: number;
-                    /** @description Opaque cursor from a previous response `nextCursor` */
-                    cursor?: string;
-                    /** @description Identity that authorized the key */
-                    identity?: string;
-                    /** @description Session key signer address */
-                    signer?: string;
-                };
-                header?: never;
-                path: {
-                    /** @description Filecoin network */
-                    network: "calibration" | "mainnet";
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Session key events */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SessionKeyEventPage"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Rate limited */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Network not available */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
+        get: operations["listSessionKeyEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/get/{cid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
+        /**
+         * Redirect to where content can be retrieved
+         * @description Redirects a PieceCID to `/piece/{cid}` on a storage provider serving it, or with `browser=true` to inbrowser.link when the piece has `ipfsRootCID` metadata in an IPFS-indexed data set. Redirects an IPFS root CID to `/ipfs/{cid}` on a provider with a piece whose `ipfsRootCID` metadata matches, or to inbrowser.link with `browser=true`. Other query parameters are forwarded.
+         */
+        get: operations["retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1385,4 +641,848 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Network status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listProviders: {
+        parameters: {
+            query?: {
+                /** @description Page size (1-200) */
+                limit?: number;
+                /** @description Opaque cursor from a previous response `nextCursor` */
+                cursor?: string;
+                /** @description Approved for Warm Storage */
+                approved?: "true" | "false";
+                /** @description Active in the provider registry */
+                active?: "true" | "false";
+                /** @description Endorsed provider */
+                endorsed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Providers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+                providerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listDataSets: {
+        parameters: {
+            query?: {
+                /** @description Page size (1-200) */
+                limit?: number;
+                /** @description Opaque cursor from a previous response `nextCursor` */
+                cursor?: string;
+                /** @description Client address that owns the data set */
+                owner?: string;
+                /** @description Storage provider id */
+                provider_id?: string;
+                /** @description Deleted data sets */
+                deleted?: "true" | "false";
+                /** @description Data sets with CDN enabled */
+                with_cdn?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Data sets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSetPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getDataSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+                dataSetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Data set */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSetResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listDataSetPieces: {
+        parameters: {
+            query?: {
+                /** @description Page size (1-200) */
+                limit?: number;
+                /** @description Opaque cursor from a previous response `nextCursor` */
+                cursor?: string;
+                /** @description Removed pieces */
+                removed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+                dataSetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pieces */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PiecePage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPiece: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+                dataSetId: string;
+                pieceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Piece */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPieces: {
+        parameters: {
+            query?: {
+                /** @description Page size (1-200) */
+                limit?: number;
+                /** @description Opaque cursor from a previous response `nextCursor` */
+                cursor?: string;
+                /** @description Client address that owns the data set */
+                owner?: string;
+                /** @description PieceCID v2 */
+                cid?: string;
+                /** @description Storage provider id */
+                provider_id?: string;
+                /** @description Removed pieces */
+                removed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pieces with data set owner and provider */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceWithDataSetPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listRails: {
+        parameters: {
+            query?: {
+                /** @description Page size (1-200) */
+                limit?: number;
+                /** @description Opaque cursor from a previous response `nextCursor` */
+                cursor?: string;
+                /** @description Payer address */
+                payer?: string;
+                /** @description Payee address */
+                payee?: string;
+                /** @description Operator contract address */
+                operator?: string;
+                /** @description Payment token address */
+                token?: string;
+                /** @description Rail lifecycle state */
+                state?: "active" | "terminated" | "finalized";
+            };
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rails */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RailPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getRail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+                railId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RailResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listRailSettlements: {
+        parameters: {
+            query?: {
+                /** @description Page size (1-200) */
+                limit?: number;
+                /** @description Opaque cursor from a previous response `nextCursor` */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+                railId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settlements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listSessionKeys: {
+        parameters: {
+            query?: {
+                /** @description Page size (1-200) */
+                limit?: number;
+                /** @description Opaque cursor from a previous response `nextCursor` */
+                cursor?: string;
+                /** @description Identity that authorized the key */
+                identity?: string;
+                /** @description Session key signer address */
+                signer?: string;
+                /** @description Keys with any unexpired permission */
+                active?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session keys */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionKeyPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listSessionKeyEvents: {
+        parameters: {
+            query?: {
+                /** @description Page size (1-200) */
+                limit?: number;
+                /** @description Opaque cursor from a previous response `nextCursor` */
+                cursor?: string;
+                /** @description Identity that authorized the key */
+                identity?: string;
+                /** @description Session key signer address */
+                signer?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Filecoin network */
+                network: "calibration" | "mainnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session key events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionKeyEventPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    retrieve: {
+        parameters: {
+            query?: {
+                /** @description Filecoin network */
+                network?: "calibration" | "mainnet";
+                /** @description Open IPFS content, or a piece with an IPFS root, in the browser through inbrowser.link */
+                browser?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                /** @description PieceCID v2 or IPFS root CID */
+                cid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the retrieval URL */
+            302: {
+                headers: {
+                    /** @description Retrieval URL */
+                    Location?: string;
+                    /** @description Provider cache status: hit, stale, miss or none */
+                    "X-Cache"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Network not available */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+}
