@@ -7,10 +7,15 @@ import {
   llmsTxt,
   markdownPath,
   mcpServerCard,
+  robotsTxt,
+  scriptJson,
   sha256Digest,
+  sitemapXml,
   skillFrontmatter,
+  softwareApplication,
 } from '../src/lib/site/discovery.ts'
 import { renderMarkdown, slugify } from '../src/lib/site/markdown.ts'
+import { withMarkdownErrors } from '../src/lib/site/markdown-errors.ts'
 import { prefersMarkdown } from '../src/lib/site/negotiate.ts'
 import { DOC_PAGES, findSitePage, HOME_PAGE } from '../src/lib/site/pages.ts'
 
@@ -158,5 +163,106 @@ describe('discovery documents', () => {
       { name: 'fil', description: 'Store files.', url: '/s', digest },
     ])
     assert.equal(index.skills[0]?.type, 'skill-md')
+  })
+
+  it('lists absolute URLs in the sitemap and links it from robots.txt', () => {
+    const xml = sitemapXml('https://site.example', ['/', '/docs/cli?a=1&b=2'])
+    assert.match(xml, /<loc>https:\/\/site\.example\/<\/loc>/)
+    assert.match(
+      xml,
+      /<loc>https:\/\/site\.example\/docs\/cli\?a=1&amp;b=2<\/loc>/
+    )
+    assert.match(
+      robotsTxt('https://site.example'),
+      /^Sitemap: https:\/\/site\.example\/sitemap\.xml$/m
+    )
+  })
+
+  it('describes fil as a SoftwareApplication in script-safe JSON', () => {
+    const app = softwareApplication({
+      origin: 'https://site.example',
+      description: 'Store </script> files.',
+      image: 'https://site.example/og.png',
+    })
+    assert.equal(app['@type'], 'SoftwareApplication')
+    assert.equal(app.url, 'https://site.example/')
+    const json = scriptJson(app)
+    assert.equal(json.includes('</script>'), false)
+    assert.deepEqual(JSON.parse(json), app)
+  })
+})
+
+describe('withMarkdownErrors', () => {
+  /**
+   * A fake Start handler: 406 unless the request accepts HTML, then the
+   * status for the path from `pages`, or 404.
+   */
+  function fakeStart(pages: Record<string, number>) {
+    const seen: string[] = []
+    const handler = (request: Request) => {
+      const accept = request.headers.get('accept') ?? '*/*'
+      seen.push(accept)
+      if (!/(^|,)\s*(\*\/\*|text\/html)/.test(accept)) {
+        return new Response('{"error":"Only HTML"}', { status: 406 })
+      }
+      const status = pages[new URL(request.url).pathname] ?? 404
+      return new Response('<html></html>', {
+        status,
+        headers: {
+          'Content-Type': 'text/html',
+          'X-Frame-Options': 'DENY',
+          ...(status === 307 ? { Location: '/docs/quickstart' } : {}),
+        },
+      })
+    }
+    return { fetch: withMarkdownErrors(handler), seen }
+  }
+
+  const markdown = { headers: { Accept: 'text/markdown' } }
+
+  it('answers a missing page with a Markdown 404', async () => {
+    const start = fakeStart({})
+    const res = await start.fetch(
+      new Request('https://site.example/nope', markdown)
+    )
+    assert.equal(res.status, 404)
+    assert.match(res.headers.get('content-type') ?? '', /^text\/markdown/)
+    assert.equal(res.headers.get('x-frame-options'), 'DENY')
+    const body = await res.text()
+    assert.match(body, /`\/nope`/)
+    assert.match(body, /https:\/\/site\.example\/llms\.txt/)
+    assert.deepEqual(start.seen, ['text/markdown', 'text/html'])
+  })
+
+  it('answers an HTML-only page with a Markdown 406', async () => {
+    const start = fakeStart({ '/calibration': 200, '/docs/cli': 200 })
+    const res = await start.fetch(
+      new Request('https://site.example/calibration', markdown)
+    )
+    assert.equal(res.status, 406)
+    assert.match(await res.text(), /Accept: text\/html/)
+    const doc = await start.fetch(
+      new Request('https://site.example/docs/cli', {
+        headers: { Accept: 'application/json' },
+      })
+    )
+    assert.equal(doc.status, 406)
+    assert.match(await doc.text(), /\/docs\/cli\.md/)
+  })
+
+  it('passes redirects, HEAD bodies, and other responses through', async () => {
+    const start = fakeStart({ '/docs': 307 })
+    const redirect = await start.fetch(
+      new Request('https://site.example/docs', markdown)
+    )
+    assert.equal(redirect.status, 307)
+    const head = await start.fetch(
+      new Request('https://site.example/nope', { ...markdown, method: 'HEAD' })
+    )
+    assert.equal(head.status, 404)
+    assert.equal(await head.text(), '')
+    const html = await start.fetch(new Request('https://site.example/nope'))
+    assert.equal(html.status, 404)
+    assert.match(html.headers.get('content-type') ?? '', /^text\/html/)
   })
 })

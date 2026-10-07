@@ -4,7 +4,7 @@ This document describes how the `fil` prototype in [`packages/fil-cli`](../../pa
 
 ## Overview
 
-`fil` stores one file or folder on Filecoin Onchain Cloud (FOC) and returns fil-api retrieval URLs. They redirect to the provider or to a browser gateway.
+`fil` stores one file or folder on Filecoin and returns fil-api retrieval URLs. They redirect to the provider or to a browser gateway.
 
 - **One command for files and folders.** `fil put <path>` stores a file as a raw piece. It packs a folder into a UnixFS CAR.
 - **One copy.** Each upload has one copy on one provider.

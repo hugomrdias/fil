@@ -99,7 +99,7 @@ export function createApp(options: AppOptions = {}) {
             title: 'fil-api',
             version: VERSION,
             description:
-              'Read-only Filecoin Onchain Cloud data: storage providers, data sets, pieces, Filecoin Pay rails and session keys.',
+              'Read-only Filecoin data: storage providers, data sets, pieces, Filecoin Pay rails and session keys.',
           },
           servers: [{ url: origin }],
           tags: [

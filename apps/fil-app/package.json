@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Filecoin Onchain Cloud explorer and wallet dashboard",
+  "description": "Filecoin explorer and wallet dashboard",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",

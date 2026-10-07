@@ -3,6 +3,7 @@
 /** Typed `VITE_*` variables. */
 interface ImportMetaEnv {
   readonly VITE_FIL_API_URL?: string
+  readonly VITE_SITE_URL?: string
 }
 
 /** Vite `import.meta` with the typed env. */

@@ -126,7 +126,7 @@ function Overview() {
   return (
     <>
       <PageHeader
-        description="Your Filecoin Onchain Cloud storage and payments."
+        description="Your Filecoin storage and payments."
         title="Overview"
       />
       <div className="grid gap-4 lg:grid-cols-3">

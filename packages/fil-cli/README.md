@@ -1,6 +1,6 @@
 # fil-cli
 
-`fil` is a prototype command-line interface for Filecoin Onchain Cloud. It stores a file or a folder as one copy on one Curio provider and returns retrieval URLs on [fil-api](../../apps/fil-api/README.md#retrieval). It runs on the calibration network unless you choose mainnet.
+`fil` is a prototype command-line interface for Filecoin. It stores a file or a folder as one copy on one Curio provider and returns retrieval URLs on [fil-api](../../apps/fil-api/README.md#retrieval). It runs on the calibration network unless you choose mainnet.
 
 `fil` calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly. It uses [clipact](../clipact/README.md) for the agent output contract and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md). The [architecture](../../docs/fil/architecture.md) describes the modules and flows.
 

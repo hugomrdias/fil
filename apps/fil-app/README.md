@@ -1,6 +1,6 @@
 # fil-app
 
-A React app for Filecoin Onchain Cloud, built with [TanStack Start](https://tanstack.com/start) and rendered on a Cloudflare Worker. It has four parts:
+A React app for Filecoin, built with [TanStack Start](https://tanstack.com/start) and rendered on a Cloudflare Worker. It has four parts:
 
 - **Website** (`/`, `/docs`, `/agents`): the landing page, the docs, and the agent setup page. See [Website](#website).
 
@@ -37,7 +37,7 @@ pnpm --filter fil-app dev
 
 The dev server runs the app in workerd through the [Cloudflare Vite plugin](https://developers.cloudflare.com/workers/vite-plugin/), as in production.
 
-The app calls `https://fil-api.hugomrdias.dev` by default. Set `VITE_FIL_API_URL` to point it elsewhere, for example a local `wrangler dev` of fil-api (see `.env.example`).
+The app calls `https://fil-api.hugomrdias.dev` by default. Set `VITE_FIL_API_URL` to point it elsewhere, for example a local `wrangler dev` of fil-api (see `.env.example`). `VITE_SITE_URL` sets the site origin used in canonical and Open Graph URLs, and defaults to `https://fil-app.hugomrdias.dev`.
 
 Scripts:
 - `pnpm gen:api`: regenerates `src/lib/api/schema.d.ts` from fil-api's `/openapi.json`. Set `FIL_API_URL` to generate from another deployment. It runs `openapi-typescript` through `pnpm dlx` with TypeScript 5, because `openapi-typescript` does not support the repo's TypeScript 7.
@@ -68,6 +68,10 @@ Every page in `src/lib/site/pages.ts` also serves its Markdown:
 
 The HTML responses send `Vary: Accept` and a `Link` header to the Markdown version.
 
+Other pages have no Markdown version. TanStack Start answers a request that accepts neither `text/html` nor `*/*` with a JSON `406`, so `src/server.ts` wraps its handler with `src/lib/site/markdown-errors.ts`. The wrapper renders the page as HTML to learn whether it exists, then answers in Markdown: `404` with links to `llms.txt` and the sitemap when no page matches, or `406` when the page exists only as HTML. Redirects and errors pass through.
+
+Site pages set a canonical URL and Open Graph tags, and the root route adds the site-wide ones, including the social image at `public/og.png`. The landing page also describes fil as a schema.org `SoftwareApplication` in JSON-LD. These absolute URLs come from `VITE_SITE_URL`.
+
 Server routes serve the files that agents use to discover the site:
 
 | Path | Contents |
@@ -77,6 +81,8 @@ Server routes serve the files that agents use to discover the site:
 | `/.well-known/mcp/server-card.json`, `/.well-known/mcp-server-card` | fil-api's MCP server card, in the [SEP-2127](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/seps/2127-mcp-server-cards.md) format |
 | `/.well-known/agent-skills/index.json` | The [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) index, with the SHA-256 digest of the `fil` skill |
 | `/.well-known/agent-skills/fil/SKILL.md` | `packages/fil-cli/skills/fil/SKILL.md`, bundled at build time |
+| `/sitemap.xml` | The site pages and each network's explorer |
+| `/robots.txt` | Allows every crawler and links the sitemap. Cloudflare's managed robots.txt adds its content signals above it |
 
 The API URLs in these files come from `VITE_FIL_API_URL`.
 

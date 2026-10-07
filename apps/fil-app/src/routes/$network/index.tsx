@@ -48,7 +48,7 @@ function ExplorerHome() {
       <section className="flex max-w-3xl flex-col gap-7 pt-4 sm:pt-12">
         <div className="flex flex-col gap-3">
           <h1 className="text-4xl font-semibold tracking-tighter text-balance sm:text-5xl">
-            Search Filecoin Onchain Cloud
+            Search Filecoin
           </h1>
           <p className="max-w-xl text-base text-pretty text-muted-foreground sm:text-lg">
             Data sets, pieces, storage providers, payment rails and session keys

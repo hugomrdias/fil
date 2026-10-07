@@ -16,6 +16,8 @@ import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as NetworkIndexRouteImport } from './routes/$network/index'
 import { Route as NetworkSearchRouteImport } from './routes/$network/search'
 import { Route as DotwellKnownApiCatalogRouteImport } from './routes/[.]well-known/api-catalog'
@@ -77,6 +79,16 @@ const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   id: '/llms.txt',
   path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NetworkIndexRoute = NetworkIndexRouteImport.update({
@@ -227,6 +239,8 @@ export interface FileRoutesByFullPath {
   '/agents': typeof AgentsRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$network/search': typeof NetworkSearchRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/mcp-server-card': typeof DotwellKnownMcpServerCardRoute
@@ -260,6 +274,8 @@ export interface FileRoutesByTo {
   '/agents': typeof AgentsRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$network/search': typeof NetworkSearchRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/mcp-server-card': typeof DotwellKnownMcpServerCardRoute
@@ -297,6 +313,8 @@ export interface FileRoutesById {
   '/agents': typeof AgentsRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$network/search': typeof NetworkSearchRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/mcp-server-card': typeof DotwellKnownMcpServerCardRoute
@@ -335,6 +353,8 @@ export interface FileRouteTypes {
     | '/agents'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/$network/search'
     | '/.well-known/api-catalog'
     | '/.well-known/mcp-server-card'
@@ -368,6 +388,8 @@ export interface FileRouteTypes {
     | '/agents'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/$network/search'
     | '/.well-known/api-catalog'
     | '/.well-known/mcp-server-card'
@@ -404,6 +426,8 @@ export interface FileRouteTypes {
     | '/agents'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/$network/search'
     | '/.well-known/api-catalog'
     | '/.well-known/mcp-server-card'
@@ -441,6 +465,8 @@ export interface RootRouteChildren {
   AgentsRoute: typeof AgentsRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
   DotwellKnownMcpServerCardRoute: typeof DotwellKnownMcpServerCardRoute
   DotwellKnownAgentSkillsIndexDotjsonRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRoute
@@ -497,6 +523,20 @@ declare module '@tanstack/react-router' {
       path: '/llms.txt'
       fullPath: '/llms.txt'
       preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$network/': {
@@ -773,6 +813,8 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsRoute: AgentsRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
   DotwellKnownMcpServerCardRoute: DotwellKnownMcpServerCardRoute,
   DotwellKnownAgentSkillsIndexDotjsonRoute:

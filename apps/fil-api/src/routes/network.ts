@@ -64,6 +64,7 @@ const RailParams = NetworkParams.extend({ railId: idParam('railId') })
 
 const routes = {
   status: createRoute({
+    operationId: 'status',
     method: 'get',
     path: '/{network}/status',
     tags: ['Status'],
@@ -76,6 +77,7 @@ const routes = {
     },
   }),
   listProviders: createRoute({
+    operationId: 'listProviders',
     method: 'get',
     path: '/{network}/providers',
     tags: ['Providers'],
@@ -87,6 +89,7 @@ const routes = {
     },
   }),
   getProvider: createRoute({
+    operationId: 'getProvider',
     method: 'get',
     path: '/{network}/providers/{providerId}',
     tags: ['Providers'],
@@ -99,6 +102,7 @@ const routes = {
     },
   }),
   listDataSets: createRoute({
+    operationId: 'listDataSets',
     method: 'get',
     path: '/{network}/data-sets',
     tags: ['Data sets'],
@@ -110,6 +114,7 @@ const routes = {
     },
   }),
   getDataSet: createRoute({
+    operationId: 'getDataSet',
     method: 'get',
     path: '/{network}/data-sets/{dataSetId}',
     tags: ['Data sets'],
@@ -122,6 +127,7 @@ const routes = {
     },
   }),
   listDataSetPieces: createRoute({
+    operationId: 'listDataSetPieces',
     method: 'get',
     path: '/{network}/data-sets/{dataSetId}/pieces',
     tags: ['Pieces'],
@@ -133,6 +139,7 @@ const routes = {
     },
   }),
   getPiece: createRoute({
+    operationId: 'getPiece',
     method: 'get',
     path: '/{network}/data-sets/{dataSetId}/pieces/{pieceId}',
     tags: ['Pieces'],
@@ -145,6 +152,7 @@ const routes = {
     },
   }),
   listPieces: createRoute({
+    operationId: 'listPieces',
     method: 'get',
     path: '/{network}/pieces',
     tags: ['Pieces'],
@@ -160,6 +168,7 @@ const routes = {
     },
   }),
   listRails: createRoute({
+    operationId: 'listRails',
     method: 'get',
     path: '/{network}/rails',
     tags: ['Rails'],
@@ -171,6 +180,7 @@ const routes = {
     },
   }),
   getRail: createRoute({
+    operationId: 'getRail',
     method: 'get',
     path: '/{network}/rails/{railId}',
     tags: ['Rails'],
@@ -183,6 +193,7 @@ const routes = {
     },
   }),
   listRailSettlements: createRoute({
+    operationId: 'listRailSettlements',
     method: 'get',
     path: '/{network}/rails/{railId}/settlements',
     tags: ['Rails'],
@@ -194,6 +205,7 @@ const routes = {
     },
   }),
   listSessionKeys: createRoute({
+    operationId: 'listSessionKeys',
     method: 'get',
     path: '/{network}/session-keys',
     tags: ['Session keys'],
@@ -207,6 +219,7 @@ const routes = {
     },
   }),
   listSessionKeyEvents: createRoute({
+    operationId: 'listSessionKeyEvents',
     method: 'get',
     path: '/{network}/session-keys/history',
     tags: ['Session keys'],

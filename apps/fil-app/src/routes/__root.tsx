@@ -14,6 +14,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { WebMcpReadTools } from '@/components/webmcp-read-tools'
 import { WebMcpTools } from '@/components/webmcp-tools'
+import { env } from '@/config/env'
 import { wagmiConfig } from '@/config/wagmi'
 import { THEME_SCRIPT } from '@/lib/theme'
 import stylesUrl from '../styles.css?url'
@@ -31,9 +32,19 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       {
         name: 'description',
         content:
-          'Explore Filecoin Onchain Cloud storage and payments, and manage your data sets, rails and session keys.',
+          'Explore Filecoin storage and payments, and manage your data sets, rails and session keys.',
       },
-      { title: 'fil-app · Filecoin Onchain Cloud' },
+      { title: 'fil-app · Filecoin' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: 'fil' },
+      { property: 'og:image', content: `${env.siteUrl}/og.png` },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
+      {
+        property: 'og:image:alt',
+        content: 'fil: store files and folders on Filecoin',
+      },
+      { name: 'twitter:card', content: 'summary_large_image' },
     ],
     links: [
       { rel: 'stylesheet', href: stylesUrl },

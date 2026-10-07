@@ -1,4 +1,5 @@
 import { env } from '@/config/env'
+import { NETWORKS } from '@/lib/networks'
 import skillMarkdown from '../../../../../packages/fil-cli/skills/fil/SKILL.md?raw'
 import {
   API_CATALOG_TYPE,
@@ -6,7 +7,9 @@ import {
   apiCatalog,
   llmsTxt,
   mcpServerCard,
+  robotsTxt,
   sha256Digest,
+  sitemapXml,
   skillFrontmatter,
 } from './discovery'
 import { MARKDOWN_TYPE } from './negotiate'
@@ -65,13 +68,23 @@ export function markdownResponse(page: SitePage, method: string) {
 
 /** One-sentence summary of the project, quoted at the top of `llms.txt`. */
 const LLMS_SUMMARY =
-  'fil stores files and folders on Filecoin Onchain Cloud and returns links to share them, through a CLI, a read-only MCP server, or a web app with WebMCP tools for browser agents.'
+  'fil stores files and folders on Filecoin and returns links to share them, through a CLI, a read-only MCP server, or a web app with WebMCP tools for browser agents.'
 
 /**
- * Context for `llms.txt`. How to run the CLI belongs in the agent skill, so
- * this stays short.
+ * Context for `llms.txt`: when an agent should reach for fil, and what it
+ * needs to know first. How to run the CLI belongs in the agent skill, so
+ * this stays short. `llms.txt` allows no headings here, so the "when to use"
+ * section is a bold lead-in.
  */
 const LLMS_DETAILS = [
+  [
+    '**When to use fil.** Reach for fil when an agent needs to:',
+    '',
+    '- Store a file or a folder on Filecoin and get a link to share it: run `fil put` in a shell.',
+    '- Download content it stored and verify it: run `fil get`.',
+    '- Read Filecoin data, such as storage providers, data sets, pieces, Filecoin Pay rails, and session keys, on mainnet or calibration: call the MCP server or the REST API.',
+    "- Help a person fund storage or approve the agent's key in a browser: use fil-app's WebMCP tools.",
+  ].join('\n'),
   'This is a prototype that runs on the calibration test network by default. Agents never hold the wallet key: the wallet owner approves their access in the web app. The agent skill explains how to use the CLI.',
 ]
 
@@ -111,6 +124,38 @@ export function llmsResponse(request: Request, full: boolean) {
     ? [index, ...SITE_PAGES.map((page) => pageMarkdown(page))].join('\n\n')
     : index
   return new Response(body, {
+    headers: agentHeaders('text/plain; charset=utf-8'),
+  })
+}
+
+/** Site paths listed in the sitemap: the site pages and each explorer. */
+const SITEMAP_PATHS = [
+  ...SITE_PAGES.map((page) => page.path),
+  ...NETWORKS.map((network) => `/${network}`),
+]
+
+/**
+ * Respond with the XML sitemap.
+ *
+ * @param request - Incoming request, for the site origin.
+ * @see https://www.sitemaps.org/protocol.html
+ */
+export function sitemapResponse(request: Request) {
+  const origin = new URL(request.url).origin
+  return new Response(sitemapXml(origin, SITEMAP_PATHS), {
+    headers: agentHeaders('application/xml; charset=utf-8'),
+  })
+}
+
+/**
+ * Respond with `robots.txt`, which points to the sitemap.
+ *
+ * @param request - Incoming request, for the site origin.
+ * @see https://www.rfc-editor.org/rfc/rfc9309
+ */
+export function robotsResponse(request: Request) {
+  const origin = new URL(request.url).origin
+  return new Response(robotsTxt(origin), {
     headers: agentHeaders('text/plain; charset=utf-8'),
   })
 }

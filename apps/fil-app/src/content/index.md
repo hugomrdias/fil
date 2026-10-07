@@ -1,6 +1,6 @@
 # fil
 
-`fil` stores files and folders on [Filecoin Onchain Cloud](https://docs.filecoin.cloud/) and returns links you can share. People run it in a terminal, and agents run it in a shell. Every command writes one JSON result that an agent can act on.
+`fil` stores files and folders on [Filecoin](https://docs.filecoin.cloud/) and returns links you can share. People run it in a terminal, and agents run it in a shell. Every command writes one JSON result that an agent can act on.
 
 This is a prototype. It runs on the calibration test network unless you choose mainnet.
 

@@ -1,11 +1,11 @@
 ---
 name: fil
-description: Store files and folders on Filecoin Onchain Cloud with the fil CLI and return retrieval links; download, list, delete, and resume interrupted uploads. Use when the user asks to publish, store, share, or retrieve content on Filecoin or FOC.
+description: Store files and folders on Filecoin with the fil CLI and return retrieval links; download, list, delete, and resume interrupted uploads. Use when the user asks to publish, store, share, or retrieve content on Filecoin or FOC.
 ---
 
 # fil
 
-`fil` stores a file (exact bytes) or a folder (a UnixFS CAR served over IPFS) on Filecoin Onchain Cloud and returns a link. Every command writes one JSON object to stdout when run by an agent; it has `data` on success or `error` on failure. Branch on `error.code`, never on stderr text.
+`fil` stores a file (exact bytes) or a folder (a UnixFS CAR served over IPFS) on Filecoin and returns a link. Every command writes one JSON object to stdout when run by an agent; it has `data` on success or `error` on failure. Branch on `error.code`, never on stderr text.
 
 ## Discover before you call
 

@@ -186,7 +186,7 @@ export function buildMcpServer(ctx: McpContext): McpHandle {
     { name: 'fil-api', version: ctx.version },
     {
       instructions:
-        'Read-only Filecoin Onchain Cloud data: storage providers, data sets, pieces, Filecoin Pay rails and session keys. Every tool takes a `network` (calibration or mainnet). Large integers are decimal strings. Paginate with `cursor` from `nextCursor`.',
+        'Read-only Filecoin data: storage providers, data sets, pieces, Filecoin Pay rails and session keys. Every tool takes a `network` (calibration or mainnet). Large integers are decimal strings. Paginate with `cursor` from `nextCursor`.',
     }
   )
   const opened = new Map<NetworkName, NetworkDb>()

@@ -1,5 +1,5 @@
 /**
- * React hooks for Filecoin Onchain Cloud that are missing from
+ * React hooks for Filecoin that are missing from
  * `@filoz/synapse-react`, written to its conventions so they can move
  * upstream. See README.md.
  *

@@ -14,8 +14,7 @@ import { errors } from './errors.ts'
 export const cli = defineCli({
   name: 'fil',
   version: pkg.version,
-  description:
-    'Store files and folders on Filecoin Onchain Cloud and get retrieval links',
+  description: 'Store files and folders on Filecoin and get retrieval links',
   envPrefix: 'FIL',
   commands,
   aliases: { publish: 'put', rm: 'delete' },

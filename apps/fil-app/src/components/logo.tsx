@@ -33,9 +33,8 @@ export function Wordmark(props: { className?: string }) {
   return (
     <span className={cn('flex items-center gap-2.5', props.className)}>
       <Logo className="size-8 shrink-0" />
-      <span className="flex flex-col gap-0.5 leading-none">
-        <span className="text-sm font-semibold tracking-tight">Filecoin</span>
-        <span className="text-xs text-muted-foreground">Onchain Cloud</span>
+      <span className="text-base font-semibold leading-none tracking-tight">
+        Filecoin
       </span>
     </span>
   )

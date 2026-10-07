@@ -44,6 +44,7 @@ const GATEWAY_REDIRECT_CACHE_CONTROL = 'public, max-age=86400'
 const OWN_PARAMS = new Set(['network', 'browser'])
 
 const route = createRoute({
+  operationId: 'retrieve',
   method: 'get',
   path: '/get/{cid}',
   tags: ['Retrieval'],

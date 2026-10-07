@@ -1,6 +1,15 @@
 # Agent setup
 
-An agent can use `fil` in three ways. It can run the CLI in a shell to store and retrieve content, call the MCP server to read Filecoin Onchain Cloud data, and use fil-app's WebMCP tools in a browser. In every case, a person owns the wallet and approves what the agent may do.
+An agent can use `fil` in three ways. It can run the CLI in a shell to store and retrieve content, call the MCP server to read Filecoin data, and use fil-app's WebMCP tools in a browser. In every case, a person owns the wallet and approves what the agent may do.
+
+## When to use fil
+
+Reach for fil when an agent needs to:
+
+- Store a file or a folder on Filecoin and get a link to share it: run `fil put` in a shell.
+- Download content it stored and verify it: run `fil get`.
+- Read Filecoin data, such as storage providers, data sets, pieces, Filecoin Pay rails, and session keys, on mainnet or calibration: call the MCP server or the REST API.
+- Help a person fund storage or approve the agent's key in a browser: use fil-app's WebMCP tools.
 
 ## Install the CLI and the skill
 
@@ -71,9 +80,12 @@ This site describes itself to agents:
 | [`/.well-known/api-catalog`](/.well-known/api-catalog) | Links to fil-api's OpenAPI document and reference, as an [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727) API catalog |
 | [`/.well-known/mcp/server-card.json`](/.well-known/mcp/server-card.json) | The MCP server card, also at `/.well-known/mcp-server-card` |
 | [`/.well-known/agent-skills/index.json`](/.well-known/agent-skills/index.json) | The agent skills index, with the `fil` skill |
+| [`/sitemap.xml`](/sitemap.xml) | Every page, also linked from `/robots.txt` |
 
 Every docs page also has a Markdown version. Add `.md` to the path, such as [`/docs/cli.md`](/docs/cli.md), or send `Accept: text/markdown`:
 
 ```sh
 curl -H 'Accept: text/markdown' https://fil-app.hugomrdias.dev/docs/cli
 ```
+
+A request that accepts only Markdown gets a Markdown answer from every page. A missing page returns `404` with links to `llms.txt` and the sitemap. An explorer or dashboard page, which has no Markdown version, returns `406`.

@@ -22,7 +22,7 @@ export const HOME_PAGE: SitePage = {
   slug: 'index',
   title: 'Overview',
   description:
-    'Store files and folders on Filecoin Onchain Cloud from a terminal or an agent, and get links back.',
+    'Store files and folders on Filecoin from a terminal or an agent, and get links back.',
 }
 
 /** Agent setup page. */
