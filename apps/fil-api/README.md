@@ -110,6 +110,35 @@ To deploy manually, run `pnpm --filter fil-api deploy`.
 
 Each network needs its own Hyperdrive binding. Run `pnpm cf-typegen` after changing bindings. A network without a binding returns `503 network_unavailable`.
 
+### Placement
+
+The Worker runs in Frankfurt, set by `placement.region: "gcp:europe-west3"` in `wrangler.jsonc`. Previews inherit the setting. The `cf-placement` response header shows where a request ran, such as `remote-FRA`.
+
+Both indexer databases run on Hetzner in Helsinki, and Hyperdrive keeps their connection pool in Frankfurt. Each query travels from the Worker to the pool and from there to Helsinki. The query itself takes about 0.05 ms on Postgres, so network distance makes up nearly all of the database time. A request's first query costs about two round trips to the pool, so a Worker far from Frankfurt pays that distance twice, even though every route runs one query.
+
+We measured this on 2026-10-07 with test Workers sharing production's Hyperdrive configs. An uncached query took this long from each Worker location:
+
+| Worker location | Time per query |
+| --- | --- |
+| Frankfurt | ~30 ms |
+| Amsterdam | ~37 ms |
+| London | ~45 ms |
+| Helsinki, next to the databases | ~60 ms |
+| Lisbon, with no placement | ~70 ms |
+| US East | ~127 ms |
+
+From [Globalping](https://globalping.io) probes in ten cities, with uncached reads and no placement, database time grew with distance from Frankfurt, up to 610 ms from Sydney. Pinned to Frankfurt, it stayed between 40 and 65 ms from every city, and median time to first byte about halved outside Europe. Clients close to Frankfurt gain little: from Lisbon, the median rose from 106 to 122 ms.
+
+We rejected the other placement options:
+
+- **Helsinki** (`gcp:europe-north1`) is slower than Frankfurt, because queries go to the Frankfurt pool and back.
+- **Smart Placement** (`mode: "smart"`) still ran the Worker at the nearest location 30 minutes after deploy. It needs steady traffic from many locations, and it only picks locations where the Worker already runs.
+- **Host probes** (`placement.host` set to the database) also picked Frankfurt, but Cloudflare marks them experimental and they took minutes to settle.
+
+Keep `prepare: true` in `src/db.ts`. With `prepare: false`, each query costs a second round trip: about 130 ms instead of 70 ms from Lisbon.
+
+If the databases move, measure again. A database a few milliseconds from Frankfurt, such as one on Hetzner in Falkenstein or Nuremberg, should cut queries to about 5–10 ms, but we have not measured it.
+
 ## Observability and limits
 
 - **Workers Logs and traces** are enabled in `wrangler.jsonc`. Cloudflare writes one invocation log per request (method, URL, status, CPU and wall time). The app adds no per-request log line; it only logs unexpected errors.

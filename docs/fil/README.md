@@ -62,7 +62,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **Content fits in one piece.** A file, or the CAR of a folder, must be between 127 and 1,065,353,216 bytes.
 - **Browsers render files from Curio and folders through a gateway.** Curio's `/piece` endpoint serves a file inline with a detected content type, so a browser renders it. Its `/ipfs` endpoint returns only blocks and CARs, so browser links to folders go to [inbrowser.link](https://inbrowser.link), a public gateway that runs in a service worker.
 - **fil-api serves most reads.** The CLI will read most data from fil-api. It will fall back to chain reads through synapse-core only where fil-api cannot serve a read. Today the CLI reads all chain data through synapse-core.
-- **The indexer runs outside this repository.** fil-api reads the `early-repair` and `foc-observer` schemas of a Ponder Postgres database. It never writes to the database.
+- **The indexer runs outside this repository.** fil-api reads the `early-repair` and `foc-observer` schemas of a Ponder Postgres database. It never writes to the database. The databases run in Helsinki, and fil-api runs in Frankfurt, next to Hyperdrive's connection pool ([placement](../../apps/fil-api/README.md#placement)).
 - **Calibration first.** The CLI defaults to calibration. Every part also supports mainnet, but the only recorded end-to-end run of the CLI was on calibration, on 2026-09-29.
 
 ## Compromises in the proof of concept
@@ -128,6 +128,6 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **CLI keys.** Store the session key in the OS keychain. Revoke the key on chain from `logout`.
 - **CLI state.** Track a removal until the provider deletes the piece. Check every file of a folder in `inspect --check`.
 - **MCP servers.** Review the [foc-observer](https://github.com/FilOzone/foc-observer) MCP server. Merge its tools into the fil-api MCP server.
-- **Indexer.** Index `data_sets(payer)` in the early-repair schema ([#13](https://github.com/hugomrdias/fil/issues/13)).
+- **Indexer.** Index `data_sets(payer)` in the early-repair schema ([#13](https://github.com/hugomrdias/fil/issues/13)). Consider moving the databases near Frankfurt, where Hyperdrive pools their connections, to cut each query from about 30 ms to an estimated 5–10 ms ([placement](../../apps/fil-api/README.md#placement)).
 - **Upstream.** Move `hooks-synapse` into synapse-react. Report the synapse-core and synapse-react bugs listed in its README.
 - **Packaging.** Publish the CLI to npm as `@hugomrdias/fil`. npm is the only distribution channel for now.

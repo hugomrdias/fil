@@ -8,6 +8,10 @@
   "routes": [{ "pattern": "fil-api.hugomrdias.dev", "custom_domain": true }],
   "workers_dev": false,
   "preview_urls": true,
+  // Run next to Hyperdrive's connection pool, which sits in Frankfurt for the
+  // Helsinki indexer databases. Previews inherit this. See README "Placement".
+  // https://developers.cloudflare.com/workers/configuration/placement/
+  "placement": { "region": "gcp:europe-west3" },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
