@@ -23,7 +23,7 @@ export const ls = defineCommand({
     resources: z.array(
       z.object({
         ref: z.string(),
-        kind: z.enum(['file', 'artifact']),
+        kind: z.enum(['file', 'folder']),
         name: z.string(),
         size: z.number().int(),
         status: z.enum(['active', 'removal_pending']),

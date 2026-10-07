@@ -17,14 +17,14 @@ export type Copy = {
 export type ResourceStatus = 'active' | 'removal_pending'
 
 /**
- * A file or artifact managed by this CLI. A file stores original bytes; an
- * artifact stores a UnixFS CAR and adds an IPFS root CID.
+ * A file or folder managed by this CLI. A file stores original bytes; a
+ * folder stores a UnixFS CAR and adds an IPFS root CID.
  *
  * @see ../../../../docs/fil/interface-research.md#resources
  */
 export type Resource = {
   ref: string
-  kind: 'file' | 'artifact'
+  kind: 'file' | 'folder'
   name: string
   chainId: string
   payer: string
@@ -40,7 +40,7 @@ export type Resource = {
 /** Row shape of the `resources` table. */
 type ResourceRow = {
   ref: string
-  kind: 'file' | 'artifact'
+  kind: 'file' | 'folder'
   name: string
   chain_id: string
   payer: string

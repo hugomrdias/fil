@@ -11,10 +11,10 @@ const PIECE_CID =
   'bafkzcibcd4bdomn3tgwgrh3g532zopskstnbrd2n3sxfqbze7rxt7vqn7veigmy'
 const ROOT_CID = 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi'
 
-/** A stored artifact on calibration with one copy. */
-const artifact: Resource = {
+/** A stored folder on calibration with one copy. */
+const folder: Resource = {
   ref: 'res_1',
-  kind: 'artifact',
+  kind: 'folder',
   name: 'site',
   chainId: '314159',
   payer: '0xabc',
@@ -48,7 +48,7 @@ test('retrievalUrls links a file to /get/{pieceCid} for both URLs', () => {
 })
 
 test('resourceUrls opens a folder by its root CID and keeps the API base path', () => {
-  assert.deepEqual(resourceUrls(artifact, 'http://localhost:8787/v1'), {
+  assert.deepEqual(resourceUrls(folder, 'http://localhost:8787/v1'), {
     piece: `http://localhost:8787/v1/get/${PIECE_CID}?network=calibration`,
     browser: `http://localhost:8787/v1/get/${ROOT_CID}?network=calibration&browser=true`,
   })
@@ -68,7 +68,7 @@ test('retrievalUrls rejects an unknown chain ID', () => {
 
 test('providerPieceUrl points at the first copy for fil get', () => {
   assert.equal(
-    providerPieceUrl(artifact),
+    providerPieceUrl(folder),
     `https://sp.example/base/piece/${PIECE_CID}`
   )
 })

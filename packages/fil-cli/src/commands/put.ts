@@ -5,7 +5,7 @@ import { account, accountEnv, formatBytes, resource, urls } from './shared.ts'
 
 /** What `put --dry-run` reports instead of storing anything. */
 const estimate = z.object({
-  kind: z.enum(['file', 'artifact']),
+  kind: z.enum(['file', 'folder']),
   name: z.string(),
   size: z
     .number()

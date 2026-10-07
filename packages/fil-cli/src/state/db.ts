@@ -71,6 +71,36 @@ const MIGRATIONS = [
   CREATE INDEX operations_scope ON operations (chain_id, payer, updated_at);
   CREATE INDEX operations_status ON operations (execution_status, updated_at);
   `,
+  // Rename the `artifact` kind to `folder`, the word the docs and output use.
+  // The resources table is rebuilt for its CHECK constraint, and saved put
+  // inputs are rewritten so a resumed put keeps its kind.
+  `
+  CREATE TABLE resources_next (
+    ref TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('file', 'folder')),
+    name TEXT NOT NULL,
+    chain_id TEXT NOT NULL,
+    payer TEXT NOT NULL,
+    piece_cid TEXT NOT NULL,
+    root_cid TEXT,
+    size INTEGER NOT NULL,
+    copies TEXT NOT NULL DEFAULT '[]',
+    url TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL
+  );
+  INSERT INTO resources_next
+    SELECT ref, CASE kind WHEN 'artifact' THEN 'folder' ELSE kind END,
+      name, chain_id, payer, piece_cid, root_cid, size, copies, url, status,
+      created_at
+    FROM resources;
+  DROP TABLE resources;
+  ALTER TABLE resources_next RENAME TO resources;
+  CREATE INDEX resources_scope ON resources (chain_id, payer, created_at);
+
+  UPDATE operations SET input = json_set(input, '$.kind', 'folder')
+    WHERE json_extract(input, '$.kind') = 'artifact';
+  `,
 ]
 
 /**

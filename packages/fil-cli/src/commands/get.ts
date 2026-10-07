@@ -5,7 +5,7 @@ import { account, accountEnv, formatBytes } from './shared.ts'
 
 /**
  * `fil get <target>`: download a resource (or any PieceCID) from Curio and
- * verify it. Files are written as-is; artifacts are extracted.
+ * verify it. Files are written as-is; folders are extracted.
  */
 export const get = defineCommand({
   name: 'get',
@@ -24,7 +24,7 @@ export const get = defineCommand({
   env: accountEnv,
   secrets: ['sessionKey'],
   output: z.object({
-    kind: z.enum(['file', 'artifact']),
+    kind: z.enum(['file', 'folder']),
     ref: z.string().optional(),
     pieceCid: z.string(),
     output: z.string().describe('Written file or directory'),

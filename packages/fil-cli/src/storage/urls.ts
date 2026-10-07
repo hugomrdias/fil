@@ -44,7 +44,7 @@ function getUrl(
 }
 
 /**
- * Build fil-api retrieval URLs for a piece and, for artifacts, its IPFS root.
+ * Build fil-api retrieval URLs for a piece and, for folders, its IPFS root.
  * The folder's browser URL names the root CID, so fil-api redirects it to
  * inbrowser.link without waiting for its indexer.
  *

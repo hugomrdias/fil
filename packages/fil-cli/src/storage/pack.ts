@@ -19,14 +19,14 @@ import { sha256 } from 'multiformats/hashes/sha2'
 import { ErrorCodes, invalidInput } from '../errors.ts'
 
 /**
- * The single UnixFS profile used for every artifact: IPIP-499
+ * The single UnixFS profile used for every folder: IPIP-499
  * `unixfs-v1-2025` (CIDv1, raw leaves, 1 MiB chunks), matching Filecoin Pin.
  *
  * @see https://github.com/ipfs/specs/pull/499
  */
 const IMPORTER_OPTIONS: ImporterOptions = { profile: 'unixfs-v1-2025' }
 
-/** A file included in an artifact, relative to the packed directory. */
+/** A file included in a folder, relative to the packed directory. */
 export type PackEntry = { path: string; size: number }
 
 /**

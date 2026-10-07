@@ -53,10 +53,10 @@ export const copy = z.object({
   serviceURL: z.string(),
 })
 
-/** A file or artifact managed by `fil`. */
+/** A file or folder managed by `fil`. */
 export const resource = z.object({
   ref: z.string(),
-  kind: z.enum(['file', 'artifact']),
+  kind: z.enum(['file', 'folder']),
   name: z.string(),
   chainId: z.string(),
   payer: z.string(),
