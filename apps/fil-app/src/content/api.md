@@ -71,5 +71,5 @@ The MCP server at `https://fil-api.hugomrdias.dev/mcp` offers one read-only tool
 ## Limits
 
 - **Rate limits.** 120 requests a minute per IP for the REST API, and 60 for MCP. Over the limit, requests get `429` with `Retry-After`.
-- **Caching.** Successful reads are cached for 15 seconds.
+- **Caching.** Data reads are not cached by browsers, so every read returns the latest indexed data.
 - **No authentication.** Every route is public and read-only.

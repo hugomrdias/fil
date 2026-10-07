@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { useBlockNumber } from 'wagmi'
 import { statusQuery } from '@/lib/api/queries'
 import { epochAt } from '@/lib/format'
 import { CHAINS, type Network } from '@/lib/networks'
 import { cn } from '@/lib/utils'
 
-/** Indexer lag, in epochs, still shown as in sync. */
+/** Indexer lag behind the chain head, in epochs, still shown as in sync. */
 const SYNCED_EPOCHS = 5
+
+/** Chain head poll interval: one Filecoin epoch. */
+const HEAD_INTERVAL = 30_000
 
 /**
  * Current chain epoch from the wall clock, updated at each epoch boundary.
@@ -41,20 +45,27 @@ function useChainEpoch(network: Network) {
  * over its 30 seconds, and how far behind the fil-api indexers are. The
  * bar is the page's one ambient motion; reduced motion shows it static.
  *
+ * Lag is measured against the RPC chain head, not the wall-clock epoch: the
+ * head trails the clock by an epoch or two even when everything is healthy.
+ *
  * @param props.network - Filecoin network.
  * @param props.className - Extra classes.
  */
 export function ChainPulse(props: { network: Network; className?: string }) {
   const clock = useChainEpoch(props.network)
   const status = useQuery(statusQuery(props.network))
-  const indexed = status.data?.indexers
+  const chainHead = useBlockNumber({
+    chainId: CHAINS[props.network].id,
+    query: { refetchInterval: HEAD_INTERVAL },
+  })
+  const blocks = status.data?.indexers
     .map((indexer) => indexer.latest?.blockNumber)
     .filter((block) => block !== undefined)
-  const head = indexed?.length ? Math.min(...indexed) : undefined
+  const indexed = blocks?.length ? Math.min(...blocks) : undefined
   const behind =
-    head === undefined || clock === undefined
+    indexed === undefined || chainHead.data === undefined
       ? undefined
-      : Math.max(clock.epoch - head, 0)
+      : Math.max(Number(chainHead.data) - indexed, 0)
 
   return (
     <div
@@ -80,7 +91,12 @@ export function ChainPulse(props: { network: Network; className?: string }) {
           )}
         </span>
       </div>
-      <IndexerState behind={behind} error={status.isError} head={head} />
+      <IndexerState
+        behind={behind}
+        error={status.isError}
+        headError={chainHead.isError}
+        indexed={indexed}
+      />
     </div>
   )
 }
@@ -88,19 +104,29 @@ export function ChainPulse(props: { network: Network; className?: string }) {
 /**
  * Indexer lag line for {@link ChainPulse}.
  *
- * @param props.head - Lowest block indexed across fil-api indexers.
- * @param props.behind - Epochs between the chain head and `head`.
+ * @param props.indexed - Lowest block indexed across fil-api indexers.
+ * @param props.behind - Epochs between the chain head and `indexed`.
  * @param props.error - Whether the status request failed.
+ * @param props.headError - Whether the chain head request failed.
  */
 function IndexerState(props: {
-  head: number | undefined
+  indexed: number | undefined
   behind: number | undefined
   error: boolean
+  headError: boolean
 }) {
   if (props.error) {
     return <span className="text-destructive">Indexer status unavailable</span>
   }
-  if (props.head === undefined || props.behind === undefined) {
+  if (props.indexed !== undefined && props.headError) {
+    // Without the chain head there is no lag to judge; show progress only.
+    return (
+      <span className="text-muted-foreground">
+        Indexed to {props.indexed.toLocaleString()}
+      </span>
+    )
+  }
+  if (props.indexed === undefined || props.behind === undefined) {
     return <span className="text-muted-foreground">Checking indexer…</span>
   }
   const synced = props.behind <= SYNCED_EPOCHS
@@ -114,7 +140,7 @@ function IndexerState(props: {
         )}
       />
       {synced
-        ? `Indexed to ${props.head.toLocaleString()}`
+        ? `Indexed to ${props.indexed.toLocaleString()}`
         : `Indexer ${props.behind.toLocaleString()} epochs behind`}
     </span>
   )

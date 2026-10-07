@@ -103,8 +103,9 @@ Previews don't inherit production bindings, so the `previews` block in `wrangler
    ```
 3. Create a Hyperdrive config for each network and put the ids in `wrangler.jsonc`, in both the top-level `hyperdrive` list and `previews.hyperdrive`:
    ```bash
-   wrangler hyperdrive create fil-api-calibration --connection-string="postgresql://user:password@host:5432/indexers"
+   wrangler hyperdrive create fil-api-calibration --connection-string="postgresql://user:password@host:5432/indexers" --max-age 5 --swr 0
    ```
+   Hyperdrive caches read queries for 60 seconds by default and never invalidates them, which would make the indexer status, and every read after a write, up to 75 seconds stale. Both configs cache for 5 seconds with no stale-while-revalidate. To change an existing config, run `wrangler hyperdrive update <id> --caching-disabled=false --max-age 5 --swr 0`.
 
 To deploy manually, run `pnpm --filter fil-api deploy`.
 
@@ -147,4 +148,4 @@ If the databases move, measure again. A database a few milliseconds from Frankfu
 - **Response headers:** `X-Request-Id`, and `Server-Timing` with `db` and `total` metrics.
 - **Unknown paths:** only `/calibration/...` and `/mainnet/...` reach the network middleware and API rate limiter. Other paths, such as crawler requests for `/sitemap.xml`, get a plain `404 not_found`. A valid route under an unsupported network, such as `/filecoin/providers`, gets `404 unknown_network`.
 - **Rate limits:** [Workers Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) per client IP, at 120 requests/min for the REST API and `/health`, and 60 requests/min for MCP. Over the limit, requests get a `429` with `Retry-After`.
-- **Caching:** successful reads are sent with `Cache-Control: public, max-age=15, stale-while-revalidate=60`.
+- **Caching:** data responses carry no `max-age`, so browsers and proxies never serve a stored copy and every request reaches the Worker; `/health` sends `no-store`. Indexed data changes every 30-second epoch, and a cached response would show a write as missing after the indexer had it. Data reads are only cached by Hyperdrive's 5-second query cache (see the setup steps). Responses that do not depend on fresh indexer data keep a `max-age`: `/openapi.json` (`300`) only changes on deploy, a `/get/{cid}` redirect to inbrowser.link (`86400`) is built from the request alone, and a redirect to a provider (`60`) is already served from the provider cache.

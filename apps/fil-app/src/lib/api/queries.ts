@@ -3,7 +3,7 @@ import type { Network } from '@/lib/networks'
 import { api, unwrap } from './client'
 import type { paths } from './schema'
 
-/** fil-api cache lifetime, matching its `Cache-Control: max-age=15`. */
+/** How long fetched fil-api data counts as fresh before a refetch. */
 const STALE_TIME = 15_000
 
 /** Query parameters of a fil-api list route, minus paging. */
@@ -75,7 +75,7 @@ export function statusQuery(network: Network) {
         })
       ).data,
     staleTime: STALE_TIME,
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
   })
 }
 

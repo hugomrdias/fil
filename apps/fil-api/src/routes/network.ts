@@ -235,20 +235,13 @@ const routes = {
   }),
 }
 
-/** Cache-Control for successful reads. */
-export const CACHE_CONTROL = 'public, max-age=15, stale-while-revalidate=60'
-
 /** Routes under `/{network}` for REST reads. */
 export function networkRoutes(dbFactory: DbFactory) {
   const api = new OpenAPIHono<AppEnv>({ defaultHook: validationHook })
   api.use(
     NETWORK_PATH,
     rateLimit('RATE_LIMIT_API'),
-    networkMiddleware(dbFactory),
-    async (c, next) => {
-      await next()
-      if (c.res.status === 200) c.header('Cache-Control', CACHE_CONTROL)
-    }
+    networkMiddleware(dbFactory)
   )
 
   api.openapi(routes.status, async (c) => {
