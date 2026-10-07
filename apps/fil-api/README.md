@@ -113,7 +113,9 @@ Each network needs its own Hyperdrive binding. Run `pnpm cf-typegen` after chang
 
 ### Placement
 
-The Worker runs in Frankfurt, set by `placement.region: "gcp:europe-west3"` in `wrangler.jsonc`. Previews inherit the setting. The `cf-placement` response header shows where a request ran, such as `remote-FRA`.
+The Worker runs in Frankfurt, set by `placement.region: "gcp:europe-west3"` in `wrangler.jsonc`. The `cf-placement` response header shows where a request ran, such as `remote-FRA`.
+
+Previews run without placement. Cloudflare documents that Previews inherit top-level placement, and `wrangler preview` sends it, but on 2026-10-07 the API stored the Preview deployment with `"placement": {}`, and responses carried no `cf-placement` header. Preview timings therefore do not show production's placement.
 
 Both indexer databases run on Hetzner in Helsinki, and Hyperdrive keeps their connection pool in Frankfurt. Each query travels from the Worker to the pool and from there to Helsinki. The query itself takes about 0.05 ms on Postgres, so network distance makes up nearly all of the database time. A request's first query costs about two round trips to the pool, so a Worker far from Frankfurt pays that distance twice, even though every route runs one query.
 
