@@ -17,7 +17,9 @@ export interface LlmsPage {
  * Build `llms.txt`: a Markdown index of the site for language models.
  *
  * @param options.origin - Site origin, such as `https://fil-app.hugomrdias.dev`.
- * @param options.summary - One-paragraph summary of the site.
+ * @param options.summary - One-sentence summary of the site, shown as a quote.
+ * @param options.details - Markdown blocks, such as paragraphs and lists,
+ *   that an agent should know before it reads the pages.
  * @param options.pages - Pages with Markdown versions.
  * @param options.links - Other resources, each a title and an absolute URL.
  * @see https://llmstxt.org
@@ -25,6 +27,7 @@ export interface LlmsPage {
 export function llmsTxt(options: {
   origin: string
   summary: string
+  details: string[]
   pages: LlmsPage[]
   links: { title: string; url: string; description: string }[]
 }) {
@@ -40,6 +43,7 @@ export function llmsTxt(options: {
     '',
     `> ${options.summary}`,
     '',
+    ...options.details.flatMap((block) => [block, '']),
     '## Docs',
     '',
     ...docs,
