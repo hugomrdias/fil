@@ -107,7 +107,7 @@ export function mcpServerCard(apiUrl: string, siteUrl: string) {
     title: 'fil-api',
     version: '0.0.0',
     description:
-      'Read-only Filecoin Onchain Cloud data: storage providers, data sets, pieces, Filecoin Pay rails, and session keys on mainnet and calibration.',
+      'Read-only Filecoin data: storage providers, data sets, pieces, Filecoin Pay rails, and session keys on mainnet and calibration.',
     websiteUrl: `${siteUrl}/docs/api`,
     repository: {
       url: 'https://github.com/hugomrdias/fil',
@@ -193,4 +193,90 @@ export async function sha256Digest(text: string) {
     byte.toString(16).padStart(2, '0')
   ).join('')
   return `sha256:${hex}`
+}
+
+/**
+ * Build an XML sitemap of absolute page URLs.
+ *
+ * @param origin - Site origin, such as `https://fil-app.hugomrdias.dev`.
+ * @param paths - Site paths to list, each starting with `/`.
+ * @see https://www.sitemaps.org/protocol.html
+ */
+export function sitemapXml(origin: string, paths: string[]) {
+  const urls = paths.map(
+    (path) => `  <url><loc>${escapeXml(`${origin}${path}`)}</loc></url>`
+  )
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...urls,
+    '</urlset>',
+    '',
+  ].join('\n')
+}
+
+/**
+ * Escape the characters XML reserves in text.
+ *
+ * @param text - Text to escape.
+ */
+function escapeXml(text: string) {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;')
+}
+
+/**
+ * Build `robots.txt`: allow every crawler and point to the sitemap.
+ *
+ * @param origin - Site origin.
+ * @see https://www.rfc-editor.org/rfc/rfc9309
+ */
+export function robotsTxt(origin: string) {
+  return [
+    'User-agent: *',
+    'Allow: /',
+    '',
+    `Sitemap: ${origin}/sitemap.xml`,
+    '',
+  ].join('\n')
+}
+
+/**
+ * Build the schema.org `SoftwareApplication` that describes fil, for a
+ * JSON-LD script on the landing page.
+ *
+ * @param options.origin - Site origin.
+ * @param options.description - One-sentence description.
+ * @param options.image - Absolute URL of the social image.
+ * @see https://schema.org/SoftwareApplication
+ */
+export function softwareApplication(options: {
+  origin: string
+  description: string
+  image: string
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'fil',
+    description: options.description,
+    url: `${options.origin}/`,
+    image: options.image,
+    applicationCategory: 'DeveloperApplication',
+    sameAs: ['https://github.com/hugomrdias/fil'],
+  }
+}
+
+/**
+ * Serialize a value as JSON that is safe inside an HTML `<script>` element.
+ *
+ * @param value - Value to serialize.
+ * @see https://html.spec.whatwg.org/multipage/scripting.html#restrictions-for-contents-of-script-elements
+ */
+export function scriptJson(value: unknown) {
+  return JSON.stringify(value).replaceAll('<', '\\u003c')
 }

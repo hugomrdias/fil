@@ -4,8 +4,9 @@
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
   // TanStack Start renders pages in the Worker; the Cloudflare Vite plugin
-  // serves the client build as static assets.
-  "main": "@tanstack/react-start/server-entry",
+  // serves the client build as static assets. `src/server.ts` wraps Start's
+  // handler to answer Markdown-only requests in Markdown.
+  "main": "src/server.ts",
   "routes": [{ "pattern": "fil-app.hugomrdias.dev", "custom_domain": true }],
   "workers_dev": false,
   "preview_urls": true,

@@ -1,6 +1,6 @@
 # REST API and MCP server
 
-[fil-api](https://fil-api.hugomrdias.dev) serves read-only Filecoin Onchain Cloud data: storage providers, data sets, pieces, Filecoin Pay rails, and session keys. It reads from an indexer of the Filecoin chain, so its data trails the chain. `/health` reports the latest indexed block. It cannot store, delete, or sign anything.
+[fil-api](https://fil-api.hugomrdias.dev) serves read-only Filecoin data: storage providers, data sets, pieces, Filecoin Pay rails, and session keys. It reads from an indexer of the Filecoin chain, so its data trails the chain. `/health` reports the latest indexed block. It cannot store, delete, or sign anything.
 
 The interactive reference is at [`/docs`](https://fil-api.hugomrdias.dev/docs), and the OpenAPI 3.1 document is at [`/openapi.json`](https://fil-api.hugomrdias.dev/openapi.json).
 
@@ -38,6 +38,7 @@ Conventions:
 - **Big numbers**, such as IDs, amounts, and epochs, are decimal strings.
 - **Pagination** uses `limit` (1 to 200, default 50) and an opaque `cursor`. Each response looks like `{ data, nextCursor }`.
 - **Errors** look like `{ error: { code, message } }`.
+- **Operation IDs**, such as `listDataSets` and `retrieve`, name every operation in the OpenAPI document, for function calling and generated clients.
 
 ## Retrieval
 

@@ -3,20 +3,27 @@ import type { ReactNode } from 'react'
 import { pageHead } from '@/components/doc-page'
 import { SiteShell } from '@/components/site-shell'
 import { Button } from '@/components/ui/button'
+import { env } from '@/config/env'
 import { DEFAULT_NETWORK } from '@/lib/networks'
+import { scriptJson, softwareApplication } from '@/lib/site/discovery'
 import { HOME_PAGE } from '@/lib/site/pages'
 
 export const Route = createFileRoute('/')({
-  head: () => {
-    const head = pageHead(HOME_PAGE)
-    return {
-      ...head,
-      meta: [
-        { title: 'fil · Store files on Filecoin Onchain Cloud' },
-        { name: 'description', content: HOME_PAGE.description },
-      ],
-    }
-  },
+  head: () => ({
+    ...pageHead(HOME_PAGE, 'fil · Store files on Filecoin'),
+    scripts: [
+      {
+        type: 'application/ld+json',
+        children: scriptJson(
+          softwareApplication({
+            origin: env.siteUrl,
+            description: HOME_PAGE.description,
+            image: `${env.siteUrl}/og.png`,
+          })
+        ),
+      },
+    ],
+  }),
   component: Landing,
 })
 
@@ -44,9 +51,9 @@ function Hero() {
         </h1>
         <p className="max-w-xl text-lg text-pretty text-muted-foreground">
           <code className="font-mono text-foreground">fil</code> puts a file or
-          a folder on a Filecoin Onchain Cloud storage provider and gives you a
-          link to share. Agents can run it too. You approve their key once, and
-          your wallet pays.
+          a folder on a Filecoin storage provider and gives you a link to share.
+          Agents can run it too. You approve their key once, and your wallet
+          pays.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button

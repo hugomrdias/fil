@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { SiteShell } from '@/components/site-shell'
+import { env } from '@/config/env'
 import { markdownPath } from '@/lib/site/discovery'
 import { DOC_PAGES, type SitePage } from '@/lib/site/pages'
 
@@ -89,18 +90,26 @@ export function DocArticle(props: { page: SitePage; html: string }) {
 }
 
 /**
- * Route `head` for a site page: title, description, and the Markdown
- * alternate.
+ * Route `head` for a site page: title, description, canonical URL, Open
+ * Graph tags, and the Markdown alternate. The root route adds the site-wide
+ * Open Graph tags.
  *
  * @param page - Site page.
+ * @param title - Document title; defaults to `<page title> · fil`.
+ * @see https://ogp.me
  */
-export function pageHead(page: SitePage) {
+export function pageHead(page: SitePage, title = `${page.title} · fil`) {
+  const url = `${env.siteUrl}${page.path}`
   return {
     meta: [
-      { title: `${page.title} · fil` },
+      { title },
       { name: 'description', content: page.description },
+      { property: 'og:title', content: title },
+      { property: 'og:description', content: page.description },
+      { property: 'og:url', content: url },
     ],
     links: [
+      { rel: 'canonical', href: url },
       {
         rel: 'alternate',
         type: 'text/markdown',
