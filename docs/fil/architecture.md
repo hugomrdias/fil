@@ -65,11 +65,11 @@ packages/fil-cli/
     │   ├── synapse.ts    StorageBackend built on synapse-core
     │   ├── jobs.ts       put and delete jobs, signed commits, resume, dry-run estimate
     │   ├── pack.ts       folder → UnixFS CAR, CAR → folder
-    │   ├── get.ts        streaming verified download, artifact extraction
+    │   ├── get.ts        streaming verified download, folder extraction
     │   └── urls.ts       fil-api /get URLs, and the Curio /piece URL for get
     └── state/
         ├── db.ts         node:sqlite, migrations, transactions
-        ├── resources.ts  managed files and artifacts, paged
+        ├── resources.ts  managed files and folders, paged
         ├── operations.ts operations, checkpoints, execution lock, paged
         ├── cursor.ts     opaque keyset cursors
         └── ids.ts        res_… and op_… identifiers
@@ -162,7 +162,7 @@ Before each mutation, `requireSession` rebuilds the key with `fromSecp256k1` and
 | File | exact file bytes | `source=fil` | `name` | `<api>/get/<pieceCid>?network=<net>&browser=true` |
 | Folder | UnixFS CAR | `source=fil`, `withIPFSIndexing` | `name`, `ipfsRootCID` | `<api>/get/<rootCid>?network=<net>&browser=true` |
 
-A file becomes a resource of kind `file`, and a folder becomes a resource of kind `artifact`. Files and folders go into separate data sets, because data sets match on their exact metadata keys and only CARs belong in an IPFS-indexed data set.
+A file becomes a resource of kind `file`, and a folder becomes a resource of kind `folder`. Files and folders go into separate data sets, because data sets match on their exact metadata keys and only CARs belong in an IPFS-indexed data set.
 
 `put` returns two [fil-api retrieval URLs](../../apps/fil-api/README.md#retrieval), and `resource.url` holds the browser URL:
 
@@ -188,7 +188,7 @@ The phase is separate from the operation's execution status, which is `pending`,
 
 `storage/jobs.ts` saves each result to the operation checkpoint before the next step depends on it:
 
-1. **Pack (folders only).** Write `staging/<op>/artifact.car`, then save `rootCid`.
+1. **Pack (folders only).** Write `staging/<op>/folder.car`, then save `rootCid`.
 2. **Identify.** Stream the bytes through `Piece.calculate` and save `pieceCid` and `size`. Reject content outside the PDP limits of 127 to 1,065,353,216 bytes.
 3. **Place.** Save `providerId`, `serviceURL`, and `payee`. If an existing data set matches, also save its `dataSetId` and `clientDataSetId`.
    - `--provider` selects the provider directly.
@@ -290,7 +290,7 @@ The provider removes the piece later, at a proving boundary. `ls` hides resource
 ```text
 <FIL_STATE_DIR or platform data dir>/
 ├── state.db           SQLite (node:sqlite), WAL, migrations via PRAGMA user_version
-└── staging/<op_id>/   artifact.car for unfinished folder puts
+└── staging/<op_id>/   folder.car for unfinished folder puts
 ```
 
 | Table | Key | Contents |
@@ -324,7 +324,7 @@ The tests use the Node test runner and need no network. `pnpm --filter fil-cli t
 
 | Test | Covers |
 | --- | --- |
-| `state.test.ts` | Migrations, including `rm` → `delete`, account-scoped queries, cursor paging, checkpoint merging, the lock against a live child process, a second caller in the same process, and a reused PID |
+| `state.test.ts` | Migrations, including `rm` → `delete` and `artifact` → `folder`, account-scoped queries, cursor paging, checkpoint merging, the lock against a live child process, a second caller in the same process, and a reused PID |
 | `login.test.ts` | The setup link format, scope classification, and the windowed event scan against a fake viem transport |
 | `pack.test.ts` | A deterministic root CID, byte-exact extraction, no unreferenced blocks, empty directories, rejection of a tampered block, and the dotfile and symlink rules |
 | `jobs.test.ts` | A fake `StorageBackend` that simulates FWSS nonces. It covers new and existing data sets, a lost commit response, a commit that never landed, a rejected commit, a resume of a completed job, insufficient funds, a reverted removal, interruption, dry-run estimates, and the operation ID and resume step on every job error |
@@ -346,6 +346,7 @@ The tests use the Node test runner and need no network. `pnpm --filter fil-cli t
 | Research | Prototype | Reason |
 | --- | --- | --- |
 | `fil files …` and `fil artifacts …` groups | Flat `put`, `get`, `ls`, `inspect`, and `delete`, chosen by input type, with the `publish` and `rm` aliases | One command set covers files and folders |
+| `artifact` resources for IPFS files and folders | Resource kind `file` for a file and `folder` for a folder | The kind names the input type. A migration renames saved `artifact` resources to `folder` |
 | `auth login`, `auth status` | `login`, `logout`, `status` | Flat, like the storage commands |
 | Two copies by default | One copy | Simplicity. synapse-sdk also stores two copies by default |
 | Exact file bytes staged as `input.bin` | Files read from the source. A PieceCID check on resume detects changes | Large inputs are not copied. A change fails the put instead of storing different bytes |

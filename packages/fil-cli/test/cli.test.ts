@@ -107,7 +107,7 @@ test('put --dry-run describes a directory without a session', async () => {
   assert.ok('data' in json)
   assert.equal(data.dryRun, true)
   const estimate = data.estimate as Record<string, unknown>
-  assert.equal(estimate.kind, 'artifact')
+  assert.equal(estimate.kind, 'folder')
   assert.equal(estimate.files, 1)
   assert.equal(estimate.authorization, 'login_required')
   assert.equal(estimate.cost, undefined)

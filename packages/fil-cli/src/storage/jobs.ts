@@ -36,10 +36,10 @@ import { type RetrievalUrls, resourceUrls, retrievalUrls } from './urls.ts'
 export const FILE_DATA_SET_METADATA = { source: 'fil' }
 
 /**
- * Data-set metadata for artifacts. `withIPFSIndexing` asks Curio to index
+ * Data-set metadata for folders. `withIPFSIndexing` asks Curio to index
  * the CAR so `/ipfs/<rootCid>` retrieval works.
  */
-export const ARTIFACT_DATA_SET_METADATA = {
+export const FOLDER_DATA_SET_METADATA = {
   source: 'fil',
   withIPFSIndexing: '',
 }
@@ -92,7 +92,7 @@ export type StartPutOptions = {
 /** A file or directory checked for a put. */
 type PutSource = {
   sourcePath: string
-  kind: 'file' | 'artifact'
+  kind: 'file' | 'folder'
   name: string
   /** Bytes of a file; directories are sized after packing. */
   size?: number
@@ -106,7 +106,7 @@ async function inspectSource(options: StartPutOptions): Promise<PutSource> {
     throw invalidInput(`No file or directory at ${options.path}.`, 'path')
   }
   const name = options.name ?? basename(sourcePath)
-  if (stats.isDirectory()) return { sourcePath, kind: 'artifact', name }
+  if (stats.isDirectory()) return { sourcePath, kind: 'folder', name }
   assertPieceSize(stats.size)
   return { sourcePath, kind: 'file', name, size: stats.size }
 }
@@ -137,7 +137,7 @@ export async function startPut(
 
 /** What a put would do, from {@link estimatePut}. */
 export type PutEstimate = {
-  kind: 'file' | 'artifact'
+  kind: 'file' | 'folder'
   name: string
   /** Bytes to store: the file, or the packed CAR. */
   size: number
@@ -178,7 +178,7 @@ export async function estimatePut(
     const packed = await packDirectory(source.sourcePath)
     assertPieceSize(packed.size)
     estimate = {
-      kind: 'artifact',
+      kind: 'folder',
       name: source.name,
       size: packed.size,
       files: packed.files,
@@ -293,10 +293,8 @@ function assertPieceSize(size: number): void {
 }
 
 /** Data-set metadata for a resource kind. */
-function metadataFor(kind: 'file' | 'artifact') {
-  return kind === 'artifact'
-    ? ARTIFACT_DATA_SET_METADATA
-    : FILE_DATA_SET_METADATA
+function metadataFor(kind: 'file' | 'folder') {
+  return kind === 'folder' ? FOLDER_DATA_SET_METADATA : FILE_DATA_SET_METADATA
 }
 
 /**
@@ -322,7 +320,7 @@ function save(
 }
 
 /**
- * Put steps: pack (artifacts), identify, place, upload, commit, record. Each
+ * Put steps: pack (folders), identify, place, upload, commit, record. Each
  * step saves its result first, so a resumed job skips completed work and
  * never sends a second commit for the same content.
  */
@@ -335,8 +333,8 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
 
   // Prepare the bytes to store.
   let uploadPath = input.sourcePath
-  if (kind === 'artifact') {
-    uploadPath = join(ctx.stagingDir(op.id), 'artifact.car')
+  if (kind === 'folder') {
+    uploadPath = join(ctx.stagingDir(op.id), 'folder.car')
     const staged = await stat(uploadPath).catch(() => undefined)
     if (!staged) {
       if (op.checkpoint.pieceCid) {
@@ -465,7 +463,7 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
     dataSetId: committed.dataSetId.toString(),
     pieceId: committed.pieceId.toString(),
   })
-  if (kind === 'artifact') {
+  if (kind === 'folder') {
     await rm(ctx.stagingDir(op.id), { recursive: true, force: true }).catch(
       () => undefined
     )

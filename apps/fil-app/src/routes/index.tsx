@@ -121,7 +121,7 @@ function Transcript() {
           </JsonLine>
           <JsonLine depth={4}>
             <Key>resource</Key>: {'{ '}
-            <Key>ref</Key>: "res_7q2…", <Key>kind</Key>: "artifact",{' '}
+            <Key>ref</Key>: "res_7q2…", <Key>kind</Key>: "folder",{' '}
             <Key>size</Key>: 48211 {'}'},
           </JsonLine>
           <JsonLine depth={4}>

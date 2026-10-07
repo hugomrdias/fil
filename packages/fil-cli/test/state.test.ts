@@ -26,7 +26,7 @@ const scope = { chainId: '314159', payer: '0xabc' }
 function resource(ref: string, createdAt: string): Resource {
   return {
     ref,
-    kind: 'artifact',
+    kind: 'folder',
     name: 'site',
     ...scope,
     pieceCid: `piece-${ref}`,
@@ -53,7 +53,7 @@ test('migrations are idempotent', async () => {
   const row = db.prepare('PRAGMA user_version').get() as {
     user_version: number
   }
-  assert.equal(row.user_version, 2)
+  assert.equal(row.user_version, 3)
   db.close()
 })
 
@@ -225,4 +225,45 @@ test('migration renames saved rm operations to delete', async () => {
   raw.close()
   const db = openDatabase(dir)
   assert.equal(getOperation(db, 'op_old')?.action, 'delete')
+})
+
+test('migration renames the artifact kind to folder', async () => {
+  const dir = await tempDir()
+  const raw = new DatabaseSync(join(dir, 'state.db'))
+  raw.exec(`
+    CREATE TABLE resources (ref TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK (kind IN ('file', 'artifact')),
+      name TEXT NOT NULL, chain_id TEXT NOT NULL, payer TEXT NOT NULL,
+      piece_cid TEXT NOT NULL, root_cid TEXT, size INTEGER NOT NULL,
+      copies TEXT NOT NULL DEFAULT '[]', url TEXT,
+      status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL);
+    CREATE TABLE operations (id TEXT PRIMARY KEY,
+      action TEXT NOT NULL CHECK (action IN ('put', 'delete')),
+      resource_ref TEXT, chain_id TEXT, payer TEXT, execution_status TEXT,
+      phase TEXT, input TEXT, checkpoint TEXT, pid INTEGER, error TEXT,
+      created_at TEXT, updated_at TEXT);
+    INSERT INTO resources VALUES ('res_a', 'artifact', 'site', '314159',
+      '0xabc', 'piece-a', 'root-a', 1024, '[]', NULL, 'active', 't');
+    INSERT INTO resources VALUES ('res_b', 'file', 'a.txt', '314159',
+      '0xabc', 'piece-b', NULL, 512, '[]', NULL, 'active', 't');
+    INSERT INTO operations VALUES ('op_old', 'put', 'res_a', '314159', '0xabc',
+      'running', 'storing', '{"kind":"artifact","name":"site"}', '{}', NULL,
+      NULL, 't', 't');
+    PRAGMA user_version = 2;
+  `)
+  raw.close()
+  const db = openDatabase(dir)
+  const kinds = listResources(db, { ...scope, limit: 10 }).items.map((r) => [
+    r.ref,
+    r.kind,
+  ])
+  assert.deepEqual(kinds.sort(), [
+    ['res_a', 'folder'],
+    ['res_b', 'file'],
+  ])
+  assert.deepEqual(getOperation(db, 'op_old')?.input, {
+    kind: 'folder',
+    name: 'site',
+  })
+  db.close()
 })

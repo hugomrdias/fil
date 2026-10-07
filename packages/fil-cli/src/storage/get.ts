@@ -79,8 +79,8 @@ export async function downloadPiece(
   }
 }
 
-/** Options for {@link downloadArtifact}. */
-export type DownloadArtifactOptions = {
+/** Options for {@link downloadFolder}. */
+export type DownloadFolderOptions = {
   url: string
   pieceCid: string
   rootCid: string
@@ -91,12 +91,12 @@ export type DownloadArtifactOptions = {
 }
 
 /**
- * Download an artifact's CAR through its exact piece, verify it against the
+ * Download a folder's CAR through its exact piece, verify it against the
  * PieceCID and root CID, and extract the file tree into `output`. The
  * PieceCID check covers every byte, so blocks are not hashed again.
  */
-export async function downloadArtifact(
-  options: DownloadArtifactOptions
+export async function downloadFolder(
+  options: DownloadFolderOptions
 ): Promise<{ size: number; files: number }> {
   const output = resolve(options.output)
   const existing = await stat(output).catch(() => undefined)

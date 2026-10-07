@@ -14,9 +14,9 @@ import {
 } from '../src/state/operations.ts'
 import { getResource } from '../src/state/resources.ts'
 import {
-  ARTIFACT_DATA_SET_METADATA,
   estimatePut,
   FILE_DATA_SET_METADATA,
+  FOLDER_DATA_SET_METADATA,
   type JobContext,
   runOperation,
   startPut,
@@ -217,7 +217,7 @@ test('put stores a file in a new data set and records the resource', async () =>
   assert.deepEqual(calls.select, [FILE_DATA_SET_METADATA])
   // On-chain namespace: changing it orphans existing data sets.
   assert.deepEqual(FILE_DATA_SET_METADATA, { source: 'fil' })
-  assert.deepEqual(ARTIFACT_DATA_SET_METADATA, {
+  assert.deepEqual(FOLDER_DATA_SET_METADATA, {
     source: 'fil',
     withIPFSIndexing: '',
   })
@@ -237,14 +237,14 @@ test('put packs a directory, adds to an existing data set, and cleans staging', 
   await writeFile(join(dir, 'index.html'), '<h1>hello world</h1>')
 
   const result = await startPut(ctx, { path: dir })
-  assert.equal(result.resource.kind, 'artifact')
+  assert.equal(result.resource.kind, 'folder')
   assert.ok(result.resource.rootCid)
   assert.deepEqual(result.urls, {
     piece: `https://api.example/get/${result.resource.pieceCid}?network=calibration`,
     browser: `https://api.example/get/${result.resource.rootCid}?network=calibration&browser=true`,
   })
   assert.equal(result.resource.url, result.urls.browser)
-  assert.deepEqual(calls.select, [ARTIFACT_DATA_SET_METADATA])
+  assert.deepEqual(calls.select, [FOLDER_DATA_SET_METADATA])
   assert.equal(result.resource.copies[0]?.dataSetId, '42')
   await assert.rejects(stat(ctx.stagingDir(result.operationId)), {
     code: 'ENOENT',
@@ -481,7 +481,7 @@ test('estimatePut sizes a directory and prices it without side effects', async (
   await writeFile(join(dir, 'assets', 'app.js'), 'console.log(1)'.repeat(20))
 
   const estimate = await estimatePut({ path: dir, backend })
-  assert.equal(estimate.kind, 'artifact')
+  assert.equal(estimate.kind, 'folder')
   assert.equal(estimate.files, 2)
   assert.ok(estimate.rootCid)
   assert.ok(estimate.size > 0)

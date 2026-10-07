@@ -24,7 +24,7 @@ export type Phase =
 export type OperationInput = {
   sourcePath?: string
   name?: string
-  kind?: 'file' | 'artifact'
+  kind?: 'file' | 'folder'
   providerId?: string
 }
 
