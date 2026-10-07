@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { CACHE_CONTROL } from '../src/routes/network.ts'
 import { fakeLimiter, rows, testApp } from './helpers.ts'
 
 describe('rest routes', () => {
@@ -16,7 +15,7 @@ describe('rest routes', () => {
     ])
     const res = await request('/calibration/providers?limit=1&approved=true')
     expect(res.status).toBe(200)
-    expect(res.headers.get('cache-control')).toBe(CACHE_CONTROL)
+    expect(res.headers.get('cache-control')).toBeNull()
     expect(res.headers.get('x-request-id')).toBeTruthy()
     expect(res.headers.get('server-timing')).toContain('db;dur=')
     const body = (await res.json()) as {
