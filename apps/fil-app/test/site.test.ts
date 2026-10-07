@@ -102,12 +102,16 @@ describe('llmsTxt', () => {
     const text = llmsTxt({
       origin: 'https://example.com',
       summary: 'Summary.',
+      details: ['A paragraph.', '- A rule.\n- Another rule.'],
       pages: [{ path: '/docs/cli', title: 'CLI', description: 'Commands.' }],
       links: [
         { title: 'Spec', url: 'https://example.com/s', description: 'S.' },
       ],
     })
-    assert.match(text, /^# fil\n\n> Summary\.\n/)
+    assert.match(
+      text,
+      /^# fil\n\n> Summary\.\n\nA paragraph\.\n\n- A rule\.\n- Another rule\.\n\n## Docs\n/
+    )
     assert.match(
       text,
       /- \[CLI\]\(https:\/\/example\.com\/docs\/cli\.md\): Commands\./

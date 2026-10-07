@@ -5,13 +5,12 @@ import {
   agentSkillsIndex,
   apiCatalog,
   llmsTxt,
-  markdownPath,
   mcpServerCard,
   sha256Digest,
   skillFrontmatter,
 } from './discovery'
 import { MARKDOWN_TYPE } from './negotiate'
-import { DOC_PAGES, HOME_PAGE, type SitePage } from './pages'
+import { SITE_PAGES, type SitePage } from './pages'
 
 /** Markdown sources in `src/content`, keyed by file path. */
 const CONTENT = import.meta.glob<string>('../../content/*.md', {
@@ -64,8 +63,20 @@ export function markdownResponse(page: SitePage, method: string) {
   })
 }
 
+/** One-sentence summary of the project, quoted at the top of `llms.txt`. */
+const LLMS_SUMMARY =
+  'fil stores files and folders on Filecoin Onchain Cloud and returns links to share them, through a CLI, a read-only MCP server, or a web app with WebMCP tools for browser agents.'
+
 /**
- * Respond with `llms.txt`, or `llms-full.txt` with every docs page inline.
+ * Context for `llms.txt`. How to run the CLI belongs in the agent skill, so
+ * this stays short.
+ */
+const LLMS_DETAILS = [
+  'This is a prototype that runs on the calibration test network by default. Agents never hold the wallet key: the wallet owner approves their access in the web app. The agent skill explains how to use the CLI.',
+]
+
+/**
+ * Respond with `llms.txt`, or `llms-full.txt` with every page inline.
  *
  * @param request - Incoming request, for the site origin.
  * @param full - Whether to include the pages' Markdown.
@@ -75,8 +86,9 @@ export function llmsResponse(request: Request, full: boolean) {
   const origin = new URL(request.url).origin
   const index = llmsTxt({
     origin,
-    summary: HOME_PAGE.description,
-    pages: DOC_PAGES,
+    summary: LLMS_SUMMARY,
+    details: LLMS_DETAILS,
+    pages: SITE_PAGES,
     links: [
       {
         title: 'OpenAPI document',
@@ -93,15 +105,10 @@ export function llmsResponse(request: Request, full: boolean) {
         url: `${origin}${SKILL_PATH}`,
         description: 'SKILL.md that teaches an agent to use the fil CLI',
       },
-      {
-        title: 'Home',
-        url: `${origin}${markdownPath(HOME_PAGE.path)}`,
-        description: HOME_PAGE.description,
-      },
     ],
   })
   const body = full
-    ? [index, ...DOC_PAGES.map((page) => pageMarkdown(page))].join('\n\n')
+    ? [index, ...SITE_PAGES.map((page) => pageMarkdown(page))].join('\n\n')
     : index
   return new Response(body, {
     headers: agentHeaders('text/plain; charset=utf-8'),

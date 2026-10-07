@@ -20,7 +20,7 @@ export interface SitePage {
 export const HOME_PAGE: SitePage = {
   path: '/',
   slug: 'index',
-  title: 'fil',
+  title: 'Overview',
   description:
     'Store files and folders on Filecoin Onchain Cloud from a terminal or an agent, and get links back.',
 }
