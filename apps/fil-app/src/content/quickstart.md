@@ -5,7 +5,7 @@ This guide builds `fil`, logs in, stores a file, and downloads it again. It uses
 You need:
 
 - Node.js 24 or newer and pnpm 11.
-- A browser wallet, such as MetaMask, with calibration FIL for gas and test USDFC. The [Filecoin Onchain Cloud docs](https://docs.filecoin.cloud/) list the faucets.
+- A browser wallet, such as MetaMask, with calibration FIL for gas and test USDFC. The [Filecoin docs](https://docs.filecoin.cloud/) list the faucets.
 
 ## Build the CLI
 

@@ -23,7 +23,7 @@ export function HeroSearch(props: { network: Network; className?: string }) {
   return (
     <CommandPrimitive
       className={cn('relative', props.className)}
-      label="Search Filecoin Onchain Cloud"
+      label="Search Filecoin"
       loop
     >
       <div

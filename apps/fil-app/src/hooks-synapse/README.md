@@ -1,6 +1,6 @@
 # hooks-synapse
 
-React hooks for Filecoin Onchain Cloud that [`@filoz/synapse-react`](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-react) (0.5.0) lacks. They wrap [`@filoz/synapse-core`](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) only and follow synapse-react's conventions, so they can move upstream with few changes:
+React hooks for Filecoin that [`@filoz/synapse-react`](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-react) (0.5.0) lacks. They wrap [`@filoz/synapse-core`](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) only and follow synapse-react's conventions, so they can move upstream with few changes:
 
 - Read hooks take `{ query? }`. Write hooks take `{ mutation?, onHash? }`, with `mutation` spread before `mutationFn`.
 - Query keys start with `synapse-` (see `keys.ts`), and writes invalidate the synapse-react caches they affect.

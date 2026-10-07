@@ -1,6 +1,6 @@
 # fil
 
-Tools for [Filecoin Onchain Cloud](https://docs.filecoin.cloud/). This repository holds the `fil` command-line interface, a read-only API with an MCP server, a web explorer and wallet dashboard, and `clipact`, the CLI framework that `fil` uses. It is a pnpm and Turborepo monorepo, and every package is private.
+Tools for [Filecoin](https://docs.filecoin.cloud/). This repository holds the `fil` command-line interface, a read-only API with an MCP server, a web explorer and wallet dashboard, and `clipact`, the CLI framework that `fil` uses. It is a pnpm and Turborepo monorepo, and every package is private.
 
 ## Packages and apps
 
