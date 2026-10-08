@@ -5,12 +5,13 @@ import {
   API_CATALOG_TYPE,
   apiCatalog,
   llmsTxt,
+  markdownPath,
   mcpServerCard,
   robotsTxt,
   sitemapXml,
 } from './discovery'
 import { MARKDOWN_TYPE } from './negotiate'
-import { SITE_PAGES, type SitePage } from './pages'
+import { AGENTS_PAGE, SITE_PAGES, type SitePage } from './pages'
 
 /** Markdown sources in `src/content`, keyed by file path. */
 const CONTENT = import.meta.glob<string>('../../content/*.md', {
@@ -65,22 +66,26 @@ const LLMS_SUMMARY =
   'fil stores files and folders on Filecoin and returns links to share them, through a CLI, a read-only MCP server, or a web app with WebMCP tools for browser agents.'
 
 /**
- * Context for `llms.txt`: when an agent should reach for fil, and what it
- * needs to know first. How to run the CLI belongs in the agent skill, so
- * this stays short. `llms.txt` allows no headings here, so the "when to use"
- * section is a bold lead-in.
+ * Context for `llms.txt`: one way in for each kind of agent, and a link to
+ * the page that explains them. Each way in owns its own instructions, such
+ * as the agent skill for the CLI, so this stays a router. `llms.txt` allows
+ * no headings here, so the router is a bold lead-in.
+ *
+ * @param origin - Site origin.
+ * @see ../../content/agents.md
  */
-const LLMS_DETAILS = [
-  [
-    '**When to use fil.** Reach for fil when an agent needs to:',
-    '',
-    '- Store a file or a folder on Filecoin and get a link to share it: run `fil put` in a shell.',
-    '- Download content it stored and verify it: run `fil get`.',
-    '- Read Filecoin data, such as storage providers, data sets, pieces, Filecoin Pay rails, and session keys, on mainnet or calibration: call the MCP server or the REST API.',
-    "- Help a person fund storage or approve the agent's key in a browser: use fil-app's WebMCP tools.",
-  ].join('\n'),
-  'This is a prototype that runs on the calibration test network by default. Agents never hold the wallet key: the wallet owner approves their access in the web app. The agent skill explains how to use the CLI.',
-]
+function llmsDetails(origin: string) {
+  return [
+    [
+      '**Pick a way in.** Each kind of agent has one:',
+      '',
+      `- Agents with a shell, local or in the cloud, install the agent skill: \`npx skills add ${origin}\`. It covers storing, retrieving, and verifying with the CLI.`,
+      `- Browser agents open [fil-app](${origin}/). Its WebMCP tools read the account and prepare the wallet owner's approval.`,
+      `- Agents that only call remote tools add the read-only MCP server at \`${env.filApiUrl}/mcp\`, over Streamable HTTP. It cannot store content.`,
+    ].join('\n'),
+    `A person owns the wallet and approves every agent, which never holds the wallet key. [Agent setup](${origin}${markdownPath(AGENTS_PAGE.path)}) explains each way in. This is a prototype that runs on the calibration test network by default.`,
+  ]
+}
 
 /**
  * Respond with `llms.txt`, or `llms-full.txt` with every page inline.
@@ -94,7 +99,7 @@ export function llmsResponse(request: Request, full: boolean) {
   const index = llmsTxt({
     origin,
     summary: LLMS_SUMMARY,
-    details: LLMS_DETAILS,
+    details: llmsDetails(origin),
     pages: SITE_PAGES,
     links: [
       {

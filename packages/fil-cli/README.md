@@ -4,7 +4,7 @@
 
 `fil` calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly. It uses [clipact](../clipact/README.md) for the agent output contract and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md). The [architecture](../../docs/fil/architecture.md) describes the modules and flows.
 
-To build `fil` and put it on your path, run these commands from the repository root:
+Once it is published, install it with `npm install -g @hugomrdias/fil`, or run it with `npx -y @hugomrdias/fil`. To build `fil` from source and put it on your path, run these commands from the repository root:
 
 ```sh
 pnpm --filter fil-cli build

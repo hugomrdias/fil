@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
 import {
   apiCatalog,
@@ -13,7 +14,12 @@ import {
 import { renderMarkdown, slugify } from '../src/lib/site/markdown.ts'
 import { withMarkdownErrors } from '../src/lib/site/markdown-errors.ts'
 import { prefersMarkdown } from '../src/lib/site/negotiate.ts'
-import { DOC_PAGES, findSitePage, HOME_PAGE } from '../src/lib/site/pages.ts'
+import {
+  DOC_PAGES,
+  findSitePage,
+  HOME_PAGE,
+  SITE_PAGES,
+} from '../src/lib/site/pages.ts'
 
 describe('prefersMarkdown', () => {
   it('serves HTML to browsers', () => {
@@ -121,6 +127,65 @@ describe('llmsTxt', () => {
       text,
       /## Optional\n\n- \[Spec\]\(https:\/\/example\.com\/s\): S\./
     )
+  })
+})
+
+/** The live site, as the agent skill links to it. */
+const SITE_ORIGIN = 'https://fil-app.hugomrdias.dev'
+
+/**
+ * Heading ids of a site page, as the rendered page has them.
+ *
+ * @param slug - Content file name without `.md`.
+ */
+async function headingIds(slug: string) {
+  const markdown = await readFile(
+    new URL(`../src/content/${slug}.md`, import.meta.url),
+    'utf8'
+  )
+  const html = renderMarkdown(markdown)
+  return new Set([...html.matchAll(/ id="([^"]+)"/g)].map((match) => match[1]))
+}
+
+describe('content links', () => {
+  it('point to existing docs pages and headings', async () => {
+    const sources = [
+      ...SITE_PAGES.map((page) => ({
+        name: `${page.slug}.md`,
+        url: new URL(`../src/content/${page.slug}.md`, import.meta.url),
+        base: page.path,
+      })),
+      {
+        name: 'skills/fil/SKILL.md',
+        url: new URL('../../../skills/fil/SKILL.md', import.meta.url),
+        base: '/',
+      },
+    ]
+    const broken: string[] = []
+    for (const source of sources) {
+      const markdown = await readFile(source.url, 'utf8')
+      const links = [
+        ...markdown.matchAll(/\]\(((?:\/|#)[^)\s]*)\)/g),
+        ...markdown.matchAll(
+          new RegExp(`${SITE_ORIGIN.replaceAll('.', '\\.')}(/[^\\s)]*)`, 'g')
+        ),
+      ].map((match) => match[1] ?? '')
+      for (const link of links) {
+        const [path = '', fragment] = link.split('#')
+        const page = findSitePage(path === '' ? source.base : path)?.page
+        if (page === undefined) {
+          // Only docs pages are checked; app and discovery paths are routes.
+          if (path.startsWith('/docs') || path.startsWith('/agents')) {
+            broken.push(`${source.name}: ${link}`)
+          }
+          continue
+        }
+        if (fragment && !(await headingIds(page.slug)).has(fragment)) {
+          broken.push(`${source.name}: ${link}`)
+        }
+      }
+    }
+    assert.deepEqual(broken, [])
   })
 })
 

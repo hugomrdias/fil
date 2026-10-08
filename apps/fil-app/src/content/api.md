@@ -6,31 +6,7 @@ The interactive reference is at [`/docs`](https://fil-api.hugomrdias.dev/docs), 
 
 ## Routes
 
-| Route | Description |
-| --- | --- |
-| `GET /openapi.json` | OpenAPI 3.1 document |
-| `GET /docs` | API reference |
-| `POST /mcp` | MCP server (Streamable HTTP, stateless) |
-| `GET /health` | Latest indexed block per network and indexer |
-| `GET /get/{cid}` | Redirect to where a PieceCID or IPFS root CID can be retrieved |
-
-Every data route starts with the network: `/calibration/...` or `/mainnet/...`.
-
-| Route | Filters |
-| --- | --- |
-| `/{network}/status` | none |
-| `/{network}/providers` | `approved`, `active`, `endorsed` |
-| `/{network}/providers/{providerId}` | none |
-| `/{network}/data-sets` | `owner`, `provider_id`, `deleted`, `with_cdn` |
-| `/{network}/data-sets/{dataSetId}` | none |
-| `/{network}/data-sets/{dataSetId}/pieces` | `removed` |
-| `/{network}/data-sets/{dataSetId}/pieces/{pieceId}` | none |
-| `/{network}/pieces` | `owner`, `cid` (a PieceCID v2), `provider_id`, `removed`. At least one of the first three is required |
-| `/{network}/rails` | `payer`, `payee`, `operator`, `token`, `state` (`active`, `terminated`, or `finalized`) |
-| `/{network}/rails/{railId}` | none |
-| `/{network}/rails/{railId}/settlements` | none |
-| `/{network}/session-keys` | `identity`, `signer`, `active` |
-| `/{network}/session-keys/history` | `identity`, `signer` |
+`GET /openapi.json` lists every route and its filters, and `POST /mcp` is the MCP server. `GET /health` reports the latest indexed block per network, and [`GET /get/{cid}`](#retrieval) redirects to where content can be retrieved. Every data route starts with the network, `/calibration/...` or `/mainnet/...`, and reads one of: indexer status, storage providers, data sets and their pieces, pieces by owner or PieceCID, Filecoin Pay rails and their settlements, and session keys and their history.
 
 Conventions:
 
@@ -66,7 +42,7 @@ The MCP server at `https://fil-api.hugomrdias.dev/mcp` offers one read-only tool
 | `list_rails`, `get_rail`, `list_rail_settlements` | Filecoin Pay rails and settlements |
 | `list_session_keys`, `list_session_key_events` | Session keys and their history |
 
-[Agent setup](/agents#add-the-mcp-server) shows how to add it to an agent.
+[Agent setup](/agents#mcp-server) shows how to add it to an agent.
 
 ## Limits
 

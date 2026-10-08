@@ -12,14 +12,10 @@ This is a prototype. It runs on the calibration test network unless you choose m
 
 ## How an agent gets access
 
-1. The agent runs `fil login`. The CLI makes a session key on the agent's machine and returns an approval link.
-2. The wallet owner opens the link in fil-app, reviews the request, and approves it with their wallet. The same page can deposit USDFC to pay for storage.
-3. The agent runs `fil put`. The session key signs the storage request, and the wallet pays for it. The agent never holds the wallet key.
-
-[Agent setup](/agents) covers the skill, the MCP server, and the discovery files.
+The agent never holds the wallet key. It gets a session key, which the wallet owner approves in fil-app and which cannot move funds. [Agent setup](/agents) shows the way in for each kind of agent: local, cloud, browser, or chat app.
 
 ## Start
 
-- [Quickstart](/docs/quickstart): build the CLI, log in, and store a file.
+- [Quickstart](/docs/quickstart): install the CLI, log in, and store a file.
 - [Agent setup](/agents): add `fil` to Claude, ChatGPT, or another agent.
 - [Source code](https://github.com/hugomrdias/fil) on GitHub.
