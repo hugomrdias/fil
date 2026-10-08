@@ -1,48 +1,52 @@
 # Agent setup
 
-An agent can use `fil` in three ways. It can run the CLI in a shell to store and retrieve content, call the MCP server to read Filecoin data, and use fil-app's WebMCP tools in a browser. In every case, a person owns the wallet and approves what the agent may do.
+Pick the way in that matches what your agent can do. In every case, a person owns the wallet and approves what the agent may do, and the agent never holds the wallet key.
 
-## When to use fil
+| Agent | What it can do | Way in |
+| --- | --- | --- |
+| Local agent, such as Claude Code, Codex, or Cursor | Run a shell, keep files, and open pages for you | [CLI and agent skill](#local-agents) |
+| Cloud agent, such as a coding agent in a hosted sandbox | Run a shell, but its files are gone when the session ends | [CLI with a key from secrets](#cloud-agents) |
+| Browser agent | Read and use web pages in the browser that holds your wallet | [fil-app's WebMCP tools](#browser-agents) |
+| Chat app with connectors, such as Claude or ChatGPT | Call remote tools | [MCP server](#mcp-server), read-only |
 
-Reach for fil when an agent needs to:
+[Retrieve and verify](/docs/retrieve) compares what each way can store, retrieve, and check.
 
-- Store a file or a folder on Filecoin and get a link to share it: run `fil put` in a shell.
-- Download content it stored and verify it: run `fil get`.
-- Read Filecoin data, such as storage providers, data sets, pieces, Filecoin Pay rails, and session keys, on mainnet or calibration: call the MCP server or the REST API.
-- Help a person fund storage or approve the agent's key in a browser: use fil-app's WebMCP tools.
+## Local agents
 
-## Install the CLI and the skill
-
-Build the CLI by following the [Quickstart](/docs/quickstart), then install the agent skill in your project:
-
-```sh
-fil skills install
-```
-
-The command copies the `fil` skill into `.agents/skills` and `.claude/skills`. The skill teaches the agent the workflow, to branch on `error.code`, and never to repeat a paid command.
-
-To install the skill without the CLI, use the [`skills` CLI](https://github.com/vercel-labs/skills) with the repository or this site:
+Install the agent skill. It tells the agent when to use `fil`, the workflow, and the rules, and points it to the CLI's own help, which always matches the installed version:
 
 ```sh
-npx skills add hugomrdias/fil
 npx skills add https://fil-app.hugomrdias.dev
 ```
 
-Agents that support [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) can also find the skill at [`/.well-known/agent-skills/index.json`](/.well-known/agent-skills/index.json).
+`npx skills add hugomrdias/fil` installs the same skill from GitHub. Agents that support [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) find it at [`/.well-known/agent-skills/index.json`](/.well-known/agent-skills/index.json).
 
-## Approve the agent's key
+The agent runs the CLI with `npx -y @hugomrdias/fil`, which needs Node.js 24 or newer. To install it instead, run `npm install -g @hugomrdias/fil`. Then `fil skills install` installs the copy of the skill that matches the installed CLI.
 
-The agent never holds the wallet key. It gets a session key instead, and the wallet owner approves it:
+The first `fil login` asks you to [approve the agent's key](#approve-the-agents-key).
 
-1. The agent runs `fil login`. It gets a `login_pending` error with an approval link, and relays the link to you.
-2. You open the link, connect your wallet, and review the request on the fil-app setup page. Approve the session key, the Warm Storage approval, and a USDFC deposit if the page asks for them.
-3. The agent runs `fil login` again to confirm, then `fil put`.
+## Cloud agents
 
-When the account runs low, `fil status` and `fil put` return `insufficient_funds` with a prefilled funding link for you. To stop the agent, revoke its key on the fil-app [session keys page](https://fil-app.hugomrdias.dev/dashboard/session-keys).
+A cloud agent has a shell, so it uses the same skill and CLI as a local agent. It has no browser to open for you, and its disk is gone when the session ends. `fil login` saves the session key on that disk, so each session would ask you to approve a new key.
 
-## Add the MCP server
+Give the agent a key that outlives the session instead:
 
-fil-api's MCP server gives agents read-only tools for storage providers, data sets, pieces, Filecoin Pay rails, and session keys, on mainnet and calibration. It uses Streamable HTTP and needs no authentication.
+1. On the fil-app [session keys page](https://fil-app.hugomrdias.dev/dashboard/session-keys), generate a session key, authorize it, and export it.
+2. In the agent's environment settings, add the key as the secret `FIL_SESSION_KEY`, and your wallet address as `FIL_ROOT_ADDRESS`.
+
+`fil` then skips `fil login`, and `fil status` confirms the key works. The key cannot move funds, and it expires. Revoke it on the same page to stop the agent. Never paste the key into a chat.
+
+`fil ls` and `fil operations` read a local database, which a new session starts without. [Find stored content](/docs/retrieve#find-stored-content) shows how to look it up by wallet.
+
+## Browser agents
+
+fil-app registers [WebMCP](https://webmachinelearning.github.io/webmcp/) tools. A browser agent can prepare a setup request without building a URL, and read the account, its data sets and pieces, and its session keys. The tools never sign anything, and they describe themselves to the agent. [Web app](/docs/app#webmcp-tools) lists them. WebMCP is an early preview that works in Chrome 149 and later. Without it, the agent opens a [setup link](/docs/app#setup-links).
+
+A browser agent cannot run the CLI. You can store files from the dashboard's upload page while it watches, and a folder's link verifies in the browser.
+
+## MCP server
+
+fil-api's MCP server gives any agent read-only tools for storage providers, data sets, pieces, Filecoin Pay rails, and session keys, on mainnet and calibration. It uses Streamable HTTP and needs no authentication. It cannot store or delete content.
 
 ```text
 https://fil-api.hugomrdias.dev/mcp
@@ -60,21 +64,17 @@ In Codex:
 codex mcp add fil-api --url https://fil-api.hugomrdias.dev/mcp
 ```
 
-In the Claude and ChatGPT apps, add the URL as a custom connector. The server cannot store or delete content. Use the CLI for that.
+In the Claude and ChatGPT apps, add the URL as a custom connector. [REST API and MCP server](/docs/api#mcp-server) lists the tools.
 
-[REST API and MCP server](/docs/api#mcp-server) lists the tools.
+## Approve the agent's key
 
-## Use fil-app from a browser agent
+The agent never holds the wallet key. It gets a session key instead, and the wallet owner approves it:
 
-fil-app registers [WebMCP](https://webmachinelearning.github.io/webmcp/) tools. A browser agent can prepare a setup request without building a URL, and read the account, its data sets and pieces, and its session keys. The tools never sign anything. WebMCP is an early preview that works in Chrome 149 and later. [Web app](/docs/app#webmcp-tools) lists the tools.
+1. The agent runs `fil login`. It gets a `login_pending` error with an approval link, and relays the link to you.
+2. You open the link, connect your wallet, and review the request on the fil-app setup page. Approve the session key, the Warm Storage approval, and a USDFC deposit if the page asks for them.
+3. The agent runs `fil login` again to confirm, then `fil put`.
 
-## Rules for agents
-
-- Never ask for or pass a private key. Relay the approval link to the user and stop.
-- Never repeat a failed or interrupted `put` or `delete`, because that starts a new paid operation. Run the `fil operations resume <id>` step from `next` instead.
-- `fil delete` needs `--yes`. Pass it only after the user agrees.
-- Retry only when `error.retryable` is `true`.
-- Check flags with `fil schema <command>` instead of guessing.
+When the account runs low, `fil status` and `fil put` return `insufficient_funds` with a prefilled funding link for you. To stop the agent, revoke its key on the fil-app [session keys page](https://fil-app.hugomrdias.dev/dashboard/session-keys).
 
 ## Discovery files
 

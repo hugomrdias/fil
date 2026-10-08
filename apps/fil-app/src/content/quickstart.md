@@ -1,22 +1,16 @@
 # Quickstart
 
-This guide builds `fil`, logs in, stores a file, and downloads it again. It uses the calibration test network, so storage is paid with test USDFC.
+This guide installs `fil`, logs in, stores a file, and downloads it again. It uses the calibration test network, so storage is paid with test USDFC.
 
 You need:
 
-- Node.js 24 or newer and pnpm 11.
+- Node.js 24 or newer.
 - A browser wallet, such as MetaMask, with calibration FIL for gas and test USDFC. The [Filecoin docs](https://docs.filecoin.cloud/) list the faucets.
 
-## Build the CLI
-
-`fil` is not published yet, so build it from source:
+## Install the CLI
 
 ```sh
-git clone https://github.com/hugomrdias/fil.git
-cd fil
-pnpm install --frozen-lockfile
-pnpm turbo run build --filter=fil-cli
-alias fil="node $PWD/packages/fil-cli/bin/fil.js"
+npm install -g @hugomrdias/fil
 fil --help
 ```
 
@@ -50,12 +44,7 @@ Then store it:
 fil put ./report.pdf
 ```
 
-The result includes two links:
-
-- `urls.browser` is the link to share. A browser renders a file from it, and a folder through [inbrowser.link](https://inbrowser.link).
-- `urls.piece` returns the exact stored bytes.
-
-A new piece link returns 404 until the indexer behind fil-api has the piece. A folder's browser link works at once. `fil inspect <ref> --check` reports when it answers.
+The result's `urls.browser` is the link to share. A new link to a file can return 404 for a while. [Retrieve and verify](/docs/retrieve) explains why, and what each link checks.
 
 ## Get it back
 
@@ -68,5 +57,5 @@ fil get res_… --output ./copy.pdf
 
 ## Next
 
-- [CLI](/docs/cli) covers every command, the JSON output, and the error codes.
+- [CLI](/docs/cli) explains how `fil` works and where its help and schemas are.
 - [Agent setup](/agents) shows how to give an agent the same access.
