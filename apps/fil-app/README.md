@@ -85,7 +85,7 @@ Server routes serve the files that agents use to discover the site:
 | `/sitemap.xml` | The site pages and each network's explorer |
 | `/robots.txt` | Allows every crawler and links the sitemap. Cloudflare's managed robots.txt adds its content signals above it |
 
-[`vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md) writes the agent skills files into the client build at build time, so Workers static assets serves them and `public/_headers` sets their headers. The dev server serves them from memory. The API URLs in these files come from `VITE_FIL_API_URL`.
+[`@hugomrdias/vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md) writes the agent skills files into the client build at build time, so Workers static assets serves them and `public/_headers` sets their headers. The dev server serves them from memory. The API URLs in these files come from `VITE_FIL_API_URL`.
 
 ## Setup links
 

@@ -1,7 +1,7 @@
 /**
  * Builders for the files agents use to discover the site: `llms.txt`, the
- * API catalog, and the MCP server card. The `vite-plugin-agent-skills` plugin
- * writes the agent skills index.
+ * API catalog, and the MCP server card. The
+ * `@hugomrdias/vite-plugin-agent-skills` plugin writes the agent skills index.
  */
 
 /** A page with a Markdown version, as listed in `llms.txt`. */

@@ -1,10 +1,10 @@
 import { fileURLToPath, URL } from 'node:url'
 import { cloudflare } from '@cloudflare/vite-plugin'
+import { agentSkills } from '@hugomrdias/vite-plugin-agent-skills'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import { agentSkills } from 'vite-plugin-agent-skills'
 
 /**
  * TanStack Start on Cloudflare Workers. The Start plugin must come before
