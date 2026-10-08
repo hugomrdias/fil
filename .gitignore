@@ -3,7 +3,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 .turbo/
-# Copied from skills/ by the fil-cli build
+# Copied from plugins/fil/skills/ by the fil-cli build
 packages/fil-cli/skills/
 
 # Local configuration and Worker state

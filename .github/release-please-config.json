@@ -28,6 +28,18 @@
       "component": "vite-plugin-agent-skills"
     },
     "apps/fil-api": { "component": "fil-api" },
-    "apps/fil-app": { "component": "fil-app" }
+    "apps/fil-app": { "component": "fil-app" },
+    "plugins/fil": {
+      "component": "fil-plugin",
+      "release-type": "simple",
+      "extra-files": [
+        { "type": "json", "path": "plugin.json", "jsonpath": "$.version" },
+        {
+          "type": "json",
+          "path": ".claude-plugin/plugin.json",
+          "jsonpath": "$.version"
+        }
+      ]
+    }
   }
 }

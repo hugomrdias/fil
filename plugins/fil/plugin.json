@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "fil",
+  "version": "0.0.0",
+  "description": "Store files and folders on Filecoin with the fil CLI, share and verify them, and read Filecoin storage data through a read-only MCP server.",
+  "author": {
+    "name": "Hugo Dias",
+    "email": "hugomrdias@gmail.com"
+  },
+  "homepage": "https://fil-app.hugomrdias.dev/agents",
+  "repository": "https://github.com/hugomrdias/fil",
+  "license": "MIT",
+  "keywords": ["filecoin", "storage", "ipfs", "cli", "mcp"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "fil",
+        "shortDescription": "Store and share files on Filecoin",
+        "longDescription": "Store a file or folder on Filecoin with the fil CLI and get links to share it. Retrieve and verify stored content, and read providers, data sets, pieces, payment rails, and session keys through the read-only fil-api MCP server. The wallet owner approves the agent's session key, and the agent never holds the wallet key.",
+        "developerName": "Hugo Dias",
+        "category": "Developer Tools",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://fil-app.hugomrdias.dev",
+        "brandColor": "#0090FF",
+        "composerIcon": "./assets/logo.png",
+        "logo": "./assets/logo.png",
+        "defaultPrompt": [
+          "Store this folder on Filecoin and give me a link to share it.",
+          "Check that my fil account is ready to store files."
+        ]
+      }
+    }
+  }
+}

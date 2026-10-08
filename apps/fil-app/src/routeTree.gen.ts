@@ -21,6 +21,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as NetworkIndexRouteImport } from './routes/$network/index'
 import { Route as NetworkSearchRouteImport } from './routes/$network/search'
 import { Route as DotwellKnownApiCatalogRouteImport } from './routes/[.]well-known/api-catalog'
+import { Route as DotwellKnownIntegrationsDotjsonRouteImport } from './routes/[.]well-known/integrations[.]json'
 import { Route as DotwellKnownMcpServerCardRouteImport } from './routes/[.]well-known/mcp-server-card'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardAccountRouteImport } from './routes/dashboard/account'
@@ -104,6 +105,12 @@ const DotwellKnownApiCatalogRoute = DotwellKnownApiCatalogRouteImport.update({
   path: '/.well-known/api-catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownIntegrationsDotjsonRoute =
+  DotwellKnownIntegrationsDotjsonRouteImport.update({
+    id: '/.well-known/integrations.json',
+    path: '/.well-known/integrations.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DotwellKnownMcpServerCardRoute =
   DotwellKnownMcpServerCardRouteImport.update({
     id: '/.well-known/mcp-server-card',
@@ -229,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$network/search': typeof NetworkSearchRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
+  '/.well-known/integrations.json': typeof DotwellKnownIntegrationsDotjsonRoute
   '/.well-known/mcp-server-card': typeof DotwellKnownMcpServerCardRoute
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/approvals': typeof DashboardApprovalsRoute
@@ -262,6 +270,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$network/search': typeof NetworkSearchRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
+  '/.well-known/integrations.json': typeof DotwellKnownIntegrationsDotjsonRoute
   '/.well-known/mcp-server-card': typeof DotwellKnownMcpServerCardRoute
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/approvals': typeof DashboardApprovalsRoute
@@ -299,6 +308,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$network/search': typeof NetworkSearchRoute
   '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
+  '/.well-known/integrations.json': typeof DotwellKnownIntegrationsDotjsonRoute
   '/.well-known/mcp-server-card': typeof DotwellKnownMcpServerCardRoute
   '/dashboard/account': typeof DashboardAccountRoute
   '/dashboard/approvals': typeof DashboardApprovalsRoute
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/$network/search'
     | '/.well-known/api-catalog'
+    | '/.well-known/integrations.json'
     | '/.well-known/mcp-server-card'
     | '/dashboard/account'
     | '/dashboard/approvals'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/$network/search'
     | '/.well-known/api-catalog'
+    | '/.well-known/integrations.json'
     | '/.well-known/mcp-server-card'
     | '/dashboard/account'
     | '/dashboard/approvals'
@@ -406,6 +418,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/$network/search'
     | '/.well-known/api-catalog'
+    | '/.well-known/integrations.json'
     | '/.well-known/mcp-server-card'
     | '/dashboard/account'
     | '/dashboard/approvals'
@@ -442,6 +455,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
+  DotwellKnownIntegrationsDotjsonRoute: typeof DotwellKnownIntegrationsDotjsonRoute
   DotwellKnownMcpServerCardRoute: typeof DotwellKnownMcpServerCardRoute
   DotwellKnownMcpServerCardDotjsonRoute: typeof DotwellKnownMcpServerCardDotjsonRoute
 }
@@ -530,6 +544,13 @@ declare module '@tanstack/react-router' {
       path: '/.well-known/api-catalog'
       fullPath: '/.well-known/api-catalog'
       preLoaderRoute: typeof DotwellKnownApiCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/integrations.json': {
+      id: '/.well-known/integrations.json'
+      path: '/.well-known/integrations.json'
+      fullPath: '/.well-known/integrations.json'
+      preLoaderRoute: typeof DotwellKnownIntegrationsDotjsonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/mcp-server-card': {
@@ -774,6 +795,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
+  DotwellKnownIntegrationsDotjsonRoute: DotwellKnownIntegrationsDotjsonRoute,
   DotwellKnownMcpServerCardRoute: DotwellKnownMcpServerCardRoute,
   DotwellKnownMcpServerCardDotjsonRoute: DotwellKnownMcpServerCardDotjsonRoute,
 }

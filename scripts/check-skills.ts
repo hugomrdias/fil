@@ -1,10 +1,11 @@
 /**
- * Checks the agent skills the repository publishes from the root `skills/`
- * directory. The fil-cli build copies it, fil-app's build publishes it with
+ * Checks the agent skills the repository publishes from the fil plugin's
+ * `plugins/fil/skills/` directory. The plugin installs them, the fil-cli
+ * build copies them, fil-app's build publishes them with
  * `@hugomrdias/vite-plugin-agent-skills`, and `npx skills add hugomrdias/fil`
- * reads it from GitHub.
+ * finds them on GitHub through `.claude-plugin/marketplace.json`.
  *
- * - Every skill must pass the plugin's validation, which fil-app's build
+ * - Every skill must pass the Vite plugin's validation, which fil-app's build
  *   would otherwise only run at deploy time.
  * - Every development skill directory in `.agents/skills` and
  *   `.claude/skills` must be in `skills-lock.json`. The `skills` CLI also
@@ -17,6 +18,9 @@
  */
 import { readdir, readFile } from 'node:fs/promises'
 import { publishSkills } from '@hugomrdias/vite-plugin-agent-skills'
+
+/** The only source of the published skills. */
+const SKILLS = 'plugins/fil/skills'
 
 /**
  * Lists the subdirectories of a directory, without symbolic links, or none
@@ -36,9 +40,9 @@ async function directories(path: string) {
 }
 
 const problems: string[] = []
-const published = await directories('skills')
+const published = await directories(SKILLS)
 try {
-  await publishSkills('skills')
+  await publishSkills(SKILLS)
 } catch (error) {
   problems.push((error as Error).message)
 }

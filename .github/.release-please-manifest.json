@@ -3,5 +3,6 @@
   "packages/fil-cli": "0.1.0",
   "packages/vite-plugin-agent-skills": "0.1.0",
   "apps/fil-api": "0.1.0",
-  "apps/fil-app": "0.1.0"
+  "apps/fil-app": "0.1.0",
+  "plugins/fil": "0.0.0"
 }

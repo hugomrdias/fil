@@ -72,7 +72,8 @@ export const API_CATALOG_TYPE =
 
 /**
  * Build the RFC 9727 API catalog: a linkset that points to fil-api, its
- * OpenAPI document, and its reference docs.
+ * OpenAPI document, its reference docs, and, as an `item`, its MCP server.
+ * integrations.sh reads MCP endpoints from `item` links.
  *
  * @param apiUrl - fil-api origin.
  * @see https://www.rfc-editor.org/rfc/rfc9727
@@ -87,6 +88,108 @@ export function apiCatalog(apiUrl: string) {
         ],
         'service-doc': [{ href: `${apiUrl}/docs`, type: 'text/html' }],
         status: [{ href: `${apiUrl}/health`, type: 'application/json' }],
+        item: [{ href: `${apiUrl}/mcp` }],
+      },
+    ],
+  }
+}
+
+/**
+ * Build `/.well-known/integrations.json`, the owner declaration that
+ * integrations.sh reads: fil-api's REST API and MCP server, which need no
+ * credentials, and the `fil` CLI, which needs a session key. Each entry is
+ * marked as declared by this file.
+ *
+ * @param apiUrl - fil-api origin.
+ * @param siteUrl - Site origin, which serves this file and the docs.
+ * @see https://integrations.sh/publishing/
+ * @see https://github.com/UsefulSoftwareCo/integrations/blob/main/src/lib/discovery-schema.ts
+ */
+export function integrationsJson(apiUrl: string, siteUrl: string) {
+  const basis = {
+    via: 'declared',
+    source: `${siteUrl}/.well-known/integrations.json`,
+  }
+  return {
+    version: 3,
+    summary:
+      'fil stores files and folders on Filecoin with an npm CLI, and serves Filecoin storage data through a public, read-only REST API and MCP server.',
+    credentials: {
+      fil_session_key: {
+        type: 'signature',
+        label: 'fil session key',
+        generateUrl: `${siteUrl}/dashboard/session-keys`,
+        setup: [
+          'Run `fil login`. It makes a session key on the machine and returns a fil-app approval link, which the wallet owner opens to approve the key with their wallet. The CLI finds the approval on chain.',
+          'For CI or a cloud agent, generate, authorize, and export a key on the fil-app session keys page instead, and set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS`.',
+          'The key signs storage requests. It cannot move funds, and it expires.',
+        ].join('\n\n'),
+        fields: {
+          sessionKey: {
+            secret: true,
+            description: 'The session key, as FIL_SESSION_KEY.',
+          },
+          rootAddress: {
+            secret: false,
+            description:
+              'The wallet address that approved the key, as FIL_ROOT_ADDRESS.',
+          },
+        },
+      },
+    },
+    surfaces: [
+      {
+        slug: 'fil-api',
+        name: 'fil-api REST API',
+        type: 'http',
+        url: `${apiUrl}/`,
+        spec: `${apiUrl}/openapi.json`,
+        docs: `${siteUrl}/docs/api`,
+        basis,
+        auth: { status: 'none', basis },
+      },
+      {
+        slug: 'fil-api-mcp',
+        name: 'fil-api MCP server',
+        type: 'mcp',
+        url: `${apiUrl}/mcp`,
+        transports: ['streamable-http'],
+        docs: `${siteUrl}/docs/api#mcp-server`,
+        basis,
+        auth: { status: 'none', basis },
+      },
+      {
+        slug: 'fil-cli',
+        name: 'fil CLI',
+        type: 'cli',
+        command: 'fil',
+        packages: [
+          {
+            registryType: 'npm',
+            identifier: '@hugomrdias/fil',
+            runtimeHint: 'npx',
+          },
+        ],
+        docs: `${siteUrl}/docs/cli`,
+        basis,
+        auth: {
+          status: 'required',
+          entries: [
+            {
+              use: [
+                {
+                  id: 'fil_session_key',
+                  mechanics: {
+                    source: 'cli',
+                    command: 'fil login',
+                    env: ['FIL_SESSION_KEY', 'FIL_ROOT_ADDRESS'],
+                  },
+                },
+              ],
+              basis,
+            },
+          ],
+        },
       },
     ],
   }
