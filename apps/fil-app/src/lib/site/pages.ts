@@ -63,7 +63,7 @@ export const DOC_PAGES: SitePage[] = [
     slug: 'api',
     title: 'REST API and MCP server',
     description:
-      'fil-api routes, retrieval redirects, MCP tools, rate limits, and conventions.',
+      'fil-api retrieval redirects, MCP tools, conventions, and rate limits. The OpenAPI document lists the routes.',
   },
   {
     path: '/docs/app',

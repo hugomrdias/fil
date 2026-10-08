@@ -80,8 +80,8 @@ function llmsDetails(origin: string) {
       '**Pick a way in.** Each kind of agent has one:',
       '',
       `- Agents with a shell, local or in the cloud, install the agent skill: \`npx skills add ${origin}\`. It covers storing, retrieving, and verifying with the CLI.`,
-      "- Browser agents open fil-app. Its WebMCP tools read the account and prepare the wallet owner's approval.",
-      '- Agents that only call remote tools add the read-only MCP server below. It cannot store content.',
+      `- Browser agents open [fil-app](${origin}/). Its WebMCP tools read the account and prepare the wallet owner's approval.`,
+      `- Agents that only call remote tools add the read-only MCP server at \`${env.filApiUrl}/mcp\`, over Streamable HTTP. It cannot store content.`,
     ].join('\n'),
     `A person owns the wallet and approves every agent, which never holds the wallet key. [Agent setup](${origin}${markdownPath(AGENTS_PAGE.path)}) explains each way in. This is a prototype that runs on the calibration test network by default.`,
   ]
