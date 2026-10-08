@@ -10,7 +10,13 @@
   "homepage": "https://fil-app.hugomrdias.dev/agents",
   "repository": "https://github.com/hugomrdias/fil",
   "license": "MIT",
-  "keywords": ["filecoin", "storage", "ipfs", "cli", "mcp"],
+  "keywords": [
+    "filecoin",
+    "storage",
+    "ipfs",
+    "cli",
+    "mcp"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
@@ -19,7 +25,10 @@
         "longDescription": "Store a file or folder on Filecoin with the fil CLI and get links to share it. Retrieve and verify stored content, and read providers, data sets, pieces, payment rails, and session keys through the read-only fil-api MCP server. The wallet owner approves the agent's session key, and the agent never holds the wallet key.",
         "developerName": "Hugo Dias",
         "category": "Developer Tools",
-        "capabilities": ["Read", "Write"],
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
         "websiteURL": "https://fil-app.hugomrdias.dev",
         "brandColor": "#0090FF",
         "composerIcon": "./assets/logo.png",
