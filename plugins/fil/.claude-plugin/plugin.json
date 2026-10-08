@@ -1,0 +1,21 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "fil",
+  "version": "0.0.0",
+  "description": "Store files and folders on Filecoin with the fil CLI, share and verify them, and read Filecoin storage data through a read-only MCP server.",
+  "author": {
+    "name": "Hugo Dias",
+    "email": "hugomrdias@gmail.com"
+  },
+  "homepage": "https://fil-app.hugomrdias.dev/agents",
+  "repository": "https://github.com/hugomrdias/fil",
+  "license": "MIT",
+  "keywords": ["filecoin", "storage", "ipfs", "cli", "mcp"],
+  "icon": "./assets/logo.png",
+  "mcpServers": {
+    "fil-api": {
+      "type": "http",
+      "url": "https://fil-api.hugomrdias.dev/mcp"
+    }
+  }
+}

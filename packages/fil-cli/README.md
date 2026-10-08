@@ -100,7 +100,7 @@ Ctrl+C, SIGTERM, or SIGHUP stops the work at the next step. `fil` returns an `in
 | `fil schema --list` | Every command, offline |
 | `fil schema <command>` | The command's input and output as JSON Schema, and its error codes |
 | `fil completion <shell>` | A completion script for `bash`, `zsh`, or `fish` |
-| `fil skills install` | Installs the bundled [agent skill](../../skills/fil/SKILL.md), which the build copies from the repository root |
+| `fil skills install` | Installs the bundled [agent skill](../../plugins/fil/skills/fil/SKILL.md), which the build copies from the [fil plugin](../../plugins/fil/README.md) |
 
 | Error code | Meaning |
 | --- | --- |

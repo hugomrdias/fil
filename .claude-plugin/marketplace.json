@@ -1,0 +1,17 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "fil",
+  "description": "The fil plugin, which stores files and folders on Filecoin.",
+  "owner": {
+    "name": "Hugo Dias",
+    "email": "hugomrdias@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "fil",
+      "source": "./plugins/fil",
+      "skills": ["./skills/fil"],
+      "category": "storage"
+    }
+  ]
+}

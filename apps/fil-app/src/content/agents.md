@@ -4,7 +4,7 @@ Pick the way in that matches what your agent can do. In every case, a person own
 
 | Agent | What it can do | Way in |
 | --- | --- | --- |
-| Local agent, such as Claude Code, Codex, or Cursor | Run a shell, keep files, and open pages for you | [CLI and agent skill](#local-agents) |
+| Local agent, such as Claude Code, Codex, or Cursor | Run a shell, keep files, and open pages for you | [Plugin, or CLI and agent skill](#local-agents) |
 | Cloud agent, such as a coding agent in a hosted sandbox | Run a shell, but its files are gone when the session ends | [CLI with a key from secrets](#cloud-agents) |
 | Browser agent | Read and use web pages in the browser that holds your wallet | [fil-app's WebMCP tools](#browser-agents) |
 | Chat app with connectors, such as Claude or ChatGPT | Call remote tools | [MCP server](#mcp-server), read-only |
@@ -13,7 +13,23 @@ Pick the way in that matches what your agent can do. In every case, a person own
 
 ## Local agents
 
-Install the agent skill. It tells the agent when to use `fil`, the workflow, and the rules, and points it to the CLI's own help, which always matches the installed version:
+In Claude Code and Codex, install the fil plugin. It adds the agent skill and the read-only [MCP server](#mcp-server) in one step. In Claude Code:
+
+```sh
+claude plugin marketplace add hugomrdias/fil
+claude plugin install fil@fil
+```
+
+In Codex:
+
+```sh
+codex plugin marketplace add hugomrdias/fil
+codex plugin add fil@fil
+```
+
+The plugin follows the [Agent Plugins](https://agent-plugins.org) format, so other agents that support it can load it from the repository's [`plugins/fil`](https://github.com/hugomrdias/fil/tree/main/plugins/fil) directory.
+
+In other agents, install the agent skill. It tells the agent when to use `fil`, the workflow, and the rules, and points it to the CLI's own help, which always matches the installed version:
 
 ```sh
 npx skills add https://fil-app.hugomrdias.dev
@@ -52,15 +68,18 @@ fil-api's MCP server gives any agent read-only tools for storage providers, data
 https://fil-api.hugomrdias.dev/mcp
 ```
 
-In Claude Code:
+The [fil plugin](#local-agents) adds it in Claude Code and Codex. To add the server alone, [add-mcp](https://github.com/neon-solutions/add-mcp) writes it into the configuration of Claude Code, Codex, Cursor, VS Code, and about 20 other agents:
+
+```sh
+npx -y add-mcp https://fil-api.hugomrdias.dev/mcp
+```
+
+It asks which agents to configure, and adds the server to the current project. Add `-g` to add it for your user instead.
+
+Claude Code and Codex also add it with their own commands:
 
 ```sh
 claude mcp add --transport http fil-api https://fil-api.hugomrdias.dev/mcp
-```
-
-In Codex:
-
-```sh
 codex mcp add fil-api --url https://fil-api.hugomrdias.dev/mcp
 ```
 
@@ -84,7 +103,8 @@ This site describes itself to agents:
 | --- | --- |
 | [`/llms.txt`](/llms.txt) | An index of these docs in Markdown, from [llmstxt.org](https://llmstxt.org) |
 | [`/llms-full.txt`](/llms-full.txt) | Every docs page in one Markdown file |
-| [`/.well-known/api-catalog`](/.well-known/api-catalog) | Links to fil-api's OpenAPI document and reference, as an [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727) API catalog |
+| [`/.well-known/api-catalog`](/.well-known/api-catalog) | Links to fil-api's OpenAPI document, reference, and MCP server, as an [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727) API catalog |
+| [`/.well-known/integrations.json`](/.well-known/integrations.json) | The REST API, the MCP server, and the CLI, with what each needs to authenticate, for [integrations.sh](https://integrations.sh) |
 | [`/.well-known/mcp/server-card.json`](/.well-known/mcp/server-card.json) | The MCP server card, also at `/.well-known/mcp-server-card` |
 | [`/.well-known/agent-skills/index.json`](/.well-known/agent-skills/index.json) | The agent skills index, with the `fil` skill |
 | [`/sitemap.xml`](/sitemap.xml) | Every page, also linked from `/robots.txt` |

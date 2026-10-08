@@ -3,7 +3,7 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/skills/**"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/plugins/fil/skills/**"],
       "outputs": ["dist/**", "skills/**"]
     },
     "test": {

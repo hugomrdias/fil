@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
 import {
   apiCatalog,
+  integrationsJson,
   llmsTxt,
   markdownPath,
   mcpServerCard,
@@ -156,8 +157,11 @@ describe('content links', () => {
         base: page.path,
       })),
       {
-        name: 'skills/fil/SKILL.md',
-        url: new URL('../../../skills/fil/SKILL.md', import.meta.url),
+        name: 'plugins/fil/skills/fil/SKILL.md',
+        url: new URL(
+          '../../../plugins/fil/skills/fil/SKILL.md',
+          import.meta.url
+        ),
         base: '/',
       },
     ]
@@ -197,6 +201,32 @@ describe('discovery documents', () => {
       entry?.['service-desc'][0]?.href,
       'https://api.example/openapi.json'
     )
+    assert.deepEqual(entry?.item, [{ href: 'https://api.example/mcp' }])
+  })
+
+  it('declares the REST API, MCP server, and CLI for integrations.sh', () => {
+    const doc = integrationsJson('https://api.example', 'https://site.example')
+    assert.equal(doc.version, 3)
+    assert.deepEqual(
+      doc.surfaces.map((surface) => [surface.type, surface.auth.status]),
+      [
+        ['http', 'none'],
+        ['mcp', 'none'],
+        ['cli', 'required'],
+      ]
+    )
+    for (const surface of doc.surfaces) {
+      assert.equal(
+        surface.basis.source,
+        'https://site.example/.well-known/integrations.json'
+      )
+    }
+    const [api, mcp, cli] = doc.surfaces
+    assert.equal(api?.spec, 'https://api.example/openapi.json')
+    assert.equal(mcp?.url, 'https://api.example/mcp')
+    assert.equal(cli?.packages?.[0]?.identifier, '@hugomrdias/fil')
+    const used = cli?.auth.entries?.[0]?.use[0]?.id
+    assert.ok(used !== undefined && used in doc.credentials)
   })
 
   it('builds a server card with one Streamable HTTP remote', () => {

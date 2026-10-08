@@ -4,16 +4,16 @@
 
 ## What the project includes
 
-The table lists the four parts, the agent skill, and the planned agent plugins and website.
+The table lists the four parts, the agent skill, the agent plugin, and the planned website.
 
 | Part | What it does | Code | Where it runs |
 | --- | --- | --- | --- |
 | CLI | `fil` stores a file or folder as one copy on one Curio provider and returns retrieval URLs. It resumes an interrupted put or delete without paying twice. | [`packages/fil-cli`](../../packages/fil-cli/README.md) | Locally or in a cloud sandbox, from npm as `@hugomrdias/fil`, or after a build from source |
-| Agent skill | Teaches an agent to use `fil` | [`skills/fil/SKILL.md`](../../skills/fil/SKILL.md) | In the agent, after `npx skills add https://fil-app.hugomrdias.dev`, `npx skills add hugomrdias/fil`, or `fil skills install`. The site serves it at https://fil-app.hugomrdias.dev/.well-known/agent-skills/index.json |
+| Agent skill | Teaches an agent to use `fil` | [`plugins/fil/skills/fil/SKILL.md`](../../plugins/fil/skills/fil/SKILL.md) | In the agent, after installing the plugin, or after `npx skills add https://fil-app.hugomrdias.dev`, `npx skills add hugomrdias/fil`, or `fil skills install`. The site serves it at https://fil-app.hugomrdias.dev/.well-known/agent-skills/index.json |
 | REST API | Serves read-only data on providers, data sets, pieces, Filecoin Pay rails, and session keys. `/get/{cid}` redirects to where a CID can be retrieved. | [`apps/fil-api`](../../apps/fil-api/README.md) | https://fil-api.hugomrdias.dev, with a reference at [`/docs`](https://fil-api.hugomrdias.dev/docs) |
 | MCP server | Offers one read-only tool for each REST API data route, over stateless Streamable HTTP | [`apps/fil-api/src/mcp`](../../apps/fil-api/src/mcp/server.ts) | `POST https://fil-api.hugomrdias.dev/mcp` |
 | Web app | Shows the REST API's data in an explorer, which a Worker renders on the server. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. Its setup page approves `fil login` keys and funding requests. Browser agents can fill it and read the account, data sets, pieces, and session keys through WebMCP. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
-| Agent plugins | Bundle the CLI, the agent skill, and the MCP server for Claude and ChatGPT | Not started | Planned |
+| Agent plugin | Bundles the agent skill and the MCP server, in the portable [Agent Plugins](https://agent-plugins.org/specification) format with a Claude Code manifest. The skill runs the CLI from npm. | [`plugins/fil`](../../plugins/fil/README.md) | Claude Code and Codex, from this repository's marketplaces, and other Agent Plugins clients |
 | Website | The landing page, the docs, and the Agents page. Every page also has a Markdown version, and `llms.txt`, a sitemap, and well-known paths describe the API, the MCP server, and the skill to agents | [`apps/fil-app`](../../apps/fil-app/README.md#website) | https://fil-app.hugomrdias.dev |
 
 ## How the parts connect
@@ -50,13 +50,13 @@ Each kind of agent has one way in, and each step of discovery shows only enough 
 | --- | --- | --- |
 | Signal | Is fil relevant? | The skill's `description`, the MCP server card, the summary at the top of `llms.txt`, and each page's `<meta name="description">` |
 | Router | Which way in fits this agent? | The three bullets in `llms.txt`, expanded on the site's [Agents page](https://fil-app.hugomrdias.dev/agents) |
-| Playbook | How do I do the task safely? | The [agent skill](../../skills/fil/SKILL.md) for agents with a shell, the WebMCP tool descriptions for browser agents, and the MCP `tools/list` for agents that only call remote tools |
+| Playbook | How do I do the task safely? | The [agent skill](../../plugins/fil/skills/fil/SKILL.md) for agents with a shell, the WebMCP tool descriptions for browser agents, and the MCP `tools/list` for agents that only call remote tools |
 | Reference | Exact flags, fields, and errors | `fil --help`, `fil <command> --help`, and `fil schema <command>` for the installed CLI, fil-api's OpenAPI document, and each tool's input schema |
 | Concepts | Why it works this way | The site's docs pages, which link to the reference instead of copying it |
 
 | Agent | Can it | Way in |
 | --- | --- | --- |
-| Local, such as Claude Code or Codex | Run a shell, keep files, and open pages for the user | The agent skill and the CLI |
+| Local, such as Claude Code or Codex | Run a shell, keep files, and open pages for the user | The agent plugin, or the agent skill alone, and the CLI |
 | Cloud, such as a coding agent in a hosted sandbox | Run a shell, but its files are gone when the session ends | The agent skill and the CLI, with a session key from the environment's secrets |
 | Browser | Use web pages in the browser that holds the wallet | fil-app's WebMCP tools, setup links, and the upload page |
 | Chat app with connectors | Call remote tools | The read-only MCP server |
@@ -77,7 +77,7 @@ Each fact has one owner, and the others link to it. The skill owns the agent's w
 
 - **We test with our own app and website.** For testing, the CLI uses fil-app instead of pay.filecoin.cloud. For the same reason, the planned website takes the place of filecoin.cloud and filecoin.io. The results of this prototype will inform improvements to pay.filecoin.cloud, filecoin.cloud, and filecoin.io.
 - **Two kinds of user.** An agent runs `fil` in a shell, uses fil-app in a browser, or calls the MCP server. A human owns the wallet, approves the agent's session key, and funds the account. The agent never holds the wallet key.
-- **Claude and ChatGPT first.** Plugins for Claude and ChatGPT will be the main way to add `fil` to an agent. Other agents get a manual fallback. The user runs `fil skills install` to copy the skill into `.agents/skills` and `.claude/skills`, or installs it with the [`skills` CLI](https://github.com/vercel-labs/skills) from the repository or the site. The user can also add the MCP server URL to the agent's settings.
+- **Claude and ChatGPT first.** The [agent plugin](../../plugins/fil/README.md) is the main way to add `fil` to Claude Code and Codex. It uses the portable Agent Plugins format, so other clients that support it can load it too. Other agents get a manual fallback. The user runs `fil skills install` to copy the skill into `.agents/skills` and `.claude/skills`, or installs it with the [`skills` CLI](https://github.com/vercel-labs/skills) from the repository or the site. The user can also add the MCP server URL to the agent's settings.
 - **A session key is enough for storage.** A key with the `createDataSet`, `addPieces`, and `schedulePieceRemovals` scopes can store and delete data. Only the owner can deposit, approve operators, or terminate service.
 - **synapse-core is enough.** The CLI and the app call synapse-core directly. Neither uses synapse-sdk.
 - **Content fits in one piece.** A file, or the CAR of a folder, must be between 127 and 1,065,353,216 bytes.
@@ -116,17 +116,19 @@ Each fact has one owner, and the others link to it. The skill owns the agent's w
 - **Server rendering hides the visitor from fil-api.** When the Worker fetches from fil-api during server rendering, fil-api's per-IP rate limit counts the Worker, not the visitor.
 - **Site content is a copy.** The site's pages in `apps/fil-app/src/content` are edited copies of the READMEs. Nothing keeps them in sync, so they can fall behind the code. They point to `fil --help`, `fil schema`, and the OpenAPI document instead of copying command, error code, and route tables.
 - **Browser agents can't verify files or store folders.** A file's browser link serves the bytes without checking them, and inbrowser.link checks only folders. The dashboard's upload page stores files, not folders, and needs the wallet owner to sign.
-- **Draft discovery formats.** The MCP server card (SEP-2127) and agent skills discovery are drafts. The site serves the server card at both `/.well-known/mcp/server-card.json` and `/.well-known/mcp-server-card`, because clients check one or the other. fil-api's own origin serves none of the discovery files.
+- **Draft discovery formats.** The MCP server card (SEP-2127) and agent skills discovery are drafts. The site serves the server card at both `/.well-known/mcp/server-card.json` and `/.well-known/mcp-server-card`, because clients check one or the other. integrations.sh reads the older card format's top-level `url` and skips ours, so the API catalog also lists the MCP server as an `item`, and `/.well-known/integrations.json` declares it. fil-api's own origin serves none of the discovery files.
 - **Upstream hooks kept in the app.** `hooks-synapse` adds hooks that synapse-react 0.5.0 lacks. It also works around the bugs listed in [its README](../../apps/fil-app/src/hooks-synapse/README.md).
 
 ### Project
 
 - **One copy, for simplicity.** synapse-sdk stores two copies by default. The CLI and the app's upload store one copy on one provider to keep the prototype simple.
 - **Personal infrastructure.** The REST API and the app deploy to a personal Cloudflare account under `hugomrdias.dev`.
-- **npm is the only channel.** release-please versions the packages and the apps, and the Release workflow publishes `@hugomrdias/fil`, `clipact`, and `@hugomrdias/vite-plugin-agent-skills` to npm ([release](../../README.md#release)). The apps stay private. npm holds only the `0.0.0` versions published by hand to set up trusted publishing, until the first release pull request merges.
+- **npm is the only channel.** release-please versions the packages, the apps, and the plugin, and the Release workflow publishes `@hugomrdias/fil`, `clipact`, and `@hugomrdias/vite-plugin-agent-skills` to npm ([release](../../README.md#release)). The apps stay private. npm holds only the `0.0.0` versions published by hand to set up trusted publishing, until the first release pull request merges.
 - **The skill does not bundle the CLI.** It runs `fil` from the PATH, or `npx -y @hugomrdias/fil`. The bundle is 1.3 MB of JavaScript in 42 files. It would turn the skill into an archive whose digest changes on every CLI build, be copied into every skills directory, and be harder to review than text. It would still need Node.js 24 and network access to the RPC and providers, so it would run nowhere that `npx` can't.
 - **Agent details live on the site.** The skill links to the site's [Agents](https://fil-app.hugomrdias.dev/agents.md#cloud-agents) and [Retrieve and verify](https://fil-app.hugomrdias.dev/docs/retrieve.md) pages instead of carrying reference files. An agent needs network access to read them, and they describe `main`, which can be newer than an installed CLI.
-- **One skills directory, three copies.** The root [`skills/`](../../skills) directory is the only source of the agent skills. The fil-cli build copies it into the package for `fil skills install`, fil-app's build publishes it as static files, and `npx skills add hugomrdias/fil` reads it from GitHub. The copies can differ: the site and GitHub serve `main`, and an installed CLI carries the skill from its build. The skill points agents to `fil schema` instead of listing flags, so it tolerates the gap. fil-app publishes them with [`@hugomrdias/vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md), which writes them into the client build as static files and packs a skill with more than `SKILL.md` as a `.tar.gz` archive. `pnpm check:skills` runs the plugin's validation on `skills/`, and checks that every development skill directory in `.agents/skills` and `.claude/skills` is in `skills-lock.json`, because `npx skills add` would publish an unlocked one. The archive digest depends on Node's zlib output, so a Node upgrade that changes it makes clients see an update.
+- **One skills directory, many copies.** The plugin's [`skills/`](../../plugins/fil/skills) directory is the only source of the agent skills. The plugin installs it, the fil-cli build copies it into the package for `fil skills install`, fil-app's build publishes it as static files, and `npx skills add hugomrdias/fil` finds it on GitHub through the skills that the Claude Code marketplace entry declares. The copies can differ: the site and GitHub serve `main`, an installed plugin carries the skill from its last release, and an installed CLI carries it from its build. The skill points agents to `fil schema` instead of listing flags, so it tolerates the gap. fil-app publishes them with [`@hugomrdias/vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md), which writes them into the client build as static files and packs a skill with more than `SKILL.md` as a `.tar.gz` archive. `pnpm check:skills` runs the Vite plugin's validation on the skills, and checks that every development skill directory in `.agents/skills` and `.claude/skills` is in `skills-lock.json`, because `npx skills add` would publish an unlocked one. The archive digest depends on Node's zlib output, so a Node upgrade that changes it makes clients see an update.
+- **Two plugin manifests.** Claude Code does not read the Agent Plugins manifest, so `.claude-plugin/plugin.json` repeats its metadata and its MCP server, in Claude Code's format. `pnpm check:plugin` checks that the two agree, and release-please writes the version into both.
+- **No plugin on the web.** Claude and ChatGPT on the web install no local plugins. There, users add the MCP server as a custom connector and get no skill. A ChatGPT plugin would need the MCP server registered as a connector first.
 - **No agent evaluation yet.** No one has run the [agent evaluations](../agent-cli/guidelines.md#evaluate-with-agents) in Claude or ChatGPT.
 
 ## Open questions
@@ -144,7 +146,8 @@ Each fact has one owner, and the others link to it. The skill owns the agent's w
 - **Brand.** Apply a brand to the site once the product name and domain are decided.
 - **Evaluation.** Run the [acceptance scenarios](interface-research.md#first-release-and-validation) with Claude and ChatGPT. Count duplicate paid mutations, and check that each share link works.
 - **Explorer for agents.** Render explorer lists on the server, and serve explorer pages as Markdown, so agents can read them like the docs.
-- **Agent plugins.** Build plugins for Claude and ChatGPT at the repository root. Each plugin bundles the agent skill from `skills/` and the MCP server, and runs the CLI from npm.
+- **Plugin directories.** Test the plugin in the Claude and ChatGPT desktop apps. Then submit it to Anthropic's plugin directory and to OpenAI's, which needs the MCP server registered as a ChatGPT connector.
+- **MCP catalogs.** Publish fil-api to the [MCP registry](https://registry.modelcontextprotocol.io) from the release workflow. After fil-app deploys its API catalog `item` and `/.well-known/integrations.json`, map fil-app.hugomrdias.dev on [integrations.sh](https://integrations.sh), which feeds `npx add-mcp find` ([#59](https://github.com/hugomrdias/fil/issues/59)).
 - **Browser verification.** Add a WebMCP tool that checks a file against its PieceCID in the page, and let the upload page store folders.
 - **Two copies.** Store two copies by default in the CLI and the app's upload, as synapse-sdk does.
 - **CLI reads.** Move most CLI reads to fil-api. Keep synapse-core chain reads as the fallback.

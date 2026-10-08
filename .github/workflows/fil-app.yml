@@ -6,7 +6,7 @@ on:
     paths:
       - apps/fil-app/**
       # The site serves the fil agent skill.
-      - packages/fil-cli/skills/**
+      - plugins/fil/skills/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - turbo.json
@@ -16,7 +16,7 @@ on:
     paths:
       - apps/fil-app/**
       # The site serves the fil agent skill.
-      - packages/fil-cli/skills/**
+      - plugins/fil/skills/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - turbo.json

@@ -4,6 +4,7 @@ import { NETWORKS } from '@/lib/networks'
 import {
   API_CATALOG_TYPE,
   apiCatalog,
+  integrationsJson,
   llmsTxt,
   markdownPath,
   mcpServerCard,
@@ -176,6 +177,24 @@ export function apiCatalogResponse(request: Request) {
       ? null
       : JSON.stringify(apiCatalog(env.filApiUrl), null, 2)
   return new Response(body, { headers })
+}
+
+/**
+ * Respond with `/.well-known/integrations.json` for integrations.sh.
+ *
+ * @param request - Incoming request, for the site origin.
+ * @see https://integrations.sh/publishing/
+ */
+export function integrationsResponse(request: Request) {
+  const body =
+    request.method === 'HEAD'
+      ? null
+      : JSON.stringify(
+          integrationsJson(env.filApiUrl, new URL(request.url).origin),
+          null,
+          2
+        )
+  return new Response(body, { headers: agentHeaders('application/json') })
 }
 
 /**

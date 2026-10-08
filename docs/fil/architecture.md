@@ -34,8 +34,8 @@ The CLI never sends a chain transaction itself. It signs typed data and reads ch
 ```text
 packages/fil-cli/
 ├── bin/fil.js            entry shim: enables the compile cache, imports dist/main.js
-├── scripts/build.ts      esbuild bundle: one entry, one chunk per handler; copies the root skills/
-├── skills/               gitignored build copy of the root skills/, installed by `fil skills install`
+├── scripts/build.ts      esbuild bundle: one entry, one chunk per handler; copies plugins/fil/skills/
+├── skills/               gitignored build copy of plugins/fil/skills/, installed by `fil skills install`
 └── src/
     ├── main.ts           cli.run()
     ├── cli.ts            defineCli: name, version, commands, aliases, skills, mapError

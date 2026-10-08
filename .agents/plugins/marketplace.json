@@ -1,0 +1,20 @@
+{
+  "name": "fil",
+  "interface": {
+    "displayName": "fil"
+  },
+  "plugins": [
+    {
+      "name": "fil",
+      "source": {
+        "source": "local",
+        "path": "./plugins/fil"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

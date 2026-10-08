@@ -2,8 +2,8 @@
  * Bundles the CLI with esbuild: one ESM entry with clipact, zod, and all
  * command definitions, plus one lazily loaded chunk per handler, so
  * `--help`, `--version`, and `schema` never load synapse-core or viem.
- * Also copies the agent skills from the repository root into `skills/`,
- * which `fil skills install` reads.
+ * Also copies the agent skills from the fil plugin into `skills/`, which
+ * `fil skills install` reads.
  *
  * @see ../../../docs/agent-cli/guidelines.md#startup-performance
  */
@@ -13,9 +13,9 @@ import { build } from 'esbuild'
 // esbuild never deletes old hashed chunks, so start from an empty outdir.
 await rm('dist', { recursive: true, force: true })
 
-// The root `skills/` directory is the only source; this copy is gitignored.
+// The plugin's `skills/` directory is the only source; this copy is gitignored.
 await rm('skills', { recursive: true, force: true })
-await cp('../../skills', 'skills', { recursive: true })
+await cp('../../plugins/fil/skills', 'skills', { recursive: true })
 
 const result = await build({
   entryPoints: ['src/main.ts'],

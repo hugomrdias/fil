@@ -8,7 +8,7 @@ import { defineConfig } from 'vite'
 
 /**
  * TanStack Start on Cloudflare Workers. The Start plugin must come before
- * the React plugin. `agentSkills` publishes the repository's root `skills/`
+ * the React plugin. `agentSkills` publishes the fil plugin's `skills/`
  * directory for agent skills discovery.
  *
  * @see https://tanstack.com/start/latest/docs/framework/react/guide/hosting
@@ -20,7 +20,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     agentSkills({
-      dir: fileURLToPath(new URL('../../skills', import.meta.url)),
+      dir: fileURLToPath(new URL('../../plugins/fil/skills', import.meta.url)),
     }),
   ],
   resolve: {
