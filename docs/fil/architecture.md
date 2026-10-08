@@ -320,7 +320,7 @@ Errors are clipact `CliError`s with a stable snake_case `code`, a `retryable` fl
 
 ## Testing
 
-The tests use the Node test runner and need no network. `pnpm --filter fil-cli test` runs them, and `pnpm check` runs them with the other checks.
+The tests use the Node test runner and need no network. `pnpm --filter @hugomrdias/fil test` runs them, and `pnpm check` runs them with the other checks.
 
 | Test | Covers |
 | --- | --- |

@@ -23,6 +23,9 @@ importers:
       '@hugomrdias/configs':
         specifier: 1.1.3
         version: 1.1.3(@biomejs/biome@2.5.13)
+      '@hugomrdias/vite-plugin-agent-skills':
+        specifier: workspace:*
+        version: link:packages/vite-plugin-agent-skills
       '@tanstack/intent':
         specifier: 0.5.4
         version: 0.5.4
@@ -35,9 +38,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
-      vite-plugin-agent-skills:
-        specifier: workspace:*
-        version: link:packages/vite-plugin-agent-skills
 
   apps/fil-api:
     dependencies:
@@ -169,6 +169,9 @@ importers:
       '@cloudflare/vite-plugin':
         specifier: 1.62.5
         version: 1.62.5(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(wrangler@4.147.0(@types/node@26.5.1))
+      '@hugomrdias/vite-plugin-agent-skills':
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin-agent-skills
       '@tailwindcss/typography':
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
@@ -199,9 +202,6 @@ importers:
       vite:
         specifier: 8.3.2
         version: 8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)
-      vite-plugin-agent-skills:
-        specifier: workspace:*
-        version: link:../../packages/vite-plugin-agent-skills
       wrangler:
         specifier: 4.147.0
         version: 4.147.0(@types/node@26.5.1)
@@ -241,16 +241,25 @@ importers:
         version: 4.6.5
 
   packages/fil-cli:
-    dependencies:
+    devDependencies:
       '@filoz/synapse-core':
         specifier: ^0.10.0
         version: 0.10.0(typescript@7.0.2)(viem@2.57.2(typescript@7.0.2)(zod@4.6.5))
       '@ipld/car':
         specifier: ^5.4.7
         version: 5.4.7
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.5.1
+      clipact:
+        specifier: workspace:*
+        version: link:../clipact
       env-paths:
         specifier: ^4.0.0
         version: 4.0.0
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       ipfs-unixfs-exporter:
         specifier: ^16.2.3
         version: 16.2.3
@@ -263,22 +272,12 @@ importers:
       multiformats:
         specifier: ^14.0.5
         version: 14.0.5
-      viem:
-        specifier: ^2.56.9
-        version: 2.57.2(typescript@7.0.2)(zod@4.6.5)
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.5.1
-      clipact:
-        specifier: workspace:*
-        version: link:../clipact
-      esbuild:
-        specifier: 0.28.2
-        version: 0.28.2
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      viem:
+        specifier: ^2.56.9
+        version: 2.57.2(typescript@7.0.2)(zod@4.6.5)
       zod:
         specifier: 4.6.5
         version: 4.6.5

@@ -1,7 +1,18 @@
 {
-  "name": "fil-cli",
-  "private": true,
+  "name": "@hugomrdias/fil",
   "version": "0.0.0",
+  "description": "Command-line interface for Filecoin storage",
+  "license": "MIT",
+  "author": "Hugo Dias <hugomrdias@gmail.com>",
+  "homepage": "https://github.com/hugomrdias/fil/tree/main/packages/fil-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hugomrdias/fil.git",
+    "directory": "packages/fil-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/hugomrdias/fil/issues"
+  },
   "type": "module",
   "bin": {
     "fil": "./bin/fil.js"
@@ -21,20 +32,24 @@
     "check": "pnpm typecheck && pnpm test && pnpm lint"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "clipact": "workspace:*",
-    "esbuild": "0.28.2",
-    "typescript": "catalog:",
-    "zod": "4.6.5"
-  },
-  "dependencies": {
     "@filoz/synapse-core": "^0.10.0",
     "@ipld/car": "^5.4.7",
+    "@types/node": "catalog:",
+    "clipact": "workspace:*",
     "env-paths": "^4.0.0",
+    "esbuild": "0.28.2",
     "ipfs-unixfs-exporter": "^16.2.3",
     "ipfs-unixfs-importer": "^16.1.5",
     "iso-conf": "^0.4.2",
     "multiformats": "^14.0.5",
-    "viem": "^2.56.9"
+    "typescript": "catalog:",
+    "viem": "^2.56.9",
+    "zod": "4.6.5"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

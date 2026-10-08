@@ -1,8 +1,8 @@
 /**
  * Checks the agent skills the repository publishes from the root `skills/`
  * directory. The fil-cli build copies it, fil-app's build publishes it with
- * `vite-plugin-agent-skills`, and `npx skills add hugomrdias/fil` reads it
- * from GitHub.
+ * `@hugomrdias/vite-plugin-agent-skills`, and `npx skills add hugomrdias/fil`
+ * reads it from GitHub.
  *
  * - Every skill must pass the plugin's validation, which fil-app's build
  *   would otherwise only run at deploy time.
@@ -16,7 +16,7 @@
  * @see ../packages/vite-plugin-agent-skills/README.md
  */
 import { readdir, readFile } from 'node:fs/promises'
-import { publishSkills } from 'vite-plugin-agent-skills'
+import { publishSkills } from '@hugomrdias/vite-plugin-agent-skills'
 
 /**
  * Lists the subdirectories of a directory, without symbolic links, or none

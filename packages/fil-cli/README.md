@@ -4,10 +4,17 @@
 
 `fil` calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly. It uses [clipact](../clipact/README.md) for the agent output contract and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md). The [architecture](../../docs/fil/architecture.md) describes the modules and flows.
 
-To build `fil` and put it on your path, run these commands from the repository root:
+Releases publish to npm as [`@hugomrdias/fil`](https://www.npmjs.com/package/@hugomrdias/fil). It needs Node.js 24 or newer:
 
 ```sh
-pnpm --filter fil-cli build
+npm install --global @hugomrdias/fil
+fil --help
+```
+
+To build `fil` from source and put it on your path, run these commands from the repository root:
+
+```sh
+pnpm turbo run build --filter=@hugomrdias/fil
 alias fil="node $PWD/packages/fil-cli/bin/fil.js"
 fil --help
 ```

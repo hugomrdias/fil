@@ -15,7 +15,7 @@ You need:
 git clone https://github.com/hugomrdias/fil.git
 cd fil
 pnpm install --frozen-lockfile
-pnpm turbo run build --filter=fil-cli
+pnpm turbo run build --filter=@hugomrdias/fil
 alias fil="node $PWD/packages/fil-cli/bin/fil.js"
 fil --help
 ```

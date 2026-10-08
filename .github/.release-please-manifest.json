@@ -1,0 +1,7 @@
+{
+  "packages/clipact": "0.0.0",
+  "packages/fil-cli": "0.0.0",
+  "packages/vite-plugin-agent-skills": "0.0.0",
+  "apps/fil-api": "0.0.0",
+  "apps/fil-app": "0.0.0"
+}
