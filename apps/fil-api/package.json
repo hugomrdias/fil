@@ -1,7 +1,7 @@
 {
   "name": "fil-api",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "Cloudflare Worker REST API and MCP server for Filecoin onchain data",
   "scripts": {
