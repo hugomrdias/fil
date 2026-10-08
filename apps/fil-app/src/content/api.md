@@ -42,7 +42,7 @@ The MCP server at `https://fil-api.hugomrdias.dev/mcp` offers one read-only tool
 | `list_rails`, `get_rail`, `list_rail_settlements` | Filecoin Pay rails and settlements |
 | `list_session_keys`, `list_session_key_events` | Session keys and their history |
 
-[Agent setup](/agents#mcp-server) shows how to add it to an agent.
+[Agents](/agents#mcp-server) shows how to add it to an agent.
 
 ## Limits
 
