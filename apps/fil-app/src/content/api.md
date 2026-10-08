@@ -1,4 +1,4 @@
-# REST API and MCP server
+# API and MCP
 
 [fil-api](https://fil-api.hugomrdias.dev) serves read-only Filecoin data: storage providers, data sets, pieces, Filecoin Pay rails, and session keys. It reads from an indexer of the Filecoin chain, so its data trails the chain. `/health` reports the latest indexed block. It cannot store, delete, or sign anything.
 
