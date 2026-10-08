@@ -14,7 +14,7 @@ The table lists the four parts, the agent skill, and the planned agent plugins a
 | MCP server | Offers one read-only tool for each REST API data route, over stateless Streamable HTTP | [`apps/fil-api/src/mcp`](../../apps/fil-api/src/mcp/server.ts) | `POST https://fil-api.hugomrdias.dev/mcp` |
 | Web app | Shows the REST API's data in an explorer, which a Worker renders on the server. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. Its setup page approves `fil login` keys and funding requests. Browser agents can fill it and read the account, data sets, pieces, and session keys through WebMCP. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
 | Agent plugins | Bundle the CLI, the agent skill, and the MCP server for Claude and ChatGPT | Not started | Planned |
-| Website | The landing page, the docs, and the agent setup page. Every page also has a Markdown version, and `llms.txt`, a sitemap, and well-known paths describe the API, the MCP server, and the skill to agents | [`apps/fil-app`](../../apps/fil-app/README.md#website) | https://fil-app.hugomrdias.dev |
+| Website | The landing page, the docs, and the Agents page. Every page also has a Markdown version, and `llms.txt`, a sitemap, and well-known paths describe the API, the MCP server, and the skill to agents | [`apps/fil-app`](../../apps/fil-app/README.md#website) | https://fil-app.hugomrdias.dev |
 
 ## How the parts connect
 
@@ -49,7 +49,7 @@ Each kind of agent has one way in, and each step of discovery shows only enough 
 | Layer | Question it answers | Where it lives |
 | --- | --- | --- |
 | Signal | Is fil relevant? | The skill's `description`, the MCP server card, the summary at the top of `llms.txt`, and each page's `<meta name="description">` |
-| Router | Which way in fits this agent? | The three bullets in `llms.txt`, expanded on the site's [agent setup page](https://fil-app.hugomrdias.dev/agents) |
+| Router | Which way in fits this agent? | The three bullets in `llms.txt`, expanded on the site's [Agents page](https://fil-app.hugomrdias.dev/agents) |
 | Playbook | How do I do the task safely? | The [agent skill](../../skills/fil/SKILL.md) for agents with a shell, the WebMCP tool descriptions for browser agents, and the MCP `tools/list` for agents that only call remote tools |
 | Reference | Exact flags, fields, and errors | `fil --help`, `fil <command> --help`, and `fil schema <command>` for the installed CLI, fil-api's OpenAPI document, and each tool's input schema |
 | Concepts | Why it works this way | The site's docs pages, which link to the reference instead of copying it |
@@ -61,7 +61,7 @@ Each kind of agent has one way in, and each step of discovery shows only enough 
 | Browser | Use web pages in the browser that holds the wallet | fil-app's WebMCP tools, setup links, and the upload page |
 | Chat app with connectors | Call remote tools | The read-only MCP server |
 
-Each fact has one owner, and the others link to it. The skill owns the agent's workflow and rules. The CLI owns its flags, outputs, and error codes. The agent setup page owns the ways in and the approval flow. The [Retrieve and verify](https://fil-app.hugomrdias.dev/docs/retrieve) page owns what each retrieval link checks. The skill stays one file: it links to those two site pages for the cloud and retrieval details, so it carries no copies of them. fil-app's tests check that every link from the docs pages and the skill to a docs page and heading resolves.
+Each fact has one owner, and the others link to it. The skill owns the agent's workflow and rules. The CLI owns its flags, outputs, and error codes. The Agents page owns the ways in and the approval flow. The [Retrieve and verify](https://fil-app.hugomrdias.dev/docs/retrieve) page owns what each retrieval link checks. The skill stays one file: it links to those two site pages for the cloud and retrieval details, so it carries no copies of them. fil-app's tests check that every link from the docs pages and the skill to a docs page and heading resolves.
 
 ## Related documents
 
@@ -125,7 +125,7 @@ Each fact has one owner, and the others link to it. The skill owns the agent's w
 - **Personal infrastructure.** The REST API and the app deploy to a personal Cloudflare account under `hugomrdias.dev`.
 - **npm is the only channel.** release-please versions the packages and the apps, and the Release workflow publishes `@hugomrdias/fil`, `clipact`, and `@hugomrdias/vite-plugin-agent-skills` to npm ([release](../../README.md#release)). The apps stay private. npm holds only the `0.0.0` versions published by hand to set up trusted publishing, until the first release pull request merges.
 - **The skill does not bundle the CLI.** It runs `fil` from the PATH, or `npx -y @hugomrdias/fil`. The bundle is 1.3 MB of JavaScript in 42 files. It would turn the skill into an archive whose digest changes on every CLI build, be copied into every skills directory, and be harder to review than text. It would still need Node.js 24 and network access to the RPC and providers, so it would run nowhere that `npx` can't.
-- **Agent details live on the site.** The skill links to the site's [agent setup](https://fil-app.hugomrdias.dev/agents.md#cloud-agents) and [Retrieve and verify](https://fil-app.hugomrdias.dev/docs/retrieve.md) pages instead of carrying reference files. An agent needs network access to read them, and they describe `main`, which can be newer than an installed CLI.
+- **Agent details live on the site.** The skill links to the site's [Agents](https://fil-app.hugomrdias.dev/agents.md#cloud-agents) and [Retrieve and verify](https://fil-app.hugomrdias.dev/docs/retrieve.md) pages instead of carrying reference files. An agent needs network access to read them, and they describe `main`, which can be newer than an installed CLI.
 - **One skills directory, three copies.** The root [`skills/`](../../skills) directory is the only source of the agent skills. The fil-cli build copies it into the package for `fil skills install`, fil-app's build publishes it as static files, and `npx skills add hugomrdias/fil` reads it from GitHub. The copies can differ: the site and GitHub serve `main`, and an installed CLI carries the skill from its build. The skill points agents to `fil schema` instead of listing flags, so it tolerates the gap. fil-app publishes them with [`@hugomrdias/vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md), which writes them into the client build as static files and packs a skill with more than `SKILL.md` as a `.tar.gz` archive. `pnpm check:skills` runs the plugin's validation on `skills/`, and checks that every development skill directory in `.agents/skills` and `.claude/skills` is in `skills-lock.json`, because `npx skills add` would publish an unlocked one. The archive digest depends on Node's zlib output, so a Node upgrade that changes it makes clients see an update.
 - **No agent evaluation yet.** No one has run the [agent evaluations](../agent-cli/guidelines.md#evaluate-with-agents) in Claude or ChatGPT.
 

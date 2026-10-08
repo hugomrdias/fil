@@ -9,7 +9,7 @@ export const Route = createFileRoute('/agents')({
   component: AgentsRoute,
 })
 
-/** Agent setup: the CLI and skill, key approval, MCP, and discovery files. */
+/** Agents page: the CLI and skill, key approval, MCP, and discovery files. */
 function AgentsRoute() {
   const { html } = Route.useLoaderData()
   return (

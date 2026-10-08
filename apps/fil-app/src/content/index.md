@@ -12,10 +12,10 @@ This is a prototype. It runs on the calibration test network unless you choose m
 
 ## How an agent gets access
 
-The agent never holds the wallet key. It gets a session key, which the wallet owner approves in fil-app and which cannot move funds. [Agent setup](/agents) shows the way in for each kind of agent: local, cloud, browser, or chat app.
+The agent never holds the wallet key. It gets a session key, which the wallet owner approves in fil-app and which cannot move funds. [Agents](/agents) shows the way in for each kind of agent: local, cloud, browser, or chat app.
 
 ## Start
 
 - [Quickstart](/docs/quickstart): install the CLI, log in, and store a file.
-- [Agent setup](/agents): add `fil` to Claude, ChatGPT, or another agent.
+- [Agents](/agents): add `fil` to Claude, ChatGPT, or another agent.
 - [Source code](https://github.com/hugomrdias/fil) on GitHub.

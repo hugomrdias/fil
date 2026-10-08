@@ -58,4 +58,4 @@ fil get res_… --output ./copy.pdf
 ## Next
 
 - [CLI](/docs/cli) explains how `fil` works and where its help and schemas are.
-- [Agent setup](/agents) shows how to give an agent the same access.
+- [Agents](/agents) shows how to give an agent the same access.

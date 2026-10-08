@@ -9,7 +9,7 @@ const NAV_LINK =
   'block rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground data-[status=active]:bg-muted data-[status=active]:font-medium data-[status=active]:text-foreground'
 
 /**
- * Link to a docs page. Agent setup lives at `/agents`, the rest under
+ * Link to a docs page. The Agents page lives at `/agents`, the rest under
  * `/docs`.
  *
  * @param props.page - Docs page.

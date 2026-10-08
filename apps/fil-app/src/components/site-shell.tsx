@@ -37,7 +37,7 @@ function SiteNav(props: { className: string }) {
         Docs
       </Link>
       <Link className={props.className} to="/agents">
-        Agent setup
+        Agents
       </Link>
       <Link
         className={props.className}

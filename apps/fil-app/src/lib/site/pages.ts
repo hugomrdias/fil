@@ -25,11 +25,11 @@ export const HOME_PAGE: SitePage = {
     'Store files and folders on Filecoin from a terminal or an agent, and get links back.',
 }
 
-/** Agent setup page. */
+/** Agents page. */
 export const AGENTS_PAGE: SitePage = {
   path: '/agents',
   slug: 'agents',
-  title: 'Agent setup',
+  title: 'Agents',
   description:
     'The way in for each kind of agent: local, cloud, browser, or chat app with connectors, and how the wallet owner approves its key.',
 }

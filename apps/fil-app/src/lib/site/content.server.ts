@@ -83,7 +83,7 @@ function llmsDetails(origin: string) {
       `- Browser agents open [fil-app](${origin}/). Its WebMCP tools read the account and prepare the wallet owner's approval.`,
       `- Agents that only call remote tools add the read-only MCP server at \`${env.filApiUrl}/mcp\`, over Streamable HTTP. It cannot store content.`,
     ].join('\n'),
-    `A person owns the wallet and approves every agent, which never holds the wallet key. [Agent setup](${origin}${markdownPath(AGENTS_PAGE.path)}) explains each way in. This is a prototype that runs on the calibration test network by default.`,
+    `A person owns the wallet and approves every agent, which never holds the wallet key. [Agents](${origin}${markdownPath(AGENTS_PAGE.path)}) explains each way in. This is a prototype that runs on the calibration test network by default.`,
   ]
 }
 
