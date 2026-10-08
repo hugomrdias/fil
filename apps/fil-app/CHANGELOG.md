@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0](https://github.com/hugomrdias/fil/compare/fil-app-v0.1.0...fil-app-v0.2.0) (2026-10-08)
+
+
+### Features
+
+* add the fil agent plugin for Claude Code, Codex, and Agent Plugins clients ([#60](https://github.com/hugomrdias/fil/issues/60)) ([0305871](https://github.com/hugomrdias/fil/commit/0305871530a9639d0bf6d488b19d3c5e69538e89)), closes [#59](https://github.com/hugomrdias/fil/issues/59)
+* **fil-app:** rename the Agent setup page to Agents ([#57](https://github.com/hugomrdias/fil/issues/57)) ([b7b3edf](https://github.com/hugomrdias/fil/commit/b7b3edfbeee2f48ada5da92863a71f339eae3c14))
+* **fil-app:** rename the API docs page to API and MCP ([#62](https://github.com/hugomrdias/fil/issues/62)) ([896b758](https://github.com/hugomrdias/fil/commit/896b75863010cf411521b143c8b274dd4c6632e9))
+
 ## 0.1.0 (2026-10-08)
 
 

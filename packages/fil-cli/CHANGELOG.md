@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/hugomrdias/fil/compare/fil-cli-v0.1.0...fil-cli-v0.2.0) (2026-10-08)
+
+
+### Features
+
+* add the fil agent plugin for Claude Code, Codex, and Agent Plugins clients ([#60](https://github.com/hugomrdias/fil/issues/60)) ([0305871](https://github.com/hugomrdias/fil/commit/0305871530a9639d0bf6d488b19d3c5e69538e89)), closes [#59](https://github.com/hugomrdias/fil/issues/59)
+
 ## 0.1.0 (2026-10-08)
 
 
