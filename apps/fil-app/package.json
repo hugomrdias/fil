@@ -55,6 +55,7 @@
     "tailwindcss": "4.3.3",
     "typescript": "catalog:",
     "vite": "8.3.2",
+    "vite-plugin-agent-skills": "workspace:*",
     "wrangler": "4.147.0"
   }
 }

@@ -7,6 +7,7 @@ Tools for [Filecoin](https://docs.filecoin.cloud/). This repository holds the `f
 | Directory | Contents |
 | --- | --- |
 | [`packages/fil-cli`](packages/fil-cli/README.md) | `fil`, a prototype CLI that stores files and folders on one Curio provider and returns retrieval URLs. People and agents both run it. |
+| [`packages/vite-plugin-agent-skills`](packages/vite-plugin-agent-skills/README.md) | A Vite plugin that publishes Agent Skills under `/.well-known/agent-skills/` for agent skills discovery. fil-app uses it. |
 | [`packages/clipact`](packages/clipact/README.md) | A framework for Node.js CLIs that agents run. Each command writes one JSON result with stable error codes and `next` steps. |
 | [`apps/fil-api`](apps/fil-api/README.md) | A Cloudflare Worker that serves a REST API and an MCP server for providers, data sets, pieces, Filecoin Pay rails, and session keys. |
 | [`apps/fil-app`](apps/fil-app/README.md) | A React explorer for fil-api data, and a wallet dashboard for Filecoin Pay, Warm Storage approval, data sets, and session keys. |

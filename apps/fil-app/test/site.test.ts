@@ -1,17 +1,13 @@
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
 import { describe, it } from 'node:test'
 import {
-  agentSkillsIndex,
   apiCatalog,
   llmsTxt,
   markdownPath,
   mcpServerCard,
   robotsTxt,
   scriptJson,
-  sha256Digest,
   sitemapXml,
-  skillFrontmatter,
   softwareApplication,
 } from '../src/lib/site/discovery.ts'
 import { renderMarkdown, slugify } from '../src/lib/site/markdown.ts'
@@ -145,24 +141,6 @@ describe('discovery documents', () => {
       card.remotes.map((remote) => [remote.type, remote.url]),
       [['streamable-http', 'https://api.example/mcp']]
     )
-  })
-
-  it('reads skill frontmatter and hashes the file', async () => {
-    const skill = '---\nname: fil\ndescription: Store files.\n---\n\n# fil\n'
-    assert.deepEqual(skillFrontmatter(skill), {
-      name: 'fil',
-      description: 'Store files.',
-    })
-    assert.throws(() => skillFrontmatter('# no frontmatter'))
-    const digest = await sha256Digest(skill)
-    assert.equal(
-      digest,
-      `sha256:${createHash('sha256').update(skill).digest('hex')}`
-    )
-    const index = agentSkillsIndex([
-      { name: 'fil', description: 'Store files.', url: '/s', digest },
-    ])
-    assert.equal(index.skills[0]?.type, 'skill-md')
   })
 
   it('lists absolute URLs in the sitemap and links it from robots.txt', () => {

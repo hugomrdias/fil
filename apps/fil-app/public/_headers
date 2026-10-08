@@ -1,2 +1,9 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+/.well-known/agent-skills/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=300
+
+/.well-known/agent-skills/*/SKILL.md
+  Content-Type: text/markdown; charset=utf-8

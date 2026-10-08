@@ -23,7 +23,8 @@
     "@hugomrdias/configs": "1.1.3",
     "@tanstack/intent": "0.5.4",
     "turbo": "2.10.13",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite-plugin-agent-skills": "workspace:*"
   },
   "devEngines": {
     "runtime": {

@@ -27,6 +27,7 @@ Built with:
 | `src/lib/api` | fil-api client (`openapi-fetch`), query factories, and the generated `schema.d.ts` |
 | `src/hooks-synapse` | Hooks missing from `@filoz/synapse-react`, kept here until they move upstream. See [its README](src/hooks-synapse/README.md) |
 | `src/components/ui` | shadcn components |
+| `public/_headers` | Headers for static assets, which skip the Worker: immutable caching for `/assets/*`, and CORS and content types for the agent skills |
 | `test` | Node test runner tests for the pure `src/lib` modules |
 
 ## Development
@@ -79,12 +80,12 @@ Server routes serve the files that agents use to discover the site:
 | `/llms.txt`, `/llms-full.txt` | An [llms.txt](https://llmstxt.org) index of the site with a short summary, and every page in one file |
 | `/.well-known/api-catalog` | An [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727) linkset to fil-api's OpenAPI document, reference, and health check. `HEAD` returns the `api-catalog` link relation |
 | `/.well-known/mcp/server-card.json`, `/.well-known/mcp-server-card` | fil-api's MCP server card, in the [SEP-2127](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/seps/2127-mcp-server-cards.md) format |
-| `/.well-known/agent-skills/index.json` | The [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) index, with the SHA-256 digest of each skill |
-| `/.well-known/agent-skills/<name>/SKILL.md` | Each skill in the repository's root `skills/` directory, bundled at build time |
+| `/.well-known/agent-skills/index.json` | The [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) index of the repository's root `skills/` directory |
+| `/.well-known/agent-skills/<name>/SKILL.md`, `/.well-known/agent-skills/<name>.tar.gz` | Each skill: a lone `SKILL.md`, or an archive of a skill with more files |
 | `/sitemap.xml` | The site pages and each network's explorer |
 | `/robots.txt` | Allows every crawler and links the sitemap. Cloudflare's managed robots.txt adds its content signals above it |
 
-The API URLs in these files come from `VITE_FIL_API_URL`.
+[`vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md) writes the agent skills files into the client build at build time, so Workers static assets serves them and `public/_headers` sets their headers. The dev server serves them from memory. The API URLs in these files come from `VITE_FIL_API_URL`.
 
 ## Setup links
 

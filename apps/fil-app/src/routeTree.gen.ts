@@ -40,11 +40,9 @@ import { Route as NetworkProvidersIdRouteImport } from './routes/$network/provid
 import { Route as NetworkRailsIndexRouteImport } from './routes/$network/rails/index'
 import { Route as NetworkRailsIdRouteImport } from './routes/$network/rails/$id'
 import { Route as NetworkSessionKeysIndexRouteImport } from './routes/$network/session-keys/index'
-import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
 import { Route as DotwellKnownMcpServerCardDotjsonRouteImport } from './routes/[.]well-known/mcp/server-card[.]json'
 import { Route as DashboardDataSetsIndexRouteImport } from './routes/dashboard/data-sets/index'
 import { Route as DashboardDataSetsIdRouteImport } from './routes/dashboard/data-sets/$id'
-import { Route as DotwellKnownAgentSkillsNameSKILLDotmdRouteImport } from './routes/[.]well-known/agent-skills/$name/SKILL[.]md'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -202,12 +200,6 @@ const NetworkSessionKeysIndexRoute = NetworkSessionKeysIndexRouteImport.update({
   path: '/session-keys/',
   getParentRoute: () => NetworkRouteRoute,
 } as any)
-const DotwellKnownAgentSkillsIndexDotjsonRoute =
-  DotwellKnownAgentSkillsIndexDotjsonRouteImport.update({
-    id: '/.well-known/agent-skills/index.json',
-    path: '/.well-known/agent-skills/index.json',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const DotwellKnownMcpServerCardDotjsonRoute =
   DotwellKnownMcpServerCardDotjsonRouteImport.update({
     id: '/.well-known/mcp/server-card.json',
@@ -224,12 +216,6 @@ const DashboardDataSetsIdRoute = DashboardDataSetsIdRouteImport.update({
   path: '/data-sets/$id',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-const DotwellKnownAgentSkillsNameSKILLDotmdRoute =
-  DotwellKnownAgentSkillsNameSKILLDotmdRouteImport.update({
-    id: '/.well-known/agent-skills/$name/SKILL.md',
-    path: '/.well-known/agent-skills/$name/SKILL.md',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -259,7 +245,6 @@ export interface FileRoutesByFullPath {
   '/$network/pieces/$cid': typeof NetworkPiecesCidRoute
   '/$network/providers/$id': typeof NetworkProvidersIdRoute
   '/$network/rails/$id': typeof NetworkRailsIdRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/dashboard/data-sets/$id': typeof DashboardDataSetsIdRoute
   '/$network/data-sets/': typeof NetworkDataSetsIndexRoute
@@ -267,7 +252,6 @@ export interface FileRoutesByFullPath {
   '/$network/rails/': typeof NetworkRailsIndexRoute
   '/$network/session-keys/': typeof NetworkSessionKeysIndexRoute
   '/dashboard/data-sets/': typeof DashboardDataSetsIndexRoute
-  '/.well-known/agent-skills/$name/SKILL.md': typeof DotwellKnownAgentSkillsNameSKILLDotmdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -294,7 +278,6 @@ export interface FileRoutesByTo {
   '/$network/pieces/$cid': typeof NetworkPiecesCidRoute
   '/$network/providers/$id': typeof NetworkProvidersIdRoute
   '/$network/rails/$id': typeof NetworkRailsIdRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/dashboard/data-sets/$id': typeof DashboardDataSetsIdRoute
   '/$network/data-sets': typeof NetworkDataSetsIndexRoute
@@ -302,7 +285,6 @@ export interface FileRoutesByTo {
   '/$network/rails': typeof NetworkRailsIndexRoute
   '/$network/session-keys': typeof NetworkSessionKeysIndexRoute
   '/dashboard/data-sets': typeof DashboardDataSetsIndexRoute
-  '/.well-known/agent-skills/$name/SKILL.md': typeof DotwellKnownAgentSkillsNameSKILLDotmdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -333,7 +315,6 @@ export interface FileRoutesById {
   '/$network/pieces/$cid': typeof NetworkPiecesCidRoute
   '/$network/providers/$id': typeof NetworkProvidersIdRoute
   '/$network/rails/$id': typeof NetworkRailsIdRoute
-  '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/dashboard/data-sets/$id': typeof DashboardDataSetsIdRoute
   '/$network/data-sets/': typeof NetworkDataSetsIndexRoute
@@ -341,7 +322,6 @@ export interface FileRoutesById {
   '/$network/rails/': typeof NetworkRailsIndexRoute
   '/$network/session-keys/': typeof NetworkSessionKeysIndexRoute
   '/dashboard/data-sets/': typeof DashboardDataSetsIndexRoute
-  '/.well-known/agent-skills/$name/SKILL.md': typeof DotwellKnownAgentSkillsNameSKILLDotmdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -373,7 +353,6 @@ export interface FileRouteTypes {
     | '/$network/pieces/$cid'
     | '/$network/providers/$id'
     | '/$network/rails/$id'
-    | '/.well-known/agent-skills/index.json'
     | '/.well-known/mcp/server-card.json'
     | '/dashboard/data-sets/$id'
     | '/$network/data-sets/'
@@ -381,7 +360,6 @@ export interface FileRouteTypes {
     | '/$network/rails/'
     | '/$network/session-keys/'
     | '/dashboard/data-sets/'
-    | '/.well-known/agent-skills/$name/SKILL.md'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -408,7 +386,6 @@ export interface FileRouteTypes {
     | '/$network/pieces/$cid'
     | '/$network/providers/$id'
     | '/$network/rails/$id'
-    | '/.well-known/agent-skills/index.json'
     | '/.well-known/mcp/server-card.json'
     | '/dashboard/data-sets/$id'
     | '/$network/data-sets'
@@ -416,7 +393,6 @@ export interface FileRouteTypes {
     | '/$network/rails'
     | '/$network/session-keys'
     | '/dashboard/data-sets'
-    | '/.well-known/agent-skills/$name/SKILL.md'
   id:
     | '__root__'
     | '/'
@@ -446,7 +422,6 @@ export interface FileRouteTypes {
     | '/$network/pieces/$cid'
     | '/$network/providers/$id'
     | '/$network/rails/$id'
-    | '/.well-known/agent-skills/index.json'
     | '/.well-known/mcp/server-card.json'
     | '/dashboard/data-sets/$id'
     | '/$network/data-sets/'
@@ -454,7 +429,6 @@ export interface FileRouteTypes {
     | '/$network/rails/'
     | '/$network/session-keys/'
     | '/dashboard/data-sets/'
-    | '/.well-known/agent-skills/$name/SKILL.md'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -469,9 +443,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
   DotwellKnownMcpServerCardRoute: typeof DotwellKnownMcpServerCardRoute
-  DotwellKnownAgentSkillsIndexDotjsonRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRoute
   DotwellKnownMcpServerCardDotjsonRoute: typeof DotwellKnownMcpServerCardDotjsonRoute
-  DotwellKnownAgentSkillsNameSKILLDotmdRoute: typeof DotwellKnownAgentSkillsNameSKILLDotmdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -693,13 +665,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NetworkSessionKeysIndexRouteImport
       parentRoute: typeof NetworkRouteRoute
     }
-    '/.well-known/agent-skills/index.json': {
-      id: '/.well-known/agent-skills/index.json'
-      path: '/.well-known/agent-skills/index.json'
-      fullPath: '/.well-known/agent-skills/index.json'
-      preLoaderRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/.well-known/mcp/server-card.json': {
       id: '/.well-known/mcp/server-card.json'
       path: '/.well-known/mcp/server-card.json'
@@ -720,13 +685,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/data-sets/$id'
       preLoaderRoute: typeof DashboardDataSetsIdRouteImport
       parentRoute: typeof DashboardRouteRoute
-    }
-    '/.well-known/agent-skills/$name/SKILL.md': {
-      id: '/.well-known/agent-skills/$name/SKILL.md'
-      path: '/.well-known/agent-skills/$name/SKILL.md'
-      fullPath: '/.well-known/agent-skills/$name/SKILL.md'
-      preLoaderRoute: typeof DotwellKnownAgentSkillsNameSKILLDotmdRouteImport
-      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -817,11 +775,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
   DotwellKnownMcpServerCardRoute: DotwellKnownMcpServerCardRoute,
-  DotwellKnownAgentSkillsIndexDotjsonRoute:
-    DotwellKnownAgentSkillsIndexDotjsonRoute,
   DotwellKnownMcpServerCardDotjsonRoute: DotwellKnownMcpServerCardDotjsonRoute,
-  DotwellKnownAgentSkillsNameSKILLDotmdRoute:
-    DotwellKnownAgentSkillsNameSKILLDotmdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

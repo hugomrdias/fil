@@ -1,15 +1,13 @@
+import { skills } from 'virtual:agent-skills'
 import { env } from '@/config/env'
 import { NETWORKS } from '@/lib/networks'
 import {
   API_CATALOG_TYPE,
-  agentSkillsIndex,
   apiCatalog,
   llmsTxt,
   mcpServerCard,
   robotsTxt,
-  sha256Digest,
   sitemapXml,
-  skillFrontmatter,
 } from './discovery'
 import { MARKDOWN_TYPE } from './negotiate'
 import { SITE_PAGES, type SitePage } from './pages'
@@ -20,34 +18,6 @@ const CONTENT = import.meta.glob<string>('../../content/*.md', {
   import: 'default',
   eager: true,
 })
-
-/**
- * `SKILL.md` of each agent skill in the repository's root `skills/`
- * directory, keyed by file path. The fil-cli build copies the same files.
- */
-const SKILLS = import.meta.glob<string>('../../../../../skills/*/SKILL.md', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-})
-
-/**
- * Path of a skill's `SKILL.md` under the agent skills well-known prefix.
- *
- * @param name - Skill name.
- */
-export function skillPath(name: string) {
-  return `/.well-known/agent-skills/${name}/SKILL.md`
-}
-
-/**
- * `SKILL.md` of a skill in the root `skills/` directory.
- *
- * @param name - Skill name, which is also its directory name.
- */
-function skillMarkdown(name: string) {
-  return SKILLS[`../../../../../skills/${name}/SKILL.md`]
-}
 
 /**
  * Markdown source of a site page.
@@ -137,11 +107,11 @@ export function llmsResponse(request: Request, full: boolean) {
         url: `${origin}/.well-known/mcp/server-card.json`,
         description: 'fil-api MCP server, Streamable HTTP',
       },
-      {
-        title: 'Agent skill',
-        url: `${origin}${skillPath('fil')}`,
-        description: 'SKILL.md that teaches an agent to use the fil CLI',
-      },
+      ...skills.map((skill) => ({
+        title: `Agent skill: ${skill.name}`,
+        url: `${origin}${skill.path}`,
+        description: skill.description,
+      })),
     ],
   })
   const body = full
@@ -212,38 +182,5 @@ export function serverCardResponse(request: Request) {
   const card = mcpServerCard(env.filApiUrl, new URL(request.url).origin)
   return new Response(JSON.stringify(card, null, 2), {
     headers: agentHeaders('application/json'),
-  })
-}
-
-/** Respond with the agent skills discovery index. */
-export async function agentSkillsResponse() {
-  const skills = await Promise.all(
-    Object.values(SKILLS).map(async (markdown) => {
-      const { name, description } = skillFrontmatter(markdown)
-      return {
-        name,
-        description,
-        url: skillPath(name),
-        digest: await sha256Digest(markdown),
-      }
-    })
-  )
-  return new Response(JSON.stringify(agentSkillsIndex(skills), null, 2), {
-    headers: agentHeaders('application/json'),
-  })
-}
-
-/**
- * Respond with a skill's `SKILL.md`, or 404 for an unknown skill.
- *
- * @param name - Skill name from the request path.
- */
-export function skillResponse(name: string) {
-  const markdown = skillMarkdown(name)
-  if (markdown === undefined) {
-    return new Response('Not found', { status: 404 })
-  }
-  return new Response(markdown, {
-    headers: agentHeaders(`${MARKDOWN_TYPE}; charset=utf-8`),
   })
 }
