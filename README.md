@@ -11,6 +11,7 @@ Tools for [Filecoin](https://docs.filecoin.cloud/). This repository holds the `f
 | [`apps/fil-api`](apps/fil-api/README.md) | A Cloudflare Worker that serves a REST API and an MCP server for providers, data sets, pieces, Filecoin Pay rails, and session keys. |
 | [`apps/fil-app`](apps/fil-app/README.md) | A React explorer for fil-api data, and a wallet dashboard for Filecoin Pay, Warm Storage approval, data sets, and session keys. |
 | [`examples/launchpad`](examples/launchpad/README.md) | A complete clipact CLI that deploys sites to a mock host, with an esbuild bundle. |
+| [`skills`](skills) | The agent skills the repository publishes. `fil skills install`, fil-app's `/.well-known/agent-skills/`, and `npx skills add hugomrdias/fil` all read this directory. |
 
 ## Documentation
 
@@ -31,4 +32,4 @@ pnpm build
 pnpm check
 ```
 
-`pnpm check` runs TypeScript, tests, and Biome in every workspace through Turborepo, then lints the root configuration. `pnpm check:fix` applies Biome fixes. Each app's README covers its own development commands.
+`pnpm check` runs TypeScript, tests, and Biome in every workspace through Turborepo, then lints the root configuration and checks the published agent skills. `pnpm check:fix` applies Biome fixes. Each app's README covers its own development commands.

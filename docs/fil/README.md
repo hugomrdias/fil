@@ -4,12 +4,12 @@
 
 ## What the project includes
 
-The table lists the four parts, the agent skill that comes with the CLI, and the planned agent plugins and website.
+The table lists the four parts, the agent skill, and the planned agent plugins and website.
 
 | Part | What it does | Code | Where it runs |
 | --- | --- | --- | --- |
 | CLI | `fil` stores a file or folder as one copy on one Curio provider and returns retrieval URLs. It resumes an interrupted put or delete without paying twice. | [`packages/fil-cli`](../../packages/fil-cli/README.md) | Locally, after a build from source |
-| Agent skill | Teaches an agent to use `fil` | [`skills/fil/SKILL.md`](../../packages/fil-cli/skills/fil/SKILL.md) | In the agent, after `fil skills install`. Also served at https://fil-app.hugomrdias.dev/.well-known/agent-skills/index.json |
+| Agent skill | Teaches an agent to use `fil` | [`skills/fil/SKILL.md`](../../skills/fil/SKILL.md) | In the agent, after `fil skills install` or `npx skills add hugomrdias/fil`. Also served at https://fil-app.hugomrdias.dev/.well-known/agent-skills/index.json |
 | REST API | Serves read-only data on providers, data sets, pieces, Filecoin Pay rails, and session keys. `/get/{cid}` redirects to where a CID can be retrieved. | [`apps/fil-api`](../../apps/fil-api/README.md) | https://fil-api.hugomrdias.dev, with a reference at [`/docs`](https://fil-api.hugomrdias.dev/docs) |
 | MCP server | Offers one read-only tool for each REST API data route, over stateless Streamable HTTP | [`apps/fil-api/src/mcp`](../../apps/fil-api/src/mcp/server.ts) | `POST https://fil-api.hugomrdias.dev/mcp` |
 | Web app | Shows the REST API's data in an explorer, which a Worker renders on the server. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. Its setup page approves `fil login` keys and funding requests. Browser agents can fill it and read the account, data sets, pieces, and session keys through WebMCP. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
@@ -56,7 +56,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 
 - **We test with our own app and website.** For testing, the CLI uses fil-app instead of pay.filecoin.cloud. For the same reason, the planned website takes the place of filecoin.cloud and filecoin.io. The results of this prototype will inform improvements to pay.filecoin.cloud, filecoin.cloud, and filecoin.io.
 - **Two kinds of user.** An agent runs `fil` in a shell or calls the MCP server. A human owns the wallet, approves the agent's session key, and funds the account. The agent never holds the wallet key.
-- **Claude and ChatGPT first.** Plugins for Claude and ChatGPT will be the main way to add `fil` to an agent. Other agents get a manual fallback. The user runs `fil skills install` to copy the skill into `.agents/skills` and `.claude/skills`. The user can also add the MCP server URL to the agent's settings.
+- **Claude and ChatGPT first.** Plugins for Claude and ChatGPT will be the main way to add `fil` to an agent. Other agents get a manual fallback. The user runs `fil skills install` to copy the skill into `.agents/skills` and `.claude/skills`, or installs it with the [`skills` CLI](https://github.com/vercel-labs/skills) from the repository or the site. The user can also add the MCP server URL to the agent's settings.
 - **A session key is enough for storage.** A key with the `createDataSet`, `addPieces`, and `schedulePieceRemovals` scopes can store and delete data. Only the owner can deposit, approve operators, or terminate service.
 - **synapse-core is enough.** The CLI and the app call synapse-core directly. Neither uses synapse-sdk.
 - **Content fits in one piece.** A file, or the CAR of a folder, must be between 127 and 1,065,353,216 bytes.
@@ -102,6 +102,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **One copy, for simplicity.** synapse-sdk stores two copies by default. The CLI and the app's upload store one copy on one provider to keep the prototype simple.
 - **Personal infrastructure.** The REST API and the app deploy to a personal Cloudflare account under `hugomrdias.dev`.
 - **Nothing is published.** Every package is private, so the only way to install the CLI is to build it from source.
+- **One skills directory, three copies.** The root [`skills/`](../../skills) directory is the only source of the agent skills. The fil-cli build copies it into the package for `fil skills install`, fil-app bundles it into the Worker, and `npx skills add hugomrdias/fil` reads it from GitHub. The copies can differ: the site and GitHub serve `main`, and an installed CLI carries the skill from its build. The skill points agents to `fil schema` instead of listing flags, so it tolerates the gap. fil-app serves each skill as a single `SKILL.md`, so a skill cannot ship other files yet. `pnpm check:skills` enforces that, and it checks that every development skill in `.agents/skills` is in `skills-lock.json`, because `npx skills add` would publish an unlocked one.
 - **No agent evaluation yet.** No one has run the [agent evaluations](../agent-cli/guidelines.md#evaluate-with-agents) in Claude or ChatGPT.
 
 ## Open questions
@@ -119,9 +120,8 @@ All parts use the same chain and the same providers, but each part keeps its own
 
 - **Brand.** Apply a brand to the site once the product name and domain are decided.
 - **Evaluation.** Run the [acceptance scenarios](interface-research.md#first-release-and-validation) with Claude and ChatGPT. Count duplicate paid mutations, and check that each share link works.
-- **Agent files at the repository root.** Move the agent skill out of `packages/fil-cli/skills` to the repository root, and add the agent plugins there too. `fil skills install` reads the skill from the package, so the build must copy it from the root into `packages/fil-cli/skills`.
 - **Explorer for agents.** Render explorer lists on the server, and serve explorer pages as Markdown, so agents can read them like the docs.
-- **Agent plugins.** Build plugins for Claude and ChatGPT. Each plugin bundles the CLI, the agent skill, and the MCP server.
+- **Agent plugins.** Build plugins for Claude and ChatGPT at the repository root. Each plugin bundles the CLI, the agent skill from `skills/`, and the MCP server.
 - **Two copies.** Store two copies by default in the CLI and the app's upload, as synapse-sdk does.
 - **CLI reads.** Move most CLI reads to fil-api. Keep synapse-core chain reads as the fallback.
 - **CLI performance.** Hash PieceCIDs with `@hugomrdias/commp-wasm` ([#6](https://github.com/hugomrdias/fil/issues/6)).

@@ -1,6 +1,7 @@
 {
   "name": "fil-repo",
   "private": true,
+  "type": "module",
   "version": "0.0.0",
   "packageManager": "pnpm@11.24.0",
   "engines": {
@@ -12,8 +13,9 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "lint:root": "biome check package.json tsconfig.json biome.json pnpm-workspace.yaml turbo.json",
-    "check": "turbo run typecheck test lint && pnpm lint:root",
+    "lint:root": "biome check package.json tsconfig.json biome.json pnpm-workspace.yaml turbo.json skills-lock.json scripts",
+    "check:skills": "node scripts/check-skills.ts",
+    "check": "turbo run typecheck test lint && pnpm lint:root && pnpm check:skills",
     "check:fix": "biome check --fix ."
   },
   "devDependencies": {

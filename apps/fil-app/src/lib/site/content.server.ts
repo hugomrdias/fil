@@ -1,6 +1,5 @@
 import { env } from '@/config/env'
 import { NETWORKS } from '@/lib/networks'
-import skillMarkdown from '../../../../../packages/fil-cli/skills/fil/SKILL.md?raw'
 import {
   API_CATALOG_TYPE,
   agentSkillsIndex,
@@ -22,8 +21,33 @@ const CONTENT = import.meta.glob<string>('../../content/*.md', {
   eager: true,
 })
 
-/** Path of the `fil` skill under the agent skills well-known prefix. */
-export const SKILL_PATH = '/.well-known/agent-skills/fil/SKILL.md'
+/**
+ * `SKILL.md` of each agent skill in the repository's root `skills/`
+ * directory, keyed by file path. The fil-cli build copies the same files.
+ */
+const SKILLS = import.meta.glob<string>('../../../../../skills/*/SKILL.md', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
+
+/**
+ * Path of a skill's `SKILL.md` under the agent skills well-known prefix.
+ *
+ * @param name - Skill name.
+ */
+export function skillPath(name: string) {
+  return `/.well-known/agent-skills/${name}/SKILL.md`
+}
+
+/**
+ * `SKILL.md` of a skill in the root `skills/` directory.
+ *
+ * @param name - Skill name, which is also its directory name.
+ */
+function skillMarkdown(name: string) {
+  return SKILLS[`../../../../../skills/${name}/SKILL.md`]
+}
 
 /**
  * Markdown source of a site page.
@@ -115,7 +139,7 @@ export function llmsResponse(request: Request, full: boolean) {
       },
       {
         title: 'Agent skill',
-        url: `${origin}${SKILL_PATH}`,
+        url: `${origin}${skillPath('fil')}`,
         description: 'SKILL.md that teaches an agent to use the fil CLI',
       },
     ],
@@ -193,23 +217,33 @@ export function serverCardResponse(request: Request) {
 
 /** Respond with the agent skills discovery index. */
 export async function agentSkillsResponse() {
-  const { name, description } = skillFrontmatter(skillMarkdown)
-  const index = agentSkillsIndex([
-    {
-      name,
-      description,
-      url: SKILL_PATH,
-      digest: await sha256Digest(skillMarkdown),
-    },
-  ])
-  return new Response(JSON.stringify(index, null, 2), {
+  const skills = await Promise.all(
+    Object.values(SKILLS).map(async (markdown) => {
+      const { name, description } = skillFrontmatter(markdown)
+      return {
+        name,
+        description,
+        url: skillPath(name),
+        digest: await sha256Digest(markdown),
+      }
+    })
+  )
+  return new Response(JSON.stringify(agentSkillsIndex(skills), null, 2), {
     headers: agentHeaders('application/json'),
   })
 }
 
-/** Respond with the `fil` skill's `SKILL.md`. */
-export function skillResponse() {
-  return new Response(skillMarkdown, {
+/**
+ * Respond with a skill's `SKILL.md`, or 404 for an unknown skill.
+ *
+ * @param name - Skill name from the request path.
+ */
+export function skillResponse(name: string) {
+  const markdown = skillMarkdown(name)
+  if (markdown === undefined) {
+    return new Response('Not found', { status: 404 })
+  }
+  return new Response(markdown, {
     headers: agentHeaders(`${MARKDOWN_TYPE}; charset=utf-8`),
   })
 }

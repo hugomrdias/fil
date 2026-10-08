@@ -79,8 +79,8 @@ Server routes serve the files that agents use to discover the site:
 | `/llms.txt`, `/llms-full.txt` | An [llms.txt](https://llmstxt.org) index of the site with a short summary, and every page in one file |
 | `/.well-known/api-catalog` | An [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727) linkset to fil-api's OpenAPI document, reference, and health check. `HEAD` returns the `api-catalog` link relation |
 | `/.well-known/mcp/server-card.json`, `/.well-known/mcp-server-card` | fil-api's MCP server card, in the [SEP-2127](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/seps/2127-mcp-server-cards.md) format |
-| `/.well-known/agent-skills/index.json` | The [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) index, with the SHA-256 digest of the `fil` skill |
-| `/.well-known/agent-skills/fil/SKILL.md` | `packages/fil-cli/skills/fil/SKILL.md`, bundled at build time |
+| `/.well-known/agent-skills/index.json` | The [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) index, with the SHA-256 digest of each skill |
+| `/.well-known/agent-skills/<name>/SKILL.md` | Each skill in the repository's root `skills/` directory, bundled at build time |
 | `/sitemap.xml` | The site pages and each network's explorer |
 | `/robots.txt` | Allows every crawler and links the sitemap. Cloudflare's managed robots.txt adds its content signals above it |
 
