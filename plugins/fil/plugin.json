@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "fil",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Store files and folders on Filecoin with the fil CLI, share and verify them, and read Filecoin storage data through a read-only MCP server.",
   "author": {
     "name": "Hugo Dias",
