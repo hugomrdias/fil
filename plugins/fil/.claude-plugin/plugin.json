@@ -10,7 +10,13 @@
   "homepage": "https://fil-app.hugomrdias.dev/agents",
   "repository": "https://github.com/hugomrdias/fil",
   "license": "MIT",
-  "keywords": ["filecoin", "storage", "ipfs", "cli", "mcp"],
+  "keywords": [
+    "filecoin",
+    "storage",
+    "ipfs",
+    "cli",
+    "mcp"
+  ],
   "icon": "./assets/logo.png",
   "mcpServers": {
     "fil-api": {
