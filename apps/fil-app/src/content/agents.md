@@ -83,7 +83,7 @@ claude mcp add --transport http fil-api https://fil-api.hugomrdias.dev/mcp
 codex mcp add fil-api --url https://fil-api.hugomrdias.dev/mcp
 ```
 
-In the Claude and ChatGPT apps, add the URL as a custom connector. [REST API and MCP server](/docs/api#mcp-server) lists the tools.
+In the Claude and ChatGPT apps, add the URL as a custom connector. [API and MCP](/docs/api#mcp-server) lists the tools.
 
 ## Approve the agent's key
 
