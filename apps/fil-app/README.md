@@ -77,7 +77,7 @@ Server routes serve the files that agents use to discover the site:
 
 | Path | Contents |
 | --- | --- |
-| `/llms.txt`, `/llms-full.txt` | An [llms.txt](https://llmstxt.org) index of the site with a short summary, and every page in one file |
+| `/llms.txt`, `/llms-full.txt` | An [llms.txt](https://llmstxt.org) index of the site with a short summary and the way in for each kind of agent, and every page in one file |
 | `/.well-known/api-catalog` | An [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727) linkset to fil-api's OpenAPI document, reference, and health check. `HEAD` returns the `api-catalog` link relation |
 | `/.well-known/mcp/server-card.json`, `/.well-known/mcp-server-card` | fil-api's MCP server card, in the [SEP-2127](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/seps/2127-mcp-server-cards.md) format |
 | `/.well-known/agent-skills/index.json` | The [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) index of the repository's root `skills/` directory |
@@ -85,7 +85,7 @@ Server routes serve the files that agents use to discover the site:
 | `/sitemap.xml` | The site pages and each network's explorer |
 | `/robots.txt` | Allows every crawler and links the sitemap. Cloudflare's managed robots.txt adds its content signals above it |
 
-[`vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md) writes the agent skills files into the client build at build time, so Workers static assets serves them and `public/_headers` sets their headers. The dev server serves them from memory. The API URLs in these files come from `VITE_FIL_API_URL`.
+[`@hugomrdias/vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md) writes the agent skills files into the client build at build time, so Workers static assets serves them and `public/_headers` sets their headers. The dev server serves them from memory. The API URLs in these files come from `VITE_FIL_API_URL`.
 
 ## Setup links
 

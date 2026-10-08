@@ -110,7 +110,7 @@ We measured startup on Node 26 as the median of 20 runs after 5 warmups, with a 
 
 `fil` resolves the network from `--network`, then `FIL_NETWORK`, then the config file, then `calibration`. clipact has no global flags, so `network` is a field of every command's input, in the `account` fragment of `commands/shared.ts`. The field has `FIL_NETWORK` as its environment fallback and no schema default, so the config file still applies when neither is set. Each network has its own session.
 
-`fil` takes credentials from `FIL_SESSION_KEY` with `FIL_ROOT_ADDRESS` first, then from the saved session. Both variables are also command input fields. `sessionKey` is a clipact secret. clipact reads it only from the environment, rejects it as a flag, and redacts it in `--debug` and `schema`. `fil` reports a pending session as `login_pending`, not as logged out.
+`fil` takes credentials from `FIL_SESSION_KEY` with `FIL_ROOT_ADDRESS` first, then from the saved session. Both variables are also command input fields. `sessionKey` is a clipact secret. clipact reads it only from the environment, rejects it as a flag, and redacts it in `--debug` and `schema`. `fil` reports a pending session as `login_pending`, not as logged out. CI and cloud agents, whose disk does not outlive the session, use the variables with a key exported from fil-app's session keys page ([cloud agents](https://fil-app.hugomrdias.dev/agents#cloud-agents)).
 
 `FIL_CONFIG_DIR`, `FIL_STATE_DIR`, `FIL_RPC_URL`, `FIL_CONSOLE_URL`, and `FIL_API_URL` are process settings, not command input. `fil doctor` shows each resolved value and its source.
 

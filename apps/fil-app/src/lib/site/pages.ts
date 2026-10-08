@@ -31,7 +31,7 @@ export const AGENTS_PAGE: SitePage = {
   slug: 'agents',
   title: 'Agent setup',
   description:
-    'Give an agent the fil CLI, the agent skill, and the MCP server, and let the wallet owner approve its key.',
+    'The way in for each kind of agent: local, cloud, browser, or chat app with connectors, and how the wallet owner approves its key.',
 }
 
 /** Docs pages under `/docs`, in navigation order. */
@@ -41,14 +41,21 @@ export const DOC_PAGES: SitePage[] = [
     slug: 'quickstart',
     title: 'Quickstart',
     description:
-      'Build fil, log in, store a file, and download it again on the calibration network.',
+      'Install fil, log in, store a file, and download it again on the calibration network.',
   },
   {
     path: '/docs/cli',
     slug: 'cli',
     title: 'CLI',
     description:
-      'Every fil command: log in, check the account, store, retrieve, delete, resume, and the JSON output.',
+      'How fil works: log in, check the account, store, retrieve, delete, resume, and read its JSON output.',
+  },
+  {
+    path: '/docs/retrieve',
+    slug: 'retrieve',
+    title: 'Retrieve and verify',
+    description:
+      'What the PieceCID, the root CID, and each retrieval link check, how to find stored content, and how to store without the CLI.',
   },
   AGENTS_PAGE,
   {
@@ -56,7 +63,7 @@ export const DOC_PAGES: SitePage[] = [
     slug: 'api',
     title: 'REST API and MCP server',
     description:
-      'fil-api routes, retrieval redirects, MCP tools, rate limits, and conventions.',
+      'fil-api retrieval redirects, MCP tools, conventions, and rate limits. The OpenAPI document lists the routes.',
   },
   {
     path: '/docs/app',

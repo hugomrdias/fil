@@ -4,7 +4,7 @@
 
 `fil` calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly. It uses [clipact](../clipact/README.md) for the agent output contract and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md). The [architecture](../../docs/fil/architecture.md) describes the modules and flows.
 
-Releases publish to npm as [`@hugomrdias/fil`](https://www.npmjs.com/package/@hugomrdias/fil). It needs Node.js 24 or newer:
+Releases publish to npm as [`@hugomrdias/fil`](https://www.npmjs.com/package/@hugomrdias/fil). It needs Node.js 24 or newer. Install it, or run it without installing with `npx -y @hugomrdias/fil`:
 
 ```sh
 npm install --global @hugomrdias/fil

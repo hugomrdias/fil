@@ -1,6 +1,17 @@
 # CLI
 
-`fil` stores a file or a folder as one copy on one storage provider and returns retrieval links. It runs on the calibration network unless you choose mainnet. To install it, follow the [Quickstart](/docs/quickstart).
+`fil` stores a file or a folder as one copy on one storage provider and returns retrieval links. It runs on the calibration network unless you choose mainnet. It needs Node.js 24 or newer:
+
+```sh
+npm install -g @hugomrdias/fil
+```
+
+Or run it without installing, as `npx -y @hugomrdias/fil`.
+
+This page explains how `fil` works. The CLI describes its own commands, which always match the installed version:
+
+- `fil --help` lists the commands, and `fil <command> --help` shows examples and flags.
+- `fil schema <command>` prints the command's input and output as JSON Schema, and what each error code means. `fil schema --list` lists every command with its side effects.
 
 ## Log in
 
@@ -16,7 +27,7 @@ The session key signs each request, the provider submits the transactions, and t
 
 In a terminal, `fil login` opens the browser and waits for approval. An agent, or any run without a terminal, gets a `login_pending` error instead and never waits. The error's `next` steps are the approval link for the user and `fil login` for the agent to run after the user approves. An interrupted login resumes with the same key. Pass `--fresh` to make a new key.
 
-For CI, set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS` instead of running `fil login`.
+For CI or a [cloud agent](/agents#cloud-agents), set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS` instead of running `fil login`.
 
 ## Check the account
 
@@ -37,12 +48,7 @@ fil inspect res_… --check     # checks that the piece link answers
 fil delete res_… --yes        # same as rm; schedules removal
 ```
 
-`put` returns two links on fil-api's `/get/{cid}` route, which redirects to where the content can be fetched:
-
-- `urls.browser` is the link to share. A browser renders a file from the provider. A folder opens through [inbrowser.link](https://inbrowser.link), which verifies the blocks in the browser.
-- `urls.piece` returns the exact stored bytes from a provider.
-
-A new piece link returns 404 until fil-api's indexer has the piece. A folder's browser link works at once.
+`put` returns `urls.browser`, the link to share, and `urls.piece`, the exact stored bytes. [Retrieve and verify](/docs/retrieve) explains what each link and `fil get` check.
 
 Packing skips dotfiles and rejects symlinks. The file, or the packed folder, must be between 127 bytes and 1,065,353,216 bytes (1016 MiB).
 
@@ -71,23 +77,7 @@ Ctrl+C stops the work at the next step and returns an `interrupted` result with 
 
 When an agent runs `fil`, or when you pass `--json` or redirect stdout, `fil` writes one JSON object to stdout: `data` on success or `error` on failure, then optional `next` steps. The exit code is `0` with `data` and `1` with `error`. Progress goes to stderr.
 
-| Command | Prints |
-| --- | --- |
-| `fil schema --list` | Every command, offline |
-| `fil schema <command>` | The command's input and output as JSON Schema, and its error codes |
-| `fil completion <shell>` | A completion script for `bash`, `zsh`, or `fish` |
-| `fil skills install` | Installs the [agent skill](/agents#install-the-skill) |
-
-| Error code | Meaning |
-| --- | --- |
-| `auth_required`, `login_pending`, `session_expired`, `permission_denied` | The user must log in or approve permissions |
-| `insufficient_funds` | The user must fund the account at the fil-app link |
-| `not_found` | No content, operation, provider, or piece has that name |
-| `output_exists` | The `fil get` output path exists. Pass `--force` to overwrite it |
-| `operation_failed`, `commit_rejected`, `removal_reverted`, `source_changed`, `staging_missing`, `operation_running` | A put or delete stopped. Follow the `next` steps |
-| `verification_failed` | Retrieved bytes do not match their CID |
-| `unsafe_path` | A retrieved folder tried to write outside the output directory |
-| `invalid_input`, `confirmation_required`, `interrupted`, `internal_error`, `service_unavailable`, `timeout` | General errors. Follow the `next` steps |
+Each error has a stable `code`, and `fil schema <command>` lists the codes the command returns and what they mean. Errors that need a person, such as `login_pending` and `insufficient_funds`, carry a `next` step with a fil-app link for the user.
 
 ## Configuration
 

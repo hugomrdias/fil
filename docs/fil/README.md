@@ -8,8 +8,8 @@ The table lists the four parts, the agent skill, and the planned agent plugins a
 
 | Part | What it does | Code | Where it runs |
 | --- | --- | --- | --- |
-| CLI | `fil` stores a file or folder as one copy on one Curio provider and returns retrieval URLs. It resumes an interrupted put or delete without paying twice. | [`packages/fil-cli`](../../packages/fil-cli/README.md) | Locally, from npm as `@hugomrdias/fil` once released, or after a build from source |
-| Agent skill | Teaches an agent to use `fil` | [`skills/fil/SKILL.md`](../../skills/fil/SKILL.md) | In the agent, after `fil skills install` or `npx skills add hugomrdias/fil`. Also served at https://fil-app.hugomrdias.dev/.well-known/agent-skills/index.json |
+| CLI | `fil` stores a file or folder as one copy on one Curio provider and returns retrieval URLs. It resumes an interrupted put or delete without paying twice. | [`packages/fil-cli`](../../packages/fil-cli/README.md) | Locally or in a cloud sandbox, from npm as `@hugomrdias/fil`, or after a build from source |
+| Agent skill | Teaches an agent to use `fil` | [`skills/fil/SKILL.md`](../../skills/fil/SKILL.md) | In the agent, after `npx skills add https://fil-app.hugomrdias.dev`, `npx skills add hugomrdias/fil`, or `fil skills install`. The site serves it at https://fil-app.hugomrdias.dev/.well-known/agent-skills/index.json |
 | REST API | Serves read-only data on providers, data sets, pieces, Filecoin Pay rails, and session keys. `/get/{cid}` redirects to where a CID can be retrieved. | [`apps/fil-api`](../../apps/fil-api/README.md) | https://fil-api.hugomrdias.dev, with a reference at [`/docs`](https://fil-api.hugomrdias.dev/docs) |
 | MCP server | Offers one read-only tool for each REST API data route, over stateless Streamable HTTP | [`apps/fil-api/src/mcp`](../../apps/fil-api/src/mcp/server.ts) | `POST https://fil-api.hugomrdias.dev/mcp` |
 | Web app | Shows the REST API's data in an explorer, which a Worker renders on the server. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. Its setup page approves `fil login` keys and funding requests. Browser agents can fill it and read the account, data sets, pieces, and session keys through WebMCP. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
@@ -42,6 +42,27 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **The app reads through fil-api.** It writes with the connected wallet or with a session key made in the dashboard. The app stores those session keys in the browser's `localStorage`.
 - **`fil login` sends the owner to fil-app.** The CLI keeps its session key on the machine and sends only the key's address, name, scopes, and expiry in a [setup link](../../apps/fil-app/README.md#setup-links). The owner reviews the prefilled page and signs the approval with their wallet. `fil status` and `put` send funding requests to the same page.
 
+## How agents find and use fil
+
+Each kind of agent has one way in, and each step of discovery shows only enough to choose the next one:
+
+| Layer | Question it answers | Where it lives |
+| --- | --- | --- |
+| Signal | Is fil relevant? | The skill's `description`, the MCP server card, the summary at the top of `llms.txt`, and each page's `<meta name="description">` |
+| Router | Which way in fits this agent? | The three bullets in `llms.txt`, expanded on the site's [agent setup page](https://fil-app.hugomrdias.dev/agents) |
+| Playbook | How do I do the task safely? | The [agent skill](../../skills/fil/SKILL.md) for agents with a shell, the WebMCP tool descriptions for browser agents, and the MCP `tools/list` for agents that only call remote tools |
+| Reference | Exact flags, fields, and errors | `fil --help`, `fil <command> --help`, and `fil schema <command>` for the installed CLI, fil-api's OpenAPI document, and each tool's input schema |
+| Concepts | Why it works this way | The site's docs pages, which link to the reference instead of copying it |
+
+| Agent | Can it | Way in |
+| --- | --- | --- |
+| Local, such as Claude Code or Codex | Run a shell, keep files, and open pages for the user | The agent skill and the CLI |
+| Cloud, such as a coding agent in a hosted sandbox | Run a shell, but its files are gone when the session ends | The agent skill and the CLI, with a session key from the environment's secrets |
+| Browser | Use web pages in the browser that holds the wallet | fil-app's WebMCP tools, setup links, and the upload page |
+| Chat app with connectors | Call remote tools | The read-only MCP server |
+
+Each fact has one owner, and the others link to it. The skill owns the agent's workflow and rules. The CLI owns its flags, outputs, and error codes. The agent setup page owns the ways in and the approval flow. The [Retrieve and verify](https://fil-app.hugomrdias.dev/docs/retrieve) page owns what each retrieval link checks. The skill stays one file: it links to those two site pages for the cloud and retrieval details, so it carries no copies of them. fil-app's tests check that every link from the docs pages and the skill to a docs page and heading resolves.
+
 ## Related documents
 
 | Document | Contents |
@@ -55,7 +76,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 ## Assumptions behind the proof of concept
 
 - **We test with our own app and website.** For testing, the CLI uses fil-app instead of pay.filecoin.cloud. For the same reason, the planned website takes the place of filecoin.cloud and filecoin.io. The results of this prototype will inform improvements to pay.filecoin.cloud, filecoin.cloud, and filecoin.io.
-- **Two kinds of user.** An agent runs `fil` in a shell or calls the MCP server. A human owns the wallet, approves the agent's session key, and funds the account. The agent never holds the wallet key.
+- **Two kinds of user.** An agent runs `fil` in a shell, uses fil-app in a browser, or calls the MCP server. A human owns the wallet, approves the agent's session key, and funds the account. The agent never holds the wallet key.
 - **Claude and ChatGPT first.** Plugins for Claude and ChatGPT will be the main way to add `fil` to an agent. Other agents get a manual fallback. The user runs `fil skills install` to copy the skill into `.agents/skills` and `.claude/skills`, or installs it with the [`skills` CLI](https://github.com/vercel-labs/skills) from the repository or the site. The user can also add the MCP server URL to the agent's settings.
 - **A session key is enough for storage.** A key with the `createDataSet`, `addPieces`, and `schedulePieceRemovals` scopes can store and delete data. Only the owner can deposit, approve operators, or terminate service.
 - **synapse-core is enough.** The CLI and the app call synapse-core directly. Neither uses synapse-sdk.
@@ -72,7 +93,7 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **Flat commands.** The research proposed separate `files` and `artifacts` groups. Instead, `put`, `get`, `ls`, `inspect`, and `delete` handle both and pick the handling from the input.
 - **Plain-text session key.** `fil` stores the key in `config.json` with mode `0600`, not in an OS keychain.
 - **`logout` leaves the key valid on chain.** It deletes the key on this machine but does not revoke it.
-- **Local view only.** `fil ls` lists only the resources in this machine's state database. It cannot see content stored from another machine or from the app.
+- **Local view only.** `fil ls` lists only the resources in this machine's state database. It cannot see content stored from another machine, from a cloud sandbox that was reset, or from the app. [Retrieve and verify](https://fil-app.hugomrdias.dev/docs/retrieve#find-stored-content) shows how to find that content by wallet.
 - **Piece removal stops at `removal_pending`.** Nothing tracks when the provider removes the piece.
 - **Slow hashing.** PieceCID hashing takes about 70 seconds per GiB. `put`, `operations resume`, and `get` each hash the whole content ([#6](https://github.com/hugomrdias/fil/issues/6)).
 - **Shallow folder check.** `inspect --check` probes only the piece URL, not each file of a folder.
@@ -93,7 +114,8 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **WebMCP is an early preview.** The app's WebMCP tools work in Chrome 149 and later on fil-app.hugomrdias.dev through an origin-trial token that expires on 2027-03-30. Elsewhere they need Chromium's `#enable-webmcp-testing` flag. The ChatGPT Chrome extension finds the tools, and OpenAI documents WebMCP support, under the name site tools, in the ChatGPT desktop app's built-in browser. Other browsers ignore the tools, and agents use the setup link instead. Testing with real agents is tracked in [#34](https://github.com/hugomrdias/fil/issues/34).
 - **Explorer lists load in the browser.** The server renders each page, but only detail pages, such as a rail or a data set, include their data. Lists and tables still fetch their rows after the page loads, so an agent that fetches a list page gets no rows.
 - **Server rendering hides the visitor from fil-api.** When the Worker fetches from fil-api during server rendering, fil-api's per-IP rate limit counts the Worker, not the visitor.
-- **Site content is a copy.** The site's pages in `apps/fil-app/src/content` are edited copies of the READMEs. Nothing keeps them in sync, so they can fall behind the code.
+- **Site content is a copy.** The site's pages in `apps/fil-app/src/content` are edited copies of the READMEs. Nothing keeps them in sync, so they can fall behind the code. They point to `fil --help`, `fil schema`, and the OpenAPI document instead of copying command, error code, and route tables.
+- **Browser agents can't verify files or store folders.** A file's browser link serves the bytes without checking them, and inbrowser.link checks only folders. The dashboard's upload page stores files, not folders, and needs the wallet owner to sign.
 - **Draft discovery formats.** The MCP server card (SEP-2127) and agent skills discovery are drafts. The site serves the server card at both `/.well-known/mcp/server-card.json` and `/.well-known/mcp-server-card`, because clients check one or the other. fil-api's own origin serves none of the discovery files.
 - **Upstream hooks kept in the app.** `hooks-synapse` adds hooks that synapse-react 0.5.0 lacks. It also works around the bugs listed in [its README](../../apps/fil-app/src/hooks-synapse/README.md).
 
@@ -101,7 +123,9 @@ All parts use the same chain and the same providers, but each part keeps its own
 
 - **One copy, for simplicity.** synapse-sdk stores two copies by default. The CLI and the app's upload store one copy on one provider to keep the prototype simple.
 - **Personal infrastructure.** The REST API and the app deploy to a personal Cloudflare account under `hugomrdias.dev`.
-- **npm is the only channel.** release-please versions the packages and the apps, and the Release workflow publishes `@hugomrdias/fil`, `clipact`, and `@hugomrdias/vite-plugin-agent-skills` to npm ([release](../../README.md#release)). The apps stay private. Nothing is on npm until the first release pull request merges.
+- **npm is the only channel.** release-please versions the packages and the apps, and the Release workflow publishes `@hugomrdias/fil`, `clipact`, and `@hugomrdias/vite-plugin-agent-skills` to npm ([release](../../README.md#release)). The apps stay private. npm holds only the `0.0.0` versions published by hand to set up trusted publishing, until the first release pull request merges.
+- **The skill does not bundle the CLI.** It runs `fil` from the PATH, or `npx -y @hugomrdias/fil`. The bundle is 1.3 MB of JavaScript in 42 files. It would turn the skill into an archive whose digest changes on every CLI build, be copied into every skills directory, and be harder to review than text. It would still need Node.js 24 and network access to the RPC and providers, so it would run nowhere that `npx` can't.
+- **Agent details live on the site.** The skill links to the site's [agent setup](https://fil-app.hugomrdias.dev/agents.md#cloud-agents) and [Retrieve and verify](https://fil-app.hugomrdias.dev/docs/retrieve.md) pages instead of carrying reference files. An agent needs network access to read them, and they describe `main`, which can be newer than an installed CLI.
 - **One skills directory, three copies.** The root [`skills/`](../../skills) directory is the only source of the agent skills. The fil-cli build copies it into the package for `fil skills install`, fil-app's build publishes it as static files, and `npx skills add hugomrdias/fil` reads it from GitHub. The copies can differ: the site and GitHub serve `main`, and an installed CLI carries the skill from its build. The skill points agents to `fil schema` instead of listing flags, so it tolerates the gap. fil-app publishes them with [`@hugomrdias/vite-plugin-agent-skills`](../../packages/vite-plugin-agent-skills/README.md), which writes them into the client build as static files and packs a skill with more than `SKILL.md` as a `.tar.gz` archive. `pnpm check:skills` runs the plugin's validation on `skills/`, and checks that every development skill directory in `.agents/skills` and `.claude/skills` is in `skills-lock.json`, because `npx skills add` would publish an unlocked one. The archive digest depends on Node's zlib output, so a Node upgrade that changes it makes clients see an update.
 - **No agent evaluation yet.** No one has run the [agent evaluations](../agent-cli/guidelines.md#evaluate-with-agents) in Claude or ChatGPT.
 
@@ -111,7 +135,6 @@ All parts use the same chain and the same providers, but each part keeps its own
 - With two copies, how does a put report a partial result when only one copy succeeds?
 - For browser links, should we rely on inbrowser.link, run our own gateway with an origin per publication, or wait for Beam to serve IPFS content?
 - Should the remote MCP server get upload and delete tools? If so, what authentication and upload transport does it use? Or should a local MCP server wrap the CLI instead?
-- Should the agent skill bundle the CLI? Or should it tell users to install the CLI, or to run it with `npx @hugomrdias/fil` or `pnpm dlx @hugomrdias/fil`?
 - What do we need before we recommend mainnet to agents? Candidates are spending limits and keychain storage.
 - Who runs the indexer and the Cloudflare deployment, and what availability do we promise?
 - Do mutable names, custom domains, private content, or content over 1 GiB belong in the first release? The research deferred all four.
@@ -121,7 +144,8 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **Brand.** Apply a brand to the site once the product name and domain are decided.
 - **Evaluation.** Run the [acceptance scenarios](interface-research.md#first-release-and-validation) with Claude and ChatGPT. Count duplicate paid mutations, and check that each share link works.
 - **Explorer for agents.** Render explorer lists on the server, and serve explorer pages as Markdown, so agents can read them like the docs.
-- **Agent plugins.** Build plugins for Claude and ChatGPT at the repository root. Each plugin bundles the CLI, the agent skill from `skills/`, and the MCP server.
+- **Agent plugins.** Build plugins for Claude and ChatGPT at the repository root. Each plugin bundles the agent skill from `skills/` and the MCP server, and runs the CLI from npm.
+- **Browser verification.** Add a WebMCP tool that checks a file against its PieceCID in the page, and let the upload page store folders.
 - **Two copies.** Store two copies by default in the CLI and the app's upload, as synapse-sdk does.
 - **CLI reads.** Move most CLI reads to fil-api. Keep synapse-core chain reads as the fallback.
 - **CLI performance.** Hash PieceCIDs with `@hugomrdias/commp-wasm` ([#6](https://github.com/hugomrdias/fil/issues/6)).
@@ -130,4 +154,4 @@ All parts use the same chain and the same providers, but each part keeps its own
 - **MCP servers.** Review the [foc-observer](https://github.com/FilOzone/foc-observer) MCP server. Merge its tools into the fil-api MCP server.
 - **Indexer.** Index `data_sets(payer)` in the early-repair schema ([#13](https://github.com/hugomrdias/fil/issues/13)). Consider moving the databases near Frankfurt, where Hyperdrive pools their connections, to cut each query from about 30 ms to an estimated 5–10 ms ([placement](../../apps/fil-api/README.md#placement)).
 - **Upstream.** Move `hooks-synapse` into synapse-react. Report the synapse-core and synapse-react bugs listed in its README.
-- **First release.** Publish each package to npm once by hand, configure its trusted publisher, and merge the first release pull request ([release](../../README.md#release)). Then replace the build from source in the site's quickstart with `npm install --global @hugomrdias/fil`.
+- **First release.** Merge the first release pull request, which publishes each package through trusted publishing ([release](../../README.md#release)).
