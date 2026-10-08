@@ -1,6 +1,7 @@
 /**
  * Builders for the files agents use to discover the site: `llms.txt`, the
- * API catalog, the MCP server card, and the agent skills index.
+ * API catalog, and the MCP server card. The `vite-plugin-agent-skills` plugin
+ * writes the agent skills index.
  */
 
 /** A page with a Markdown version, as listed in `llms.txt`. */
@@ -122,77 +123,6 @@ export function mcpServerCard(apiUrl: string, siteUrl: string) {
       },
     ],
   }
-}
-
-/** A skill listed in the agent skills discovery index. */
-export interface DiscoverySkill {
-  /** Skill name from its frontmatter. */
-  name: string
-  /** Skill description from its frontmatter. */
-  description: string
-  /** Path or URL of the `SKILL.md` file. */
-  url: string
-  /** `sha256:` digest of the file's bytes. */
-  digest: string
-}
-
-/**
- * Build the agent skills discovery index.
- *
- * @param skills - Single-file skills to list.
- * @see https://github.com/cloudflare/agent-skills-discovery-rfc
- */
-export function agentSkillsIndex(skills: DiscoverySkill[]) {
-  return {
-    $schema: 'https://schemas.agentskills.io/discovery/0.2.0/schema.json',
-    skills: skills.map((skill) => ({
-      name: skill.name,
-      type: 'skill-md',
-      description: skill.description,
-      url: skill.url,
-      digest: skill.digest,
-    })),
-  }
-}
-
-/**
- * Read `name` and `description` from a `SKILL.md` file's YAML frontmatter.
- * Only single-line `key: value` fields are supported.
- *
- * @param markdown - Contents of a `SKILL.md` file.
- * @see https://agentskills.io/specification
- */
-export function skillFrontmatter(markdown: string) {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown)
-  const fields = new Map<string, string>()
-  for (const line of match?.[1]?.split(/\r?\n/) ?? []) {
-    const field = /^([a-z-]+):\s*(.*)$/.exec(line)
-    if (field?.[1] && field[2] !== undefined) {
-      fields.set(field[1], field[2].trim())
-    }
-  }
-  const name = fields.get('name')
-  const description = fields.get('description')
-  if (!name || !description) {
-    throw new Error('SKILL.md frontmatter needs a name and a description')
-  }
-  return { name, description }
-}
-
-/**
- * SHA-256 digest of a text's UTF-8 bytes, as `sha256:<hex>`.
- *
- * @param text - Text to hash.
- */
-export async function sha256Digest(text: string) {
-  const bytes = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(text)
-  )
-  const hex = Array.from(new Uint8Array(bytes), (byte) =>
-    byte.toString(16).padStart(2, '0')
-  ).join('')
-  return `sha256:${hex}`
 }
 
 /**

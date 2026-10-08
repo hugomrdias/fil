@@ -1,16 +1,13 @@
+import { skills } from 'virtual:agent-skills'
 import { env } from '@/config/env'
 import { NETWORKS } from '@/lib/networks'
-import skillMarkdown from '../../../../../packages/fil-cli/skills/fil/SKILL.md?raw'
 import {
   API_CATALOG_TYPE,
-  agentSkillsIndex,
   apiCatalog,
   llmsTxt,
   mcpServerCard,
   robotsTxt,
-  sha256Digest,
   sitemapXml,
-  skillFrontmatter,
 } from './discovery'
 import { MARKDOWN_TYPE } from './negotiate'
 import { SITE_PAGES, type SitePage } from './pages'
@@ -21,9 +18,6 @@ const CONTENT = import.meta.glob<string>('../../content/*.md', {
   import: 'default',
   eager: true,
 })
-
-/** Path of the `fil` skill under the agent skills well-known prefix. */
-export const SKILL_PATH = '/.well-known/agent-skills/fil/SKILL.md'
 
 /**
  * Markdown source of a site page.
@@ -113,11 +107,11 @@ export function llmsResponse(request: Request, full: boolean) {
         url: `${origin}/.well-known/mcp/server-card.json`,
         description: 'fil-api MCP server, Streamable HTTP',
       },
-      {
-        title: 'Agent skill',
-        url: `${origin}${SKILL_PATH}`,
-        description: 'SKILL.md that teaches an agent to use the fil CLI',
-      },
+      ...skills.map((skill) => ({
+        title: `Agent skill: ${skill.name}`,
+        url: `${origin}${skill.path}`,
+        description: skill.description,
+      })),
     ],
   })
   const body = full
@@ -188,28 +182,5 @@ export function serverCardResponse(request: Request) {
   const card = mcpServerCard(env.filApiUrl, new URL(request.url).origin)
   return new Response(JSON.stringify(card, null, 2), {
     headers: agentHeaders('application/json'),
-  })
-}
-
-/** Respond with the agent skills discovery index. */
-export async function agentSkillsResponse() {
-  const { name, description } = skillFrontmatter(skillMarkdown)
-  const index = agentSkillsIndex([
-    {
-      name,
-      description,
-      url: SKILL_PATH,
-      digest: await sha256Digest(skillMarkdown),
-    },
-  ])
-  return new Response(JSON.stringify(index, null, 2), {
-    headers: agentHeaders('application/json'),
-  })
-}
-
-/** Respond with the `fil` skill's `SKILL.md`. */
-export function skillResponse() {
-  return new Response(skillMarkdown, {
-    headers: agentHeaders(`${MARKDOWN_TYPE}; charset=utf-8`),
   })
 }

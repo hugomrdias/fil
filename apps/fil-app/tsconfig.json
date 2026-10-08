@@ -11,7 +11,7 @@
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
-    "types": ["node", "vite/client"],
+    "types": ["node", "vite/client", "vite-plugin-agent-skills/client"],
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "test", "vite.config.ts"]

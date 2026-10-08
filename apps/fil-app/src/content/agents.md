@@ -21,6 +21,13 @@ fil skills install
 
 The command copies the `fil` skill into `.agents/skills` and `.claude/skills`. The skill teaches the agent the workflow, to branch on `error.code`, and never to repeat a paid command.
 
+To install the skill without the CLI, use the [`skills` CLI](https://github.com/vercel-labs/skills) with the repository or this site:
+
+```sh
+npx skills add hugomrdias/fil
+npx skills add https://fil-app.hugomrdias.dev
+```
+
 Agents that support [agent skills discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) can also find the skill at [`/.well-known/agent-skills/index.json`](/.well-known/agent-skills/index.json).
 
 ## Approve the agent's key
