@@ -39,7 +39,7 @@ pnpm check
 
 [release-please](https://github.com/googleapis/release-please) versions the three packages and the two apps from [Conventional Commits](https://www.conventionalcommits.org/). [`.github/release-please-config.json`](.github/release-please-config.json) lists them, and [`.github/.release-please-manifest.json`](.github/.release-please-manifest.json) holds their current versions. The examples are not released.
 
-1. On each push to `main`, the [Release workflow](.github/workflows/release.yml) opens or updates one release pull request. It bumps the version and updates `CHANGELOG.md` of every package or app that a commit touched since its last release. Below 1.0.0, `feat` bumps the minor version and `fix` the patch version.
+1. On each push to `main`, the [Release workflow](.github/workflows/release.yml) opens or updates one release pull request. It bumps the version and updates `CHANGELOG.md` of every package or app that a commit touched since its last release. The first release of each is 0.1.0, because `initial-version` overrides release-please's default of 1.0.0. Below 1.0.0, `feat` bumps the minor version and `fix` the patch version.
 2. Merging the release pull request tags each release as `<component>-v<version>`, such as `fil-cli-v0.1.0`, and creates its GitHub release.
 3. The same workflow then publishes each released package with `pnpm publish`, which replaces `workspace:` and `catalog:` specifiers, and adds provenance. The apps get a version, a changelog, and a GitHub release, but are never published. Their own workflows deploy them.
 
