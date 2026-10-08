@@ -1,4 +1,4 @@
-# Agent setup
+# Agents
 
 Pick the way in that matches what your agent can do. In every case, a person owns the wallet and approves what the agent may do, and the agent never holds the wallet key.
 

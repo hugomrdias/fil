@@ -2,7 +2,7 @@
 
 A React app for Filecoin, built with [TanStack Start](https://tanstack.com/start) and rendered on a Cloudflare Worker. It has four parts:
 
-- **Website** (`/`, `/docs`, `/agents`): the landing page, the docs, and the agent setup page. See [Website](#website).
+- **Website** (`/`, `/docs`, `/agents`): the landing page, the docs, and the Agents page. See [Website](#website).
 
 - **Explorer** (`/mainnet`, `/calibration`): public pages for data sets, pieces, storage providers, Filecoin Pay rails and settlements, session keys, and per-address views. All data comes from [fil-api](../fil-api). The Worker renders these pages on the server.
 - **Dashboard** (`/dashboard`): gated on a connected wallet, and rendered only in the browser. Manage your Filecoin Pay account (deposit, withdraw), the Warm Storage (FWSS) operator approval, data sets (create, terminate, delete pieces), uploads, rails (settle) and session keys (generate, authorize, revoke, sign with them).
@@ -58,7 +58,7 @@ Any module can run in the Worker as well as in the browser:
 
 ## Website
 
-The landing page at `/` is a React page. The docs under `/docs` and the agent setup page at `/agents` render Markdown from `src/content` on the server, with [marked](https://marked.js.org). `src/lib/site/pages.ts` lists the pages and their order.
+The landing page at `/` is a React page. The docs under `/docs` and the Agents page at `/agents` render Markdown from `src/content` on the server, with [marked](https://marked.js.org). `src/lib/site/pages.ts` lists the pages and their order.
 
 The Markdown files are edited copies of the READMEs, written for people who use `fil`, not for contributors. When a user-facing behavior changes, update both. Nothing from `docs/` is published.
 
