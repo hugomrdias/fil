@@ -63,6 +63,8 @@ fil delete res_… --yes        # alias rm; schedules removal
 - `urls.piece` redirects to the exact stored bytes at a provider's `/piece/<pieceCid>`.
 - `urls.browser` is the link to share. A browser renders a file from the same `/piece` URL. A folder goes through [inbrowser.link](https://inbrowser.link), which verifies the blocks in the browser.
 
+`put` prints `urls.browser` to stderr as soon as it knows the PieceCID, before the upload and the commit, as `fil: link: <url> (answers shortly after the commit)`. An agent can show it to the user while the put runs.
+
 fil-api finds providers through its indexer, so a new piece link returns 404 until the indexer has the piece. A folder's browser link works at once. `fil get` downloads from the provider directly.
 
 Packing skips dotfiles and rejects symlinks. The file or the packed CAR must be between 127 and 1,065,353,216 bytes (1016 MiB).

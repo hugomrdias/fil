@@ -229,6 +229,24 @@ test('put stores a file in a new data set and records the resource', async () =>
   assert.equal(op?.pid, undefined)
 })
 
+test('put reports the retrieval link before uploading', async () => {
+  const { backend } = fakeBackend()
+  const ctx = await context(backend)
+  const events: { phase: string; data?: Record<string, unknown> }[] = []
+  ctx.progress = (event) => events.push(event)
+  const path = await file(ctx, 'report.pdf', 4096)
+
+  const result = await startPut(ctx, { path })
+  const phases = events.map((event) => event.phase)
+  assert.ok(phases.indexOf('link') > phases.indexOf('hashing'))
+  assert.ok(phases.indexOf('link') < phases.indexOf('uploading'))
+  const link = events.find((event) => event.phase === 'link')
+  assert.deepEqual(link?.data, {
+    pieceCid: result.resource.pieceCid,
+    urls: result.urls,
+  })
+})
+
 test('put packs a directory, adds to an existing data set, and cleans staging', async () => {
   const { backend, calls } = fakeBackend({ existingDataSet: true })
   const ctx = await context(backend)

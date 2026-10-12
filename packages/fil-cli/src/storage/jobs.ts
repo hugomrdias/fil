@@ -47,10 +47,14 @@ export const FOLDER_DATA_SET_METADATA = {
 /** Longest metadata value FWSS accepts. */
 const MAX_METADATA_VALUE = 96
 
-/** A step of a job, reported as progress. */
+/**
+ * A step of a job, reported as progress. `link` is not a step: it reports
+ * the retrieval link as soon as the PieceCID is known.
+ */
 export type JobPhase =
   | 'packing'
   | 'hashing'
+  | 'link'
   | 'placing'
   | 'uploading'
   | 'committing'
@@ -69,7 +73,11 @@ export type JobContext = {
   /** Aborted on SIGINT, SIGTERM, or SIGHUP; stops at the next step. */
   signal?: AbortSignal
   /** Progress for the caller to report on stderr. */
-  progress?: (event: { phase: JobPhase; message: string }) => void
+  progress?: (event: {
+    phase: JobPhase
+    message: string
+    data?: Record<string, unknown>
+  }) => void
   /** Called once the job's operation is saved and locked. */
   onOperation?: (operation: Operation) => void
 }
@@ -383,6 +391,21 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
   }
   op = save(ctx, op, { pieceCid, size }, 'storing')
 
+  // The link depends only on the CIDs, so agents can show it before the
+  // slow upload and commit. It answers once the commit lands and fil-api
+  // indexes it.
+  const urls = retrievalUrls({
+    apiUrl: ctx.apiUrl,
+    chainId: op.chainId,
+    pieceCid,
+    rootCid: op.checkpoint.rootCid,
+  })
+  ctx.progress?.({
+    phase: 'link',
+    message: `${urls.browser} (answers shortly after the commit)`,
+    data: { pieceCid, urls },
+  })
+
   // Choose a provider once; resumes reuse it.
   let placement = placementOf(op.checkpoint)
   if (!placement) {
@@ -432,12 +455,6 @@ async function runPut(ctx: JobContext, op: Operation): Promise<JobResult> {
 
   const committed = await commit(ctx, op, placement, { pieceCid, name })
 
-  const urls = retrievalUrls({
-    apiUrl: ctx.apiUrl,
-    chainId: op.chainId,
-    pieceCid,
-    rootCid: op.checkpoint.rootCid,
-  })
   const resource: Resource = {
     ref: op.resourceRef,
     kind,
