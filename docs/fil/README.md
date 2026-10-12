@@ -4,7 +4,7 @@
 
 ## What the project includes
 
-The table lists the four parts, the agent skill, the agent plugin, and the planned website.
+The table lists the four parts, the agent skill, and the agent plugin.
 
 | Part | What it does | Code | Where it runs |
 | --- | --- | --- | --- |
@@ -12,9 +12,8 @@ The table lists the four parts, the agent skill, the agent plugin, and the plann
 | Agent skill | Teaches an agent to use `fil` | [`plugins/fil/skills/fil/SKILL.md`](../../plugins/fil/skills/fil/SKILL.md) | In the agent, after installing the plugin, or after `npx skills add https://fil-app.hugomrdias.dev`, `npx skills add hugomrdias/fil`, or `fil skills install`. The site serves it at https://fil-app.hugomrdias.dev/.well-known/agent-skills/index.json |
 | REST API | Serves read-only data on providers, data sets, pieces, Filecoin Pay rails, and session keys. `/get/{cid}` redirects to where a CID can be retrieved. | [`apps/fil-api`](../../apps/fil-api/README.md) | https://fil-api.hugomrdias.dev, with a reference at [`/docs`](https://fil-api.hugomrdias.dev/docs) |
 | MCP server | Offers one read-only tool for each REST API data route, over stateless Streamable HTTP | [`apps/fil-api/src/mcp`](../../apps/fil-api/src/mcp/server.ts) | `POST https://fil-api.hugomrdias.dev/mcp` |
-| Web app | Shows the REST API's data in an explorer, which a Worker renders on the server. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. Its setup page approves `fil login` keys and funding requests. Browser agents can fill it and read the account, data sets, pieces, and session keys through WebMCP. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
+| Web app | Serves the landing page, the docs, and the Agents page. Every page also has a Markdown version, and `llms.txt`, a sitemap, and well-known paths describe the API, the MCP server, and the skill to agents. It shows the REST API's data in an explorer, which a Worker renders on the server. Its wallet dashboard manages Filecoin Pay, the Warm Storage approval, data sets, uploads, rails, and session keys. Its setup page approves `fil login` keys and funding requests. Browser agents can fill it and read the account, data sets, pieces, and session keys through WebMCP. | [`apps/fil-app`](../../apps/fil-app/README.md) | https://fil-app.hugomrdias.dev |
 | Agent plugin | Bundles the agent skill and the MCP server, in the portable [Agent Plugins](https://agent-plugins.org/specification) format with a Claude Code manifest. The skill runs the CLI from npm. | [`plugins/fil`](../../plugins/fil/README.md) | Claude Code and Codex, from this repository's marketplaces, and other Agent Plugins clients |
-| Website | The landing page, the docs, and the Agents page. Every page also has a Markdown version, and `llms.txt`, a sitemap, and well-known paths describe the API, the MCP server, and the skill to agents | [`apps/fil-app`](../../apps/fil-app/README.md#website) | https://fil-app.hugomrdias.dev |
 
 ## How the parts connect
 
@@ -75,7 +74,7 @@ Each fact has one owner, and the others link to it. The skill owns the agent's w
 
 ## Assumptions behind the proof of concept
 
-- **We test with our own app and website.** For testing, the CLI uses fil-app instead of pay.filecoin.cloud. For the same reason, the planned website takes the place of filecoin.cloud and filecoin.io. The results of this prototype will inform improvements to pay.filecoin.cloud, filecoin.cloud, and filecoin.io.
+- **We test with our own app and website.** For testing, the CLI uses fil-app instead of pay.filecoin.cloud. For the same reason, fil-app's landing page and docs take the place of filecoin.cloud and filecoin.io. The results of this prototype will inform improvements to pay.filecoin.cloud, filecoin.cloud, and filecoin.io.
 - **Two kinds of user.** An agent runs `fil` in a shell, uses fil-app in a browser, or calls the MCP server. A human owns the wallet, approves the agent's session key, and funds the account. The agent never holds the wallet key.
 - **Claude and ChatGPT first.** The [agent plugin](../../plugins/fil/README.md) is the main way to add `fil` to Claude Code and Codex. It uses the portable Agent Plugins format, so other clients that support it can load it too. Other agents get a manual fallback. The user runs `fil skills install` to copy the skill into `.agents/skills` and `.claude/skills`, or installs it with the [`skills` CLI](https://github.com/vercel-labs/skills) from the repository or the site. The user can also add the MCP server URL to the agent's settings.
 - **A session key is enough for storage.** A key with the `createDataSet`, `addPieces`, and `schedulePieceRemovals` scopes can store and delete data. Only the owner can deposit, approve operators, or terminate service.
