@@ -1,11 +1,11 @@
 import { notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { pageMarkdown } from './content.server'
-import { renderMarkdown } from './markdown'
+import { renderMarkdownBlocks } from './markdown'
 import { SITE_PAGES } from './pages'
 
 /**
- * Render a site page's Markdown to HTML on the server, so the Markdown
+ * Render a site page's Markdown to blocks on the server, so the Markdown
  * sources and the renderer stay out of the browser bundle.
  *
  * @see https://tanstack.com/start/latest/docs/framework/react/guide/server-functions
@@ -17,5 +17,5 @@ export const getPageContent = createServerFn({ method: 'GET' })
     if (!page) {
       throw notFound()
     }
-    return { html: renderMarkdown(pageMarkdown(page)) }
+    return { blocks: renderMarkdownBlocks(pageMarkdown(page)) }
   })

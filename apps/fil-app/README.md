@@ -60,6 +60,8 @@ Any module can run in the Worker as well as in the browser:
 
 The landing page at `/` is a React page. The docs under `/docs` and the Agents page at `/agents` render Markdown from `src/content` on the server, with [marked](https://marked.js.org). `src/lib/site/pages.ts` lists the pages and their order.
 
+A page can show some of its Markdown as tabs. Between `<!-- tabs -->` and `<!-- /tabs -->`, each `###` heading starts a tab, and its code blocks show in a terminal with a copy button. The Quickstart uses one for the ways to add fil to an agent. The Markdown version keeps the headings, so it reads the same without tabs.
+
 The Markdown files are edited copies of the READMEs, written for people who use `fil`, not for contributors. When a user-facing behavior changes, update both. Nothing from `docs/` is published.
 
 Every page in `src/lib/site/pages.ts` also serves its Markdown:

@@ -1,8 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
+import { DocTabs } from '@/components/doc-tabs'
 import { SiteShell } from '@/components/site-shell'
 import { env } from '@/config/env'
 import { markdownPath } from '@/lib/site/discovery'
+import type { MarkdownBlock } from '@/lib/site/markdown'
 import { DOC_PAGES, type SitePage } from '@/lib/site/pages'
 
 const NAV_LINK =
@@ -61,20 +63,30 @@ export function DocsLayout(props: { children: ReactNode }) {
 
 /**
  * A docs page rendered from Markdown on the server, with a link to its
- * Markdown version.
+ * Markdown version. Tabs blocks render as {@link DocTabs}.
  *
  * @param props.page - Docs page.
- * @param props.html - Rendered Markdown.
+ * @param props.blocks - Rendered Markdown blocks.
  */
-export function DocArticle(props: { page: SitePage; html: string }) {
+export function DocArticle(props: { page: SitePage; blocks: MarkdownBlock[] }) {
   return (
     <article className="max-w-3xl">
-      <div
-        className="prose prose-zinc max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-4xl prose-a:text-primary prose-a:underline-offset-4 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-pre:border prose-pre:bg-muted prose-pre:text-foreground prose-table:block prose-table:overflow-x-auto prose-th:whitespace-nowrap"
-        // The HTML comes from the Markdown files in src/content.
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, server-rendered content
-        dangerouslySetInnerHTML={{ __html: props.html }}
-      />
+      <div className="prose prose-zinc max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-4xl prose-a:text-primary prose-a:underline-offset-4 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-pre:border prose-pre:bg-muted prose-pre:text-foreground prose-table:block prose-table:overflow-x-auto prose-th:whitespace-nowrap">
+        {props.blocks.map((block, index) =>
+          block.type === 'tabs' ? (
+            // biome-ignore lint/suspicious/noArrayIndexKey: blocks are static
+            <DocTabs key={index} tabs={block.tabs} />
+          ) : (
+            <div
+              // The HTML comes from the Markdown files in src/content.
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, server-rendered content
+              dangerouslySetInnerHTML={{ __html: block.html }}
+              // biome-ignore lint/suspicious/noArrayIndexKey: blocks are static
+              key={index}
+            />
+          )
+        )}
+      </div>
       <p className="mt-12 border-t pt-6 text-sm text-muted-foreground">
         This page is also available as{' '}
         <a

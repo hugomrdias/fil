@@ -7,6 +7,45 @@ You need:
 - Node.js 24 or newer.
 - A browser wallet, such as MetaMask, with calibration FIL for gas and test USDFC. The [Filecoin docs](https://docs.filecoin.cloud/) list the faucets.
 
+## Hand it to an agent
+
+Add fil to your agent, then ask it to store a file. On its first run, the agent sends you a link to approve its key with your wallet. [Agents](/agents) covers cloud and browser agents.
+
+<!-- tabs -->
+
+### Install the plugin
+
+```sh
+claude plugin marketplace add hugomrdias/fil
+claude plugin install fil@fil
+
+# In Codex
+codex plugin marketplace add hugomrdias/fil
+codex plugin add fil@fil
+```
+
+Adds the agent skill and the read-only MCP server to Claude Code or Codex.
+
+### Install the agent skill
+
+```sh
+npx skills add https://fil-app.hugomrdias.dev
+```
+
+Teaches any agent with a shell when and how to run `fil`.
+
+### Connect the MCP server
+
+```sh
+npx -y add-mcp https://fil-api.hugomrdias.dev/mcp -g
+```
+
+Read-only tools for providers, data sets, and pieces. It cannot store files.
+
+<!-- /tabs -->
+
+To do it yourself, follow the steps below.
+
 ## Install the CLI
 
 ```sh

@@ -12,8 +12,8 @@ export const Route = createFileRoute('/docs/$slug')({
     if (!page) {
       throw notFound()
     }
-    const { html } = await getPageContent({ data: page.slug })
-    return { page, html }
+    const { blocks } = await getPageContent({ data: page.slug })
+    return { page, blocks }
   },
   head: ({ loaderData }) => (loaderData ? pageHead(loaderData.page) : {}),
   component: DocRoute,
@@ -21,6 +21,6 @@ export const Route = createFileRoute('/docs/$slug')({
 
 /** A docs page under `/docs`. */
 function DocRoute() {
-  const { page, html } = Route.useLoaderData()
-  return <DocArticle html={html} page={page} />
+  const { page, blocks } = Route.useLoaderData()
+  return <DocArticle blocks={blocks} page={page} />
 }

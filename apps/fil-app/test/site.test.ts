@@ -12,7 +12,11 @@ import {
   sitemapXml,
   softwareApplication,
 } from '../src/lib/site/discovery.ts'
-import { renderMarkdown, slugify } from '../src/lib/site/markdown.ts'
+import {
+  renderMarkdown,
+  renderMarkdownBlocks,
+  slugify,
+} from '../src/lib/site/markdown.ts'
 import { withMarkdownErrors } from '../src/lib/site/markdown-errors.ts'
 import { prefersMarkdown } from '../src/lib/site/negotiate.ts'
 import {
@@ -102,6 +106,69 @@ describe('renderMarkdown', () => {
   it('slugifies punctuation away', () => {
     assert.equal(slugify('REST API and MCP server'), 'rest-api-and-mcp-server')
     assert.equal(slugify("Use fil-app's tools!"), 'use-fil-apps-tools')
+  })
+})
+
+describe('renderMarkdownBlocks', () => {
+  const markdown = [
+    '# Title',
+    '',
+    '<!-- tabs -->',
+    '',
+    '### One',
+    '',
+    '```sh',
+    'fil login',
+    '```',
+    '',
+    'Runs `fil`.',
+    '',
+    '### Two',
+    '',
+    'Text only.',
+    '',
+    '<!-- /tabs -->',
+    '',
+    '## After',
+  ].join('\n')
+
+  it('turns a tabs block into tabs with code and notes', () => {
+    const blocks = renderMarkdownBlocks(markdown)
+    assert.deepEqual(
+      blocks.map((block) => block.type),
+      ['html', 'tabs', 'html']
+    )
+    const tabs = blocks[1]?.type === 'tabs' ? blocks[1].tabs : []
+    assert.deepEqual(
+      tabs.map((tab) => tab.label),
+      ['One', 'Two']
+    )
+    assert.deepEqual(tabs[0]?.parts[0], {
+      type: 'code',
+      lang: 'sh',
+      code: 'fil login',
+    })
+    assert.equal(tabs[0]?.parts[1]?.type, 'html')
+  })
+
+  it('keeps heading ids unique across blocks', () => {
+    const blocks = renderMarkdownBlocks(
+      '## A\n\n<!-- tabs -->\n\n### T\n\n## A\n\n<!-- /tabs -->\n\n## A'
+    )
+    const html = blocks
+      .flatMap((block) =>
+        block.type === 'html'
+          ? [block.html]
+          : block.tabs.flatMap((tab) =>
+              tab.parts.map((part) => (part.type === 'html' ? part.html : ''))
+            )
+      )
+      .join('')
+    assert.match(html, /id="a".*id="a-1".*id="a-2"/s)
+  })
+
+  it('rejects an unclosed tabs block', () => {
+    assert.throws(() => renderMarkdownBlocks('<!-- tabs -->\n\n### One'))
   })
 })
 

@@ -11,10 +11,10 @@ export const Route = createFileRoute('/agents')({
 
 /** Agents page: the CLI and skill, key approval, MCP, and discovery files. */
 function AgentsRoute() {
-  const { html } = Route.useLoaderData()
+  const { blocks } = Route.useLoaderData()
   return (
     <DocsLayout>
-      <DocArticle html={html} page={AGENTS_PAGE} />
+      <DocArticle blocks={blocks} page={AGENTS_PAGE} />
     </DocsLayout>
   )
 }
