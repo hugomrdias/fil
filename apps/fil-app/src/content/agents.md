@@ -91,7 +91,7 @@ The agent never holds the wallet key. It gets a session key instead, and the wal
 
 1. The agent runs `fil login`. It gets a `login_pending` error with an approval link, and relays the link to you.
 2. You open the link, connect your wallet, and review the request on the fil-app setup page. Approve the session key, the Warm Storage approval, and a USDFC deposit if the page asks for them.
-3. The agent runs `fil login` again to confirm, then `fil put`.
+3. The agent runs `fil login --check` to confirm, then `fil put`. `--check` never makes a new key, so it can't replace the one you approved.
 
 When the account runs low, `fil status` and `fil put` return `insufficient_funds` with a prefilled funding link for you. To stop the agent, revoke its key on the fil-app [session keys page](https://fil-app.hugomrdias.dev/dashboard/session-keys).
 

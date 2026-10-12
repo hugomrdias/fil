@@ -7,7 +7,9 @@ import { account, accountEnv } from './shared.ts'
 /**
  * `fil login`: authorize a session key in the fil-app dashboard. A human
  * waits for approval; an agent gets the approval link back as a
- * `login_pending` error and runs `fil login` again once the user approves.
+ * `login_pending` error and runs `fil login --check` once the user approves.
+ * Flags left out keep the saved key's request, and only `--fresh` replaces a
+ * key that is pending or still valid.
  */
 export const login = defineCommand({
   name: 'login',
@@ -15,6 +17,7 @@ export const login = defineCommand({
   examples: [
     'fil login',
     'fil login --scopes createDataSet --scopes addPieces',
+    'fil login --check',
     'fil login --name "fil on laptop" --days 7',
     'fil login --network mainnet --fresh',
   ],
@@ -26,7 +29,7 @@ export const login = defineCommand({
       .min(1)
       .optional()
       .describe(
-        'Scopes to request (default: createDataSet, addPieces, schedulePieceRemovals)'
+        "Scopes to request (default: the saved key's, else createDataSet, addPieces, schedulePieceRemovals)"
       ),
     name: z
       .string()
@@ -35,7 +38,7 @@ export const login = defineCommand({
       .max(64)
       .optional()
       .describe(
-        `Key name the owner sees, recorded on chain (default: ${DEFAULT_KEY_NAME})`
+        `Key name the owner sees, recorded on chain (default: the saved key's, else ${DEFAULT_KEY_NAME})`
       ),
     days: z
       .number()
@@ -43,7 +46,9 @@ export const login = defineCommand({
       .min(1)
       .max(365)
       .optional()
-      .describe('Days until the approval expires (default: 30)'),
+      .describe(
+        "Days until the approval expires (default: the saved key's, else 30)"
+      ),
     wait: z
       .boolean()
       .optional()
@@ -52,7 +57,14 @@ export const login = defineCommand({
       .boolean()
       .default(true)
       .describe('Open the approval page in a browser; never for agents'),
-    fresh: z.boolean().default(false).describe('Always generate a new key'),
+    fresh: z
+      .boolean()
+      .default(false)
+      .describe('Generate a new key, replacing a pending or valid saved key'),
+    check: z
+      .boolean()
+      .default(false)
+      .describe('Only confirm the saved key; never generate a new one'),
     timeout: z
       .number()
       .int()
@@ -69,7 +81,13 @@ export const login = defineCommand({
     scopes: z.array(z.enum(SCOPE_IDS)).describe('Granted scopes'),
     expiresAt: z.string().optional().describe('Earliest scope expiry'),
   }),
-  errors: [ErrorCodes.loginPending, ErrorCodes.permissionDenied],
+  errors: [
+    ErrorCodes.authRequired,
+    ErrorCodes.loginPending,
+    ErrorCodes.permissionDenied,
+    ErrorCodes.sessionConflict,
+    ErrorCodes.sessionExpired,
+  ],
   idempotent: true,
   human: (data) =>
     `Logged in on ${data.network} as ${data.rootAddress} with ${data.scopes.join(', ')}${data.expiresAt ? ` until ${data.expiresAt}` : ''}.`,

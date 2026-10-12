@@ -12,6 +12,7 @@ export const ErrorCodes = {
   loginPending: 'login_pending',
   sessionExpired: 'session_expired',
   permissionDenied: 'permission_denied',
+  sessionConflict: 'session_conflict',
   insufficientFunds: 'insufficient_funds',
   notFound: 'not_found',
   outputExists: 'output_exists',
@@ -65,6 +66,21 @@ export const errors = {
     description: 'The wallet owner approved fewer scopes than requested.',
     details: z.strictObject({
       missing: z.array(z.string()).describe('Scopes not granted'),
+    }),
+  },
+  [ErrorCodes.sessionConflict]: {
+    description:
+      'fil login would replace a saved key that is pending or still valid.',
+    details: z.strictObject({
+      address: z.string().describe('Saved session key address'),
+      state: z
+        .enum(['pending', 'approved'])
+        .describe('Whether the owner has approved the saved key'),
+      scopes: z.array(z.string()).describe('Scopes of the saved key'),
+      url: z
+        .string()
+        .optional()
+        .describe('Console page that approves the saved key, while pending'),
     }),
   },
   [ErrorCodes.insufficientFunds]: {

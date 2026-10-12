@@ -31,7 +31,9 @@ By default, `fil login` requests the `createDataSet`, `addPieces`, and `schedule
 
 The session key signs each request, the provider submits the transactions, and the wallet pays for storage.
 
-In a terminal, `fil login` opens the browser and waits for approval. An agent, or any run without a terminal, gets a `login_pending` error instead and never waits. The error's `next` steps are the approval link for the user and `fil login` for the agent to run after the user approves. An interrupted login resumes with the same key. To generate a new key, pass `--fresh`.
+In a terminal, `fil login` opens the browser and waits for approval. An agent, or any run without a terminal, gets a `login_pending` error instead and never waits. The error's `next` steps are the approval link for the user and `fil login --check` for the agent to run after the user approves. `--check` only confirms the saved key and never generates a new one.
+
+Running `fil login` again never changes a saved key's request: flags you leave out keep the saved key's scopes, name, and expiry. An interrupted login resumes with the same key, and an approved key is reused when it holds the requested scopes. `fil login` replaces a saved key on its own only when the key has expired. If `--scopes` asks for more than a pending or valid key holds, `fil login` returns `session_conflict` and keeps the key, because the owner may already have approved it. To replace the key, pass `--fresh`.
 
 For CI, set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS` instead of running `fil login`. `fil` reads the session key only from the environment and never prints it.
 
@@ -105,6 +107,7 @@ Ctrl+C, SIGTERM, or SIGHUP stops the work at the next step. `fil` returns an `in
 | Error code | Meaning |
 | --- | --- |
 | `auth_required`, `login_pending`, `session_expired`, `permission_denied` | The user must log in or approve scopes |
+| `session_conflict` | `fil login --scopes` would replace a pending or valid key. Keep it with `fil login --check`, or replace it with `--fresh` |
 | `insufficient_funds` | The user must fund the account at the fil-app link |
 | `not_found` | No resource, operation, provider, or piece has that name |
 | `output_exists` | The `fil get` output path exists. Pass `--force` to overwrite it |

@@ -20,6 +20,7 @@ import {
   LOG_WINDOW,
 } from '../src/auth/login.ts'
 import { SCOPES } from '../src/auth/scopes.ts'
+import { loginCommand } from '../src/auth/session.ts'
 
 const OWNER = '0x1111111111111111111111111111111111111111' as Address
 const SIGNER = '0x2222222222222222222222222222222222222222' as Address
@@ -169,4 +170,12 @@ test('findAuthorizer scans bounded windows and matches the signer', async () => 
 
   const none = await findAuthorizer({ client, signer: OTHER, fromBlock: 0n })
   assert.equal(none, OTHER)
+})
+
+test('loginCommand spells out fresh and scopes', () => {
+  assert.equal(loginCommand(), 'fil login')
+  assert.equal(
+    loginCommand({ fresh: true, scopes: ['createDataSet', 'addPieces'] }),
+    'fil login --fresh --scopes createDataSet --scopes addPieces'
+  )
 })

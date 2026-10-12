@@ -4,7 +4,13 @@ import { type Address, getAddress, type Hex, isAddress } from 'viem'
 import type { App } from '../app.ts'
 import { ErrorCodes, invalidInput } from '../errors.ts'
 import { buildAuthorizeUrl } from './login.ts'
-import { isScopeId, SCOPES, type ScopeId, toPermissions } from './scopes.ts'
+import {
+  DEFAULT_SCOPES,
+  isScopeId,
+  SCOPES,
+  type ScopeId,
+  toPermissions,
+} from './scopes.ts'
 
 /** A session key ready to sign, bound to its root wallet. */
 export type SessionKey = ReturnType<typeof fromSecp256k1>
@@ -79,11 +85,31 @@ export function loginPending(url: string): CliError {
       },
       {
         by: 'agent',
-        command: 'fil login',
-        description: 'Check again after the user approves',
+        command: 'fil login --check',
+        description: 'Confirm the saved key after the user approves',
       },
     ],
   })
+}
+
+/** Options for {@link loginCommand}. */
+export type LoginCommandOptions = {
+  /** Add `--fresh`. */
+  fresh?: boolean
+  /** Scopes to pass as repeated `--scopes` flags. */
+  scopes?: readonly ScopeId[] | undefined
+}
+
+/**
+ * Build a `fil login` command line for a `next` step. Scopes are spelled
+ * out because `fil login` keeps the saved key's scopes when `--scopes` is
+ * left out.
+ */
+export function loginCommand(options: LoginCommandOptions = {}): string {
+  const parts = ['fil login']
+  if (options.fresh) parts.push('--fresh')
+  for (const scope of options.scopes ?? []) parts.push(`--scopes ${scope}`)
+  return parts.join(' ')
 }
 
 /** Error returned when no credentials are available. */
@@ -140,6 +166,12 @@ export async function requireSession(
   const sessionKey = openSession(app)
   const missing = await missingScopes(sessionKey, scopes)
   if (missing.length > 0) {
+    // `fil login --fresh` keeps the saved scopes, so name any it lacks.
+    const saved = app.config
+      .get(`sessions.${app.network}`)
+      ?.scopes.filter(isScopeId)
+    const base = saved?.length ? saved : DEFAULT_SCOPES
+    const extra = missing.filter((scope) => !base.includes(scope))
     throw new CliError({
       code: ErrorCodes.sessionExpired,
       message: `The session key is missing or expired for: ${missing.join(', ')}.`,
@@ -147,7 +179,10 @@ export async function requireSession(
       next: [
         {
           by: 'user',
-          command: 'fil login --fresh',
+          command: loginCommand({
+            fresh: true,
+            scopes: extra.length > 0 ? [...base, ...extra] : undefined,
+          }),
           description: 'Authorize a new session key with the needed scopes',
         },
       ],

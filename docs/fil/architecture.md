@@ -141,17 +141,19 @@ sequenceDiagram
 
 The login code lives in `auth/login.ts` and `handlers/login.ts`. It behaves as follows:
 
-- **`fil login` saves the key first.** Running `fil login` again resumes a pending login with the same key and scopes. `fil login` reuses an approved session that already covers the requested scopes. In any other case, or with `--fresh`, it generates a new key.
+- **`fil login` saves the key first.** Flags left out keep the saved key's scopes, name, and expiry, so running `fil login` again never changes the request. It resumes a pending login with the same key, and it reuses an approved session that already covers the requested scopes. An approved key that lacks some of its own scopes returns `permission_denied`.
+- **Only `--fresh` replaces a live key.** `fil login` generates a new key on its own only when there is no saved key or the saved key has expired. When `--scopes` asks for more than a pending key, the CLI first checks the chain for the key's approval and saves it if found. If the key is still pending or valid, the CLI keeps it and returns `session_conflict`. The error's `next` steps are `fil login --check` to keep the key and `fil login --fresh --scopes …` to replace it. `--fresh` reuses the saved request for any flag left out.
+- **`--check` never generates a key.** It confirms a pending key or reuses an approved one. Without a saved key it returns `auth_required`, and with an expired key, `session_expired`. It rejects `--scopes`, `--name`, `--days`, and `--fresh`.
 - **The approval event names the owner.** In `AuthorizationsUpdated`, `identity` is indexed but `signer` is not. The CLI scans events from `fromBlock` in windows of at most 2,000 blocks and matches the signer locally. The matching event names the owner in `identity`, so the user never enters an address.
 - **Only the address leaves the machine.** The private key stays in `config.json`. The setup link carries the key's address, and fil-app never sees or stores the private key. fil-app keeps its own browser session keys separately in `localStorage`.
 - **The owner can change the request.** The setup page prefills the name, scopes, and expiry from the link, and the owner can change each one before signing. After the CLI finds the owner, it reads the expiry of each scope. If a requested scope is missing, the CLI still saves the session and returns `permission_denied`. The error lists the missing scopes in `error.details` and has a `by: "user"` step to log in again.
-- **Only a human waits.** A human is present when clipact's `mode.interactive` is true and no agent is detected. In that case, login opens the browser and waits for up to 600 seconds, and `ctx.signal` stops the wait. Otherwise, login checks once and returns `login_pending` with two `next` steps. The first is the approval link, `by: "user"`. The second is `fil login`, `by: "agent"`, to check again. Login never opens a browser for an agent.
+- **Only a human waits.** A human is present when clipact's `mode.interactive` is true and no agent is detected. In that case, login opens the browser and waits for up to 600 seconds, and `ctx.signal` stops the wait. Otherwise, login checks once and returns `login_pending` with two `next` steps. The first is the approval link, `by: "user"`. The second is `fil login --check`, `by: "agent"`, to check again. Login never opens a browser for an agent.
 - **The setup link has a fixed format.** The approval link is `/dashboard/setup?network=<net>&signer=<address>&name=<name>&scopes=<ids>&days=<n>`. `fil` lowercases the address, so the link never carries a bad mixed-case checksum. The scopes are comma-separated scope IDs. `--name` defaults to `fil-cli`, and the page uses 30 days when `--days` is not given. The funding link is `/dashboard/setup?network=<net>&deposit=<decimal>`, and `fil status` adds it only when the account needs a deposit. The same page offers the Warm Storage approval when the wallet lacks it. `FIL_CONSOLE_URL` changes the origin.
 - **Only the owner can fund the account.** The session key cannot deposit or approve. `fil status` and the `put` funding check return a prefilled funding link instead.
 
 The default scopes are `createDataSet`, `addPieces`, and `schedulePieceRemovals`. `fil` never requests `terminateService` by default.
 
-Before each mutation, `requireSession` rebuilds the key with `fromSecp256k1` and syncs its expiries from the registry. synapse-core's signing helpers do not check permissions. Without this check, an expired or missing scope would fail as a contract revert. With it, the result is `session_expired` with a `by: "user"` step.
+Before each mutation, `requireSession` rebuilds the key with `fromSecp256k1` and syncs its expiries from the registry. synapse-core's signing helpers do not check permissions. Without this check, an expired or missing scope would fail as a contract revert. With it, the result is `session_expired` with a `by: "user"` step. The step is `fil login --fresh`, with `--scopes` flags when the command needs a scope the saved key never requested.
 
 ## The put flow
 
@@ -311,6 +313,7 @@ Errors are clipact `CliError`s with a stable snake_case `code`, a `retryable` fl
 | Code | Next step | Raised by |
 | --- | --- | --- |
 | `auth_required`, `login_pending`, `session_expired`, `permission_denied` | The user logs in or approves scopes | Session checks, login |
+| `session_conflict` | The agent keeps the saved key with `fil login --check`, or the user agrees to replace it with `--fresh` | login |
 | `insufficient_funds` | The user funds the account at the fil-app funding link | The put funding check |
 | `not_found` | The agent lists resources or operations | Lookups |
 | `output_exists` | The agent chooses another path or passes `--force` | get |
@@ -326,6 +329,7 @@ The tests use the Node test runner and need no network. `pnpm --filter @hugomrdi
 | --- | --- |
 | `state.test.ts` | Migrations, including `rm` → `delete` and `artifact` → `folder`, account-scoped queries, cursor paging, checkpoint merging, the lock against a live child process, a second caller in the same process, and a reused PID |
 | `login.test.ts` | The setup link format, scope classification, and the windowed event scan against a fake viem transport |
+| `login-flow.test.ts` | `fil login` in process against a fake JSON-RPC registry. It covers confirming a custom-scope key with bare `fil login` and `--check`, saving an approval found before a conflicting request, `session_conflict` for pending and approved keys, subsets, `--fresh` and expired-key renewal keeping the saved request, and partial grants |
 | `pack.test.ts` | A deterministic root CID, byte-exact extraction, no unreferenced blocks, empty directories, rejection of a tampered block, and the dotfile and symlink rules |
 | `jobs.test.ts` | A fake `StorageBackend` that simulates FWSS nonces. It covers new and existing data sets, a lost commit response, a commit that never landed, a rejected commit, a resume of a completed job, insufficient funds, a reverted removal, interruption, dry-run estimates, and the operation ID and resume step on every job error |
 | `urls.test.ts` | The fil-api piece and browser URLs for files and folders, an API base path, an unknown chain ID, and the provider URL for `get` |

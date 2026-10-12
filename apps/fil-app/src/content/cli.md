@@ -25,7 +25,9 @@ By default, `fil login` asks for the `createDataSet`, `addPieces`, and `schedule
 
 The session key signs each request, the provider submits the transactions, and the wallet pays for storage.
 
-In a terminal, `fil login` opens the browser and waits for approval. An agent, or any run without a terminal, gets a `login_pending` error instead and never waits. The error's `next` steps are the approval link for the user and `fil login` for the agent to run after the user approves. An interrupted login resumes with the same key. Pass `--fresh` to make a new key.
+In a terminal, `fil login` opens the browser and waits for approval. An agent, or any run without a terminal, gets a `login_pending` error instead and never waits. The error's `next` steps are the approval link for the user and `fil login --check` for the agent to run after the user approves. `--check` only confirms the saved key and never makes a new one.
+
+Running `fil login` again never changes a saved key's request: flags you leave out keep its scopes, name, and expiry. An interrupted login resumes with the same key, and an approved key is reused when it has the requested permissions. `fil login` replaces a saved key on its own only when the key has expired. If `--scopes` asks for more than a pending or valid key has, you get a `session_conflict` error and the key stays, because the owner may already have approved it. Pass `--fresh` to replace it.
 
 For CI or a [cloud agent](/agents#cloud-agents), set `FIL_SESSION_KEY` and `FIL_ROOT_ADDRESS` instead of running `fil login`.
 
