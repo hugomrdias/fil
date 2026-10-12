@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.1](https://github.com/hugomrdias/fil/compare/fil-cli-v0.2.0...fil-cli-v0.2.1) (2026-10-12)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * clipact bumped to 0.2.0
+
 ## [0.2.0](https://github.com/hugomrdias/fil/compare/fil-cli-v0.1.0...fil-cli-v0.2.0) (2026-10-08)
 
 
