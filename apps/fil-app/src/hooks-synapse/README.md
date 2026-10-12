@@ -30,7 +30,7 @@ React hooks for Filecoin that [`@filoz/synapse-react`](https://github.com/FilOzo
 
 ## synapse-core issues found while building this
 
-- `sp.waitForAddPieces` keeps polling while `piecesAdded` is `false`, which is also true of a `rejected` status, so a rejected add-pieces transaction surfaces as the 5 minute timeout rather than `WaitForAddPiecesRejectedError`.
+- `sp.waitForAddPieces` keeps polling while `piecesAdded` is `false`, which is also true of a `rejected` status, so a rejected add-pieces transaction surfaces as the 5 minute timeout rather than `WaitForAddPiecesRejectedError`. `sp.waitForCreateDataSet` has the same problem with `dataSetCreated` ([synapse-sdk#1014](https://github.com/FilOzone/synapse-sdk/issues/1014)).
 
 ## synapse-react issues found while building this
 

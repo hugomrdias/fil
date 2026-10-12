@@ -1,6 +1,10 @@
 import { createReadStream } from 'node:fs'
 import { Readable } from 'node:stream'
 import type { ReadableStream } from 'node:stream/web'
+import {
+  WaitForAddPiecesRejectedError,
+  WaitForCreateDataSetRejectedError,
+} from '@filoz/synapse-core/errors'
 import * as PDPVerifier from '@filoz/synapse-core/pdp-verifier'
 import * as Piece from '@filoz/synapse-core/piece'
 import * as SP from '@filoz/synapse-core/sp'
@@ -27,20 +31,10 @@ import type { Placement, StorageBackend } from './types.ts'
 const LOW_128 = (1n << 128n) - 1n
 
 /**
- * Names of synapse-core errors for a provider-reported failed transaction.
- * Matched by name: `WaitForCreateDataSetRejectedError` inherits a static
- * `is()` that only matches the base `SynapseError`.
- */
-const REJECTED_ERRORS = new Set([
-  'WaitForAddPiecesRejectedError',
-  'WaitForCreateDataSetRejectedError',
-])
-
-/**
  * Create the synapse-core storage backend: one copy on one Curio provider,
  * signed by the session key and paid for by its root wallet. Chain reads are
- * cancelled by `app.transport`; provider calls that take no signal are
- * wrapped with {@link abortable} on `app.signal`.
+ * cancelled by `app.transport`, provider calls take `app.signal`, and the
+ * viem receipt wait is wrapped with {@link abortable}.
  *
  * @see https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core
  */
@@ -74,9 +68,10 @@ export function createSynapseBackend(
   /** Whether a provider answers its PDP ping. */
   async function isReachable(serviceURL: string): Promise<boolean> {
     try {
-      await SP.ping(serviceURL)
+      await SP.ping(serviceURL, { signal })
       return true
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) throw error
       return false
     }
   }
@@ -120,7 +115,7 @@ export function createSynapseBackend(
           })
         }
         const candidate = location.provider
-        if (await abortable(isReachable(candidate.pdp.serviceURL), signal)) {
+        if (await isReachable(candidate.pdp.serviceURL)) {
           return withDataSet({
             providerId: candidate.id,
             serviceURL: candidate.pdp.serviceURL,
@@ -225,34 +220,29 @@ export function createSynapseBackend(
       const pieces = [
         { pieceCid: Piece.from(pieceCid), metadata: pieceMetadata },
       ]
-      // Never start a paid mutation once the user has interrupted.
-      signal?.throwIfAborted()
+      // synapse-core never sends a paid mutation once the signal has aborted.
       if (commit.created) {
-        const result = await abortable(
-          SP.createDataSetAndAddPieces(signer, {
-            serviceURL: placement.serviceURL,
-            payee: placement.payee,
-            payer,
-            pieces,
-            extraData: commit.extraData,
-          }),
-          signal
-        )
+        const result = await SP.createDataSetAndAddPieces(signer, {
+          serviceURL: placement.serviceURL,
+          payee: placement.payee,
+          payer,
+          pieces,
+          extraData: commit.extraData,
+          signal,
+        })
         return { transactionHash: result.txHash, statusUrl: result.statusUrl }
       }
       if (placement.dataSetId == null || placement.clientDataSetId == null) {
         throw new Error('Adding to a data set requires its IDs.')
       }
-      const result = await abortable(
-        SP.addPieces(signer, {
-          serviceURL: placement.serviceURL,
-          dataSetId: placement.dataSetId,
-          clientDataSetId: placement.clientDataSetId,
-          pieces,
-          extraData: commit.extraData,
-        }),
-        signal
-      )
+      const result = await SP.addPieces(signer, {
+        serviceURL: placement.serviceURL,
+        dataSetId: placement.dataSetId,
+        clientDataSetId: placement.clientDataSetId,
+        pieces,
+        extraData: commit.extraData,
+        signal,
+      })
       return { transactionHash: result.txHash, statusUrl: result.statusUrl }
     },
 
@@ -272,25 +262,25 @@ export function createSynapseBackend(
     async waitForCommit({ statusUrl, created }) {
       try {
         if (created) {
-          const result = await abortable(
-            SP.waitForCreateDataSetAddPieces({ statusUrl }),
-            signal
-          )
+          const result = await SP.waitForCreateDataSetAddPieces({
+            statusUrl,
+            signal,
+          })
           return {
             dataSetId: result.dataSetId,
             pieceId: firstId(result.piecesIds),
           }
         }
-        const result = await abortable(
-          SP.waitForAddPieces({ statusUrl }),
-          signal
-        )
+        const result = await SP.waitForAddPieces({ statusUrl, signal })
         return {
           dataSetId: result.dataSetId,
           pieceId: firstId(result.confirmedPieceIds),
         }
       } catch (error) {
-        if (error instanceof Error && REJECTED_ERRORS.has(error.name)) {
+        if (
+          WaitForAddPiecesRejectedError.is(error) ||
+          WaitForCreateDataSetRejectedError.is(error)
+        ) {
           throw new CliError({
             code: ErrorCodes.commitRejected,
             message: 'The provider reported the commit transaction as failed.',
@@ -304,20 +294,18 @@ export function createSynapseBackend(
     async schedulePieceRemoval({ serviceURL, dataSetId, pieceId }) {
       const dataSet = await getDataSet(dataSetId)
       if (!dataSet) throw notFound(`Data set ${dataSetId} not found.`)
-      signal?.throwIfAborted()
-      const result = await abortable(
-        SP.schedulePieceDeletions(signer, {
-          serviceURL,
-          dataSetId,
-          clientDataSetId: dataSet.clientDataSetId,
-          pieceIds: [pieceId],
-        }),
-        signal
-      )
+      const result = await SP.schedulePieceDeletions(signer, {
+        serviceURL,
+        dataSetId,
+        clientDataSetId: dataSet.clientDataSetId,
+        pieceIds: [pieceId],
+        signal,
+      })
       return { transactionHash: result.hash }
     },
 
     async waitForTransaction(transactionHash) {
+      // viem's receipt wait takes no signal.
       const receipt = await abortable(
         waitForTransactionReceipt(client, { hash: transactionHash }),
         signal

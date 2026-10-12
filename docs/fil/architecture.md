@@ -256,7 +256,7 @@ The lock is a compare-and-swap `UPDATE` on `(execution_status, pid)`. If an oper
 
 clipact aborts `ctx.signal` on the first SIGINT, SIGTERM, or SIGHUP. Handlers pass the signal to `createApp`, which binds it to the RPC transport. After the abort, every chain read through synapse-core or viem rejects at once, and no new request starts. A request already in flight keeps running, because passing the signal to viem's HTTP transport would replace the transport's own timeout.
 
-`storage/synapse.ts` passes `app.signal` to uploads, downloads, and piece polling. Some provider calls take no signal: commit submission, the wait for a commit, removal, and ping. `storage/synapse.ts` races those calls against the signal with `abortable()`. It never sends a commit or a removal after an abort, so the handler returns without waiting.
+`storage/synapse.ts` passes `app.signal` to every provider call: ping, upload, piece polling, commit submission, the wait for a commit, and removal. The abort cancels the HTTP request in flight. synapse-core checks the signal before it sends a commit or a removal, so neither starts after an abort. A resume then looks up the commit by its nonce before it sends the saved signature again. viem's receipt wait for a removal takes no signal, so `storage/synapse.ts` races it against the signal with `abortable()`, and the handler returns without waiting. [#67](https://github.com/hugomrdias/fil/issues/67) tracks the viem support that would remove both workarounds.
 
 `runOperation` marks the operation `failed` with the error `Interrupted`. clipact then writes an `interrupted` result with the resume step from the latest checkpoint and re-raises the signal, so the shell sees `130`, `143`, or `129`.
 

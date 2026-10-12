@@ -32,7 +32,7 @@
     "check": "pnpm typecheck && pnpm test && pnpm lint"
   },
   "devDependencies": {
-    "@filoz/synapse-core": "^0.10.0",
+    "@filoz/synapse-core": "^0.10.1",
     "@ipld/car": "^5.4.7",
     "@types/node": "catalog:",
     "clipact": "workspace:*",

@@ -14,3 +14,4 @@ catalog:
 
 minimumReleaseAgeExclude:
   - iso-conf@0.4.2
+  - '@filoz/synapse-core@0.10.1'
