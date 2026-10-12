@@ -243,7 +243,7 @@ export interface paths {
         };
         /**
          * Redirect to where content can be retrieved
-         * @description Redirects a PieceCID to `/piece/{cid}` on a storage provider serving it, or with `browser=true` to inbrowser.link when the piece has `ipfsRootCID` metadata in an IPFS-indexed data set. Redirects an IPFS root CID to `/ipfs/{cid}` on a provider with a piece whose `ipfsRootCID` metadata matches, or to inbrowser.link with `browser=true`. Other query parameters are forwarded.
+         * @description Redirects a PieceCID to `/piece/{cid}` on a storage provider serving it, or with `browser=true` to inbrowser.link when the piece has `ipfsRootCID` metadata in an IPFS-indexed data set. Redirects an IPFS root CID to `/ipfs/{cid}` on a provider with a piece whose `ipfsRootCID` metadata matches, or to inbrowser.link with `browser=true`. When no indexed copy exists, `provider` names the provider to redirect to instead. Other query parameters are forwarded.
          */
         get: operations["retrieve"];
         put?: never;
@@ -1426,6 +1426,8 @@ export interface operations {
                 network?: "calibration" | "mainnet";
                 /** @description Open IPFS content, or a piece with an IPFS root, in the browser through inbrowser.link */
                 browser?: "true" | "false";
+                /** @description Provider ID to redirect to when no indexed copy exists yet, such as a piece the provider has but has not committed on chain */
+                provider?: string;
             };
             header?: never;
             path: {
