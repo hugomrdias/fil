@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/hugomrdias/fil/compare/fil-cli-v0.3.0...fil-cli-v0.4.0) (2026-10-12)
+
+
+### Features
+
+* progress heartbeat in clipact, and transaction hashes while fil waits ([#71](https://github.com/hugomrdias/fil/issues/71)) ([f9d538a](https://github.com/hugomrdias/fil/commit/f9d538a910c62e53e451dce0cd7de2a9a2e48037))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * clipact bumped to 0.4.0
+
 ## [0.3.0](https://github.com/hugomrdias/fil/compare/fil-cli-v0.2.1...fil-cli-v0.3.0) (2026-10-12)
 
 

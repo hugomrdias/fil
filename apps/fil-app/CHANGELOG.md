@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/hugomrdias/fil/compare/fil-app-v0.3.0...fil-app-v0.4.0) (2026-10-12)
+
+
+### Features
+
+* **fil-app:** add an agent quickstart with tabbed install commands ([#73](https://github.com/hugomrdias/fil/issues/73)) ([c7c033c](https://github.com/hugomrdias/fil/commit/c7c033cee4edc8af4706be5e40ee4ad07584250d))
+
 ## [0.3.0](https://github.com/hugomrdias/fil/compare/fil-app-v0.2.0...fil-app-v0.3.0) (2026-10-12)
 
 
