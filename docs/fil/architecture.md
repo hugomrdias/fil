@@ -312,7 +312,7 @@ Every query filters on `(chainId, payer)`, so one database can hold several netw
 
 clipact writes the results. In machine mode, stdout carries one compact JSON object. Machine mode applies with `--json`, with `FIL_OUTPUT=json`, under a detected agent, or when stdout is not a terminal. In every other case, each command's `human()` formatter writes text.
 
-The JSON object has `data` on success or `error` on failure, then optional `next` steps. The exit code is `0` when the result has `data` and `1` when it has `error`. On-chain IDs and amounts are decimal strings. Progress goes to stderr. A human sees a status line that `fil` rewrites in place. An agent sees a plain line for each new phase, and at most one line every 15 seconds within a phase.
+The JSON object has `data` on success or `error` on failure, then optional `next` steps. The exit code is `0` when the result has `data` and `1` when it has `error`. On-chain IDs and amounts are decimal strings. Progress goes to stderr. A human sees a status line that `fil` rewrites in place. An agent sees a plain line for every event. When nothing new happens for 15 seconds, such as during the commit wait, clipact repeats the latest event with its elapsed time, then every 30 seconds.
 
 Errors are clipact `CliError`s with a stable snake_case `code`, a `retryable` flag, optional `details`, and `next` steps. Each command lists its codes in its definition, and `schema` and help show them. An error from viem or synapse-core that is not a `CliError` goes through the lazily loaded `map-error.ts`. That module maps RPC and HTTP failures to `service_unavailable` or `timeout`. clipact marks those two codes retryable only for read-only and idempotent commands. Any other error becomes `internal_error`.
 
