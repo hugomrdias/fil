@@ -272,8 +272,15 @@ test('put reports a folder link once the commit is sent', async () => {
   const result = await startPut(ctx, { path: dir })
   const messages = events.map((event) => event.message)
   const link = events.findIndex((event) => event.phase === 'link')
+  const waiting = messages.findIndex((m) =>
+    m.startsWith('Waiting for confirmation of transaction 0x')
+  )
   assert.ok(link > messages.indexOf('Creating data set and adding piece'))
-  assert.ok(link < messages.indexOf('Waiting for on-chain confirmation'))
+  assert.ok(link < waiting)
+  assert.equal(
+    messages[waiting],
+    `Waiting for confirmation of transaction ${events[waiting]?.data?.transactionHash}`
+  )
   assert.deepEqual(events[link]?.data, {
     pieceCid: result.resource.pieceCid,
     urls: {
@@ -491,10 +498,16 @@ test('delete schedules removal and marks the resource pending', async () => {
   const ctx = await context(backend)
   const path = await file(ctx, 'data.bin', 1024)
   const put = await startPut(ctx, { path })
+  const events = recordProgress(ctx)
 
   const removed = await startRemove(ctx, put.resource.ref)
   assert.equal(removed.state, 'removal_pending')
   assert.equal(calls.remove, 1)
+  assert.deepEqual(events.at(-1), {
+    phase: 'removing',
+    message: `Waiting for confirmation of removal transaction ${TX}`,
+    data: { transactionHash: TX },
+  })
   assert.equal(getResource(ctx.db, put.resource.ref)?.status, 'removal_pending')
   assert.equal(
     getOperation(ctx.db, removed.operationId)?.executionStatus,

@@ -565,9 +565,15 @@ async function commit(
   }
 
   onSent?.()
+  // clipact repeats this line with the elapsed time while the wait lasts, so
+  // the user can look the transaction up meanwhile.
+  const { transactionHash } = op.checkpoint
   ctx.progress?.({
     phase: 'committing',
-    message: 'Waiting for on-chain confirmation',
+    message: transactionHash
+      ? `Waiting for confirmation of transaction ${transactionHash}`
+      : 'Waiting for on-chain confirmation',
+    ...(transactionHash ? { data: { transactionHash } } : {}),
   })
   try {
     return await ctx.backend.waitForCommit({
@@ -687,7 +693,8 @@ async function runRemove(ctx: JobContext, op: Operation): Promise<JobResult> {
   const hash = op.checkpoint.transactionHash as `0x${string}`
   ctx.progress?.({
     phase: 'removing',
-    message: 'Waiting for the removal transaction',
+    message: `Waiting for confirmation of removal transaction ${hash}`,
+    data: { transactionHash: hash },
   })
   const receipt = await ctx.backend.waitForTransaction(hash)
   if (receipt.status !== 'success') {
