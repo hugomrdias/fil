@@ -50,7 +50,9 @@ Conventions:
 | Other CID (IPFS content) | `false` or absent | `{serviceUrl}/ipfs/{cid}` on a provider with a piece whose `ipfsRootCID` metadata matches, in an IPFS-indexed data set |
 | Other CID (IPFS content) | `true` | `https://inbrowser.link/ipfs/{cid}`, without a database lookup |
 
-Legacy v1 PieceCIDs (`baga…`) and strings that aren't CIDs return `400`. If no live copy exists, the response is `404`. Other query parameters, such as `format=car`, are forwarded to the target. When several providers store the content, the route ranks endorsed providers first, then approved ones, then the oldest copy.
+`provider={id}` names a provider to redirect to when no indexed copy exists, using the same paths. It covers the time between a provider parking a piece and the indexer seeing the commit, because Curio serves `/piece/{cid}` for a parked piece. The provider must be active, with an HTTP service URL. An indexed copy always wins over the hint, and the hint is never cached, so the normal ranking takes over once the indexer has the piece. `fil put` adds the hint to the links it reports before the commit confirms. The hint does nothing for an IPFS CID with `browser=true`, which needs no lookup.
+
+Legacy v1 PieceCIDs (`baga…`) and strings that aren't CIDs return `400`. If no live copy exists and no hint applies, the response is `404`. Other query parameters, such as `format=car`, are forwarded to the target. When several providers store the content, the route ranks endorsed providers first, then approved ones, then the oldest copy.
 
 Resolved providers are cached per network and CID in the [Workers Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/) with stale-while-revalidate:
 - An entry is fresh for 10 minutes.

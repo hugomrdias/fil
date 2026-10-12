@@ -1,10 +1,12 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi'
 import { parseRetrievalCid, type RetrievalCid } from '../cid.ts'
-import { type DbFactory, type DbStats, openNetworkDb } from '../db.ts'
+import { type Db, type DbFactory, type DbStats, openNetworkDb } from '../db.ts'
 import { networkUnavailable, notFound } from '../errors.ts'
 import { rateLimit } from '../middleware/rate-limit.ts'
+import type { Schemas } from '../networks.ts'
 import { NETWORKS, type NetworkName } from '../networks.ts'
 import {
+  findHintedProvider,
   findIpfsRootProvider,
   findPieceProvider,
   type PieceProvider,
@@ -15,6 +17,7 @@ import {
   NetworkSchema,
   notFoundResponse,
   RetrievalCidInput,
+  UintInput,
 } from '../schemas/common.ts'
 import { staleWhileRevalidate } from '../swr-cache.ts'
 import { activeSpan, setAttributes } from '../tracing.ts'
@@ -41,7 +44,7 @@ export const PROVIDER_REDIRECT_CACHE_CONTROL = 'public, max-age=60'
 const GATEWAY_REDIRECT_CACHE_CONTROL = 'public, max-age=86400'
 
 /** Query parameters consumed by the route rather than forwarded. */
-const OWN_PARAMS = new Set(['network', 'browser'])
+const OWN_PARAMS = new Set(['network', 'browser', 'provider'])
 
 const route = createRoute({
   operationId: 'retrieve',
@@ -55,7 +58,8 @@ const route = createRoute({
     'metadata in an IPFS-indexed data set.',
     'Redirects an IPFS root CID to `/ipfs/{cid}` on a provider with a piece',
     'whose `ipfsRootCID` metadata matches, or to inbrowser.link with',
-    '`browser=true`. Other query parameters are forwarded.',
+    '`browser=true`. When no indexed copy exists, `provider` names the',
+    'provider to redirect to instead. Other query parameters are forwarded.',
   ].join(' '),
   request: {
     params: z.object({
@@ -66,6 +70,10 @@ const route = createRoute({
       browser: BooleanQuery.optional().openapi({
         description:
           'Open IPFS content, or a piece with an IPFS root, in the browser through inbrowser.link',
+      }),
+      provider: UintInput.optional().openapi({
+        description:
+          'Provider ID to redirect to when no indexed copy exists yet, such as a piece the provider has but has not committed on chain',
       }),
     }),
   },
@@ -101,31 +109,43 @@ export function retrievalUrl(
   return url.toString()
 }
 
-/** Look up the provider for a CID in one network's database. */
-async function lookupProvider(options: {
+/** Where and how {@link lookupProvider} queries one network's database. */
+interface LookupOptions {
   env: AppEnv['Bindings']
   network: NetworkName
   dbFactory: DbFactory
   stats: DbStats
-  cid: RetrievalCid
   waitUntil?: (promise: Promise<unknown>) => void
-}): Promise<PieceProvider | undefined> {
-  const { env, network, dbFactory, stats, cid } = options
+}
+
+/** Look up a provider with `find` in one network's database. */
+async function lookupProvider(
+  options: LookupOptions,
+  find: (db: Db, schemas: Schemas) => Promise<PieceProvider | undefined>
+): Promise<PieceProvider | undefined> {
+  const { env, network, dbFactory, stats } = options
   const opened = openNetworkDb(env, network, dbFactory, stats)
   if (!opened) throw networkUnavailable(network)
-  const find = cid.kind === 'piece' ? findPieceProvider : findIpfsRootProvider
   try {
-    return await find(opened.db, opened.network.schemas, cid.cid)
+    return await find(opened.db, opened.network.schemas)
   } finally {
     if (options.waitUntil) options.waitUntil(opened.close())
     else await opened.close()
   }
 }
 
+/** Find the indexed provider serving a CID. */
+function indexedProvider(cid: RetrievalCid) {
+  const find = cid.kind === 'piece' ? findPieceProvider : findIpfsRootProvider
+  return (db: Db, schemas: Schemas) => find(db, schemas, cid.cid)
+}
+
 /**
  * `GET /get/{cid}`: redirect a PieceCID or IPFS root CID to a storage
  * provider serving it, without proxying the content. Resolved providers are
- * cached per network and CID with stale-while-revalidate.
+ * cached per network and CID with stale-while-revalidate. A `provider` hint
+ * is used only when no indexed copy exists, and is never cached, so the
+ * indexed ranking takes over once the indexer has the content.
  *
  * @see https://github.com/filecoin-project/curio/blob/main/documentation/en/curio-market/retrievals.md
  */
@@ -135,7 +155,7 @@ export function retrievalRoutes(dbFactory: DbFactory) {
 
   api.openapi(route, async (c) => {
     const { cid } = c.req.valid('param')
-    const { network, browser } = c.req.valid('query')
+    const { network, browser, provider: hint } = c.req.valid('query')
     const query = new URL(c.req.url).searchParams
     const span = activeSpan()
     setAttributes(span, { 'fil.cid.kind': cid.kind })
@@ -150,25 +170,34 @@ export function retrievalRoutes(dbFactory: DbFactory) {
     }
 
     c.set('network', NETWORKS[network])
-    const lookup = { env: c.env, network, dbFactory, cid }
-    const { value: provider, status } = await staleWhileRevalidate({
+    const lookup = { env: c.env, network, dbFactory }
+    const inRequest: LookupOptions = {
+      ...lookup,
+      stats: c.var.dbStats,
+      waitUntil: (p) => c.executionCtx.waitUntil(p),
+    }
+    const find = indexedProvider(cid)
+    const { value: indexed, status } = await staleWhileRevalidate({
       cache: caches.default,
       key: new URL(`/__cache/v2/${network}/${cid.kind}/${cid.cid}`, c.req.url)
         .href,
       freshMs: PROVIDER_FRESH_MS,
       maxAgeSeconds: PROVIDER_MAX_AGE_S,
-      load: () =>
-        lookupProvider({
-          ...lookup,
-          stats: c.var.dbStats,
-          waitUntil: (p) => c.executionCtx.waitUntil(p),
-        }),
-      revalidate: () => lookupProvider({ ...lookup, stats: newStats() }),
+      load: () => lookupProvider(inRequest, find),
+      revalidate: () => lookupProvider({ ...lookup, stats: newStats() }, find),
       waitUntil: (p) => c.executionCtx.waitUntil(p),
     })
+    const provider =
+      indexed ??
+      (hint === undefined
+        ? undefined
+        : await lookupProvider(inRequest, (db, schemas) =>
+            findHintedProvider(db, schemas, hint)
+          ))
     setAttributes(span, {
       'fil.cache': status,
       'fil.provider_id': provider?.providerId,
+      'fil.provider_hint': indexed === undefined && provider !== undefined,
     })
     if (!provider) {
       throw notFound(cid.kind === 'piece' ? 'Piece' : 'IPFS root', cid.cid)

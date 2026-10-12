@@ -220,6 +220,33 @@ async function findProvider(
   )
 }
 
+/**
+ * Find an active provider with an HTTP service URL by ID. `GET /get/{cid}`
+ * falls back to it when the indexer has no copy yet, such as a piece the
+ * provider has parked but not yet committed on chain.
+ */
+export async function findHintedProvider(
+  db: Db,
+  schemas: Schemas,
+  providerId: string
+): Promise<PieceProvider | undefined> {
+  const rows = await db.query<PieceProviderRow>(
+    sql`select provider_id, service_url, null as ipfs_root_cid
+     from ${providers(schemas)}
+     where provider_id = ${providerId}::bigint
+       and provider_active and pdp_product_active
+       and service_url ~ '^https?://'`
+  )
+  const row = rows[0]
+  return (
+    row && {
+      providerId: row.provider_id,
+      serviceUrl: row.service_url,
+      ipfsRootCid: null,
+    }
+  )
+}
+
 /** Find the provider to retrieve a PieceCID from, if any serves it. */
 export function findPieceProvider(
   db: Db,

@@ -180,7 +180,54 @@ describe('GET /get/{cid}', () => {
     expect(fake.queries).toHaveLength(2)
   })
 
+  describe('provider hint', () => {
+    const HINT_URL = 'https://hint.example'
+
+    /** No indexed copy; the hinted provider, when asked for, exists. */
+    function hintOnly(text: string) {
+      return text.includes('p.cid')
+        ? []
+        : [{ provider_id: '9', service_url: HINT_URL, ipfs_root_cid: null }]
+    }
+
+    it('redirects to the hinted provider without caching it', async () => {
+      const cid = await uniquePieceCid()
+      const { request, fake } = testApp(hintOnly)
+      const res = await request(
+        `/get/${cid}?network=calibration&browser=true&provider=9&filename=a.bin`
+      )
+      expect(res.status).toBe(302)
+      expect(res.headers.get('location')).toBe(
+        `${HINT_URL}/piece/${cid}?filename=a.bin`
+      )
+      expect(res.headers.get('cache-control')).toBe(
+        PROVIDER_REDIRECT_CACHE_CONTROL
+      )
+      expect(fake.queries[1]?.params).toEqual(['9'])
+      expect(fake.queries[1]?.text).toContain('provider_active')
+
+      await request(`/get/${cid}?network=calibration&provider=9`)
+      expect(fake.queries).toHaveLength(4)
+    })
+
+    it('prefers an indexed copy over the hint', async () => {
+      const cid = await uniquePieceCid()
+      const { request, fake } = testApp(() => [providerRow])
+      const res = await request(`/get/${cid}?provider=9`)
+      expect(res.headers.get('location')).toBe(`${SERVICE_URL}/piece/${cid}`)
+      expect(fake.queries).toHaveLength(1)
+    })
+
+    it('returns 404 when the hinted provider is unknown or inactive', async () => {
+      const cid = await uniquePieceCid()
+      const { request } = testApp(() => [])
+      const res = await request(`/get/${cid}?provider=9`)
+      expect(res.status).toBe(404)
+    })
+  })
+
   it.each([
+    `/get/${rows.piece.cid}?provider=sp9`,
     '/get/nope',
     '/get/baga6ea4seaqao7s73y24kcutaosvacpdjgfe5pw76ooefnyqw4ynr3d2y6x2mpq',
     `/get/${rows.piece.cid}?network=filecoin`,
