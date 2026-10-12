@@ -47,6 +47,21 @@ test('retrievalUrls links a file to /get/{pieceCid} for both URLs', () => {
   )
 })
 
+test('retrievalUrls adds the provider hint to both links of a file', () => {
+  assert.deepEqual(
+    retrievalUrls({
+      apiUrl: 'https://api.example',
+      chainId: '314',
+      pieceCid: PIECE_CID,
+      providerId: '7',
+    }),
+    {
+      piece: `https://api.example/get/${PIECE_CID}?network=mainnet&provider=7`,
+      browser: `https://api.example/get/${PIECE_CID}?network=mainnet&browser=true&provider=7`,
+    }
+  )
+})
+
 test('resourceUrls opens a folder by its root CID and keeps the API base path', () => {
   assert.deepEqual(resourceUrls(folder, 'http://localhost:8787/v1'), {
     piece: `http://localhost:8787/v1/get/${PIECE_CID}?network=calibration`,

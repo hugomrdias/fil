@@ -63,9 +63,12 @@ fil delete res_… --yes        # alias rm; schedules removal
 - `urls.piece` redirects to the exact stored bytes at a provider's `/piece/<pieceCid>`.
 - `urls.browser` is the link to share. A browser renders a file from the same `/piece` URL. A folder goes through [inbrowser.link](https://inbrowser.link), which verifies the blocks in the browser.
 
-`put` prints `urls.browser` to stderr as soon as it knows the PieceCID, before the upload and the commit, as `fil: link: <url> (answers shortly after the commit)`. An agent can show it to the user while the put runs.
+`put` also prints an early browser link to stderr as `fil: link: <url>`, so an agent can show it to the user while the commit confirms:
 
-fil-api finds providers through its indexer, so a new piece link returns 404 until the indexer has the piece. A folder's browser link works at once. `fil get` downloads from the provider directly.
+- **A file's link** comes once the provider has parked the piece. It carries a `provider=<id>` hint, and fil-api redirects to that provider until its indexer has the piece. Curio serves a parked piece before the commit, so the link works at once.
+- **A folder's link** comes once the commit is sent. It goes to inbrowser.link, which finds the blocks through IPNI. Curio indexes the CAR and announces it to IPNI when it receives the commit, so the link starts working shortly after.
+
+The links in the result carry no hint. fil-api finds providers through its indexer, so they return 404 until the indexer has the piece. `fil get` downloads from the provider directly.
 
 Packing skips dotfiles and rejects symlinks. The file or the packed CAR must be between 127 and 1,065,353,216 bytes (1016 MiB).
 

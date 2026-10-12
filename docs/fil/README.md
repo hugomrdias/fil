@@ -97,7 +97,7 @@ Each fact has one owner, and the others link to it. The skill owns the agent's w
 - **Piece removal stops at `removal_pending`.** Nothing tracks when the provider removes the piece.
 - **Slow hashing.** PieceCID hashing takes about 70 seconds per GiB. `put`, `operations resume`, and `get` each hash the whole content ([#6](https://github.com/hugomrdias/fil/issues/6)).
 - **Shallow folder check.** `inspect --check` probes only the piece URL, not each file of a folder.
-- **Links wait for the indexer.** The piece link, and a file's browser link, return 404 until fil-api's indexer has the new piece. A folder's browser link names the root CID, so it works at once. `fil get` downloads from the provider directly.
+- **Result links wait for the indexer.** The piece link and a file's browser link in the `put` result return 404 until fil-api's indexer has the new piece. Before that, `put` reports an early link on stderr. A file's early link carries a provider hint and works once the provider has parked the piece. A folder's link goes through inbrowser.link, which works only after Curio indexes the CAR and announces it to IPNI. Curio starts that when it receives the commit, before the transaction confirms. `fil get` downloads from the provider directly.
 - **No `--events`, `--fields`, or `operations inspect --refresh`.** The research proposed all three.
 
 ### REST API and MCP server

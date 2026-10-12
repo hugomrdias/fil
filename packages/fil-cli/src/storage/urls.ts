@@ -32,7 +32,8 @@ function getUrl(
   apiUrl: string,
   network: Network,
   cid: string,
-  browser: boolean
+  browser: boolean,
+  providerId: string | undefined
 ): string {
   const url = new URL(
     `get/${encodeURIComponent(cid)}`,
@@ -40,13 +41,18 @@ function getUrl(
   )
   url.searchParams.set('network', network)
   if (browser) url.searchParams.set('browser', 'true')
+  if (providerId) url.searchParams.set('provider', providerId)
   return url.toString()
 }
 
 /**
  * Build fil-api retrieval URLs for a piece and, for folders, its IPFS root.
  * The folder's browser URL names the root CID, so fil-api redirects it to
- * inbrowser.link without waiting for its indexer.
+ * inbrowser.link without waiting for its indexer. `providerId` names the
+ * provider holding the piece, which fil-api redirects to until its indexer
+ * has a copy, so a `/piece` link works as soon as the provider has parked
+ * the piece. `put` adds it only to the links it reports before the commit
+ * confirms. A folder's browser URL leaves it out: fil-api never looks it up.
  *
  * @see ../../../../apps/fil-api/README.md#retrieval
  */
@@ -55,15 +61,23 @@ export function retrievalUrls(options: {
   chainId: string
   pieceCid: string
   rootCid?: string | undefined
+  providerId?: string | undefined
 }): RetrievalUrls {
   const network = networkOf(options.chainId)
   return {
-    piece: getUrl(options.apiUrl, network, options.pieceCid, false),
+    piece: getUrl(
+      options.apiUrl,
+      network,
+      options.pieceCid,
+      false,
+      options.providerId
+    ),
     browser: getUrl(
       options.apiUrl,
       network,
       options.rootCid ?? options.pieceCid,
-      true
+      true,
+      options.rootCid ? undefined : options.providerId
     ),
   }
 }

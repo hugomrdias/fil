@@ -10,7 +10,12 @@ Everything `fil` stores has a PieceCID, and a folder also has a root CID:
 - `urls.browser` is the link to share. A browser renders a file straight from the provider, and opens a folder through [inbrowser.link](https://inbrowser.link).
 - `urls.piece` returns the exact stored bytes.
 
-fil-api finds providers through its indexer, so a new piece link returns 404 until the indexer has the piece. A folder's browser link works at once. `fil inspect <ref> --check` reports when the piece link answers.
+fil-api finds providers through its indexer, so a new piece link returns 404 until the indexer has the piece. `fil inspect <ref> --check` reports when the piece link answers.
+
+While the commit confirms, `fil put` prints an early browser link to stderr as `fil: link: <url>`:
+
+- **A file's early link** works as soon as the provider has the piece. It names the provider, so fil-api can redirect before its indexer catches up.
+- **A folder's early link** comes once the commit is sent. It starts working shortly after, when the provider has indexed the folder and announced it to IPFS.
 
 ## What each way checks
 

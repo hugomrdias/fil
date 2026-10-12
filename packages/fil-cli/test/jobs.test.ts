@@ -229,21 +229,57 @@ test('put stores a file in a new data set and records the resource', async () =>
   assert.equal(op?.pid, undefined)
 })
 
-test('put reports the retrieval link before uploading', async () => {
+/** Progress events of a put, recorded in order. */
+function recordProgress(ctx: JobContext) {
+  const events: {
+    phase: string
+    message: string
+    data?: Record<string, unknown>
+  }[] = []
+  ctx.progress = (event) => events.push(event)
+  return events
+}
+
+test('put reports a file link with the provider hint once it is parked', async () => {
   const { backend } = fakeBackend()
   const ctx = await context(backend)
-  const events: { phase: string; data?: Record<string, unknown> }[] = []
-  ctx.progress = (event) => events.push(event)
+  const events = recordProgress(ctx)
   const path = await file(ctx, 'report.pdf', 4096)
 
   const result = await startPut(ctx, { path })
   const phases = events.map((event) => event.phase)
-  assert.ok(phases.indexOf('link') > phases.indexOf('hashing'))
-  assert.ok(phases.indexOf('link') < phases.indexOf('uploading'))
+  assert.ok(phases.indexOf('link') > phases.indexOf('uploading'))
+  assert.ok(phases.indexOf('link') < phases.indexOf('committing'))
   const link = events.find((event) => event.phase === 'link')
   assert.deepEqual(link?.data, {
     pieceCid: result.resource.pieceCid,
-    urls: result.urls,
+    urls: {
+      piece: `${result.urls.piece}&provider=7`,
+      browser: `${result.urls.browser}&provider=7`,
+    },
+  })
+  assert.equal(link?.message, `${result.urls.browser}&provider=7`)
+})
+
+test('put reports a folder link once the commit is sent', async () => {
+  const { backend } = fakeBackend()
+  const ctx = await context(backend)
+  const events = recordProgress(ctx)
+  const dir = join(ctx.root, 'site')
+  await mkdir(dir)
+  await writeFile(join(dir, 'index.html'), '<h1>hello world</h1>')
+
+  const result = await startPut(ctx, { path: dir })
+  const messages = events.map((event) => event.message)
+  const link = events.findIndex((event) => event.phase === 'link')
+  assert.ok(link > messages.indexOf('Creating data set and adding piece'))
+  assert.ok(link < messages.indexOf('Waiting for on-chain confirmation'))
+  assert.deepEqual(events[link]?.data, {
+    pieceCid: result.resource.pieceCid,
+    urls: {
+      piece: `${result.urls.piece}&provider=7`,
+      browser: result.urls.browser,
+    },
   })
 })
 
@@ -403,10 +439,13 @@ test('put stops with insufficient_funds, a funding step, and the operation', asy
 test('put skips the upload when the provider already has the piece', async () => {
   const { backend, calls } = fakeBackend({ stored: true })
   const ctx = await context(backend)
+  const phases: string[] = []
+  ctx.progress = (event) => phases.push(event.phase)
   const path = await file(ctx, 'data.bin', 1024)
   await startPut(ctx, { path })
   assert.equal(calls.upload, 0)
   assert.equal(calls.submitted.length, 1)
+  assert.ok(phases.includes('link'))
 })
 
 test('resume refuses a source that changed since the job started', async () => {
