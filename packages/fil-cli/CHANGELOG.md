@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0](https://github.com/hugomrdias/fil/compare/fil-cli-v0.2.1...fil-cli-v0.3.0) (2026-10-12)
+
+
+### Features
+
+* early retrieval links during put, with a provider hint in fil-api ([#65](https://github.com/hugomrdias/fil/issues/65)) ([023073b](https://github.com/hugomrdias/fil/commit/023073b23dd9b8f5b4ba94f55768f89e91b28520))
+
+
+### Bug Fixes
+
+* **fil-cli:** cancel provider requests on interrupt with synapse-core 0.10.1 ([#68](https://github.com/hugomrdias/fil/issues/68)) ([c5f7e4b](https://github.com/hugomrdias/fil/commit/c5f7e4b059532b60ffaf68c5483ae841ed462f3d))
+* **fil-cli:** keep a saved session key when fil login runs again ([#70](https://github.com/hugomrdias/fil/issues/70)) ([4a47104](https://github.com/hugomrdias/fil/commit/4a47104f9a94a1f678c1fb1d2b2472f42b62e9b2))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * clipact bumped to 0.3.0
+
 ## [0.2.1](https://github.com/hugomrdias/fil/compare/fil-cli-v0.2.0...fil-cli-v0.2.1) (2026-10-12)
 
 

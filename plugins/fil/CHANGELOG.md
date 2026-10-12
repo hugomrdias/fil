@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/hugomrdias/fil/compare/fil-plugin-v0.1.0...fil-plugin-v0.1.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **fil-cli:** keep a saved session key when fil login runs again ([#70](https://github.com/hugomrdias/fil/issues/70)) ([4a47104](https://github.com/hugomrdias/fil/commit/4a47104f9a94a1f678c1fb1d2b2472f42b62e9b2))
+
 ## 0.1.0 (2026-10-08)
 
 

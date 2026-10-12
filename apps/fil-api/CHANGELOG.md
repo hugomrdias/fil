@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/hugomrdias/fil/compare/fil-api-v0.1.0...fil-api-v0.2.0) (2026-10-12)
+
+
+### Features
+
+* early retrieval links during put, with a provider hint in fil-api ([#65](https://github.com/hugomrdias/fil/issues/65)) ([023073b](https://github.com/hugomrdias/fil/commit/023073b23dd9b8f5b4ba94f55768f89e91b28520))
+
+
+### Bug Fixes
+
+* **fil-cli:** cancel provider requests on interrupt with synapse-core 0.10.1 ([#68](https://github.com/hugomrdias/fil/issues/68)) ([c5f7e4b](https://github.com/hugomrdias/fil/commit/c5f7e4b059532b60ffaf68c5483ae841ed462f3d))
+
 ## 0.1.0 (2026-10-08)
 
 
