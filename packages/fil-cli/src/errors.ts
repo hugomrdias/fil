@@ -5,7 +5,7 @@ import * as z from 'zod'
  * Error codes `fil` returns besides clipact's built-ins. Codes are stable:
  * agents and scripts branch on them. {@link errors} describes each one.
  *
- * @see ../../../docs/agent-cli/guidelines.md#errors-next-steps-and-retries
+ * @see https://github.com/hugomrdias/agents/blob/main/docs/agent-cli/guidelines.md#errors-next-steps-and-retries
  */
 export const ErrorCodes = {
   authRequired: 'auth_required',
@@ -40,7 +40,7 @@ const operation = {
  * The error registry: a description and `details` schema for each code,
  * published by `fil schema <command>`.
  *
- * @see ../../../docs/agent-cli/guidelines.md#errors-next-steps-and-retries
+ * @see https://github.com/hugomrdias/agents/blob/main/docs/agent-cli/guidelines.md#errors-next-steps-and-retries
  */
 export const errors = {
   [ErrorCodes.authRequired]: {

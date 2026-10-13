@@ -1,17 +1,14 @@
 # fil
 
-Tools for [Filecoin](https://docs.filecoin.cloud/). This repository holds the `fil` command-line interface, a read-only API with an MCP server, a web explorer and wallet dashboard, and `clipact`, the CLI framework that `fil` uses. It is a pnpm and Turborepo monorepo. The packages publish to npm, and the apps stay private.
+Tools for [Filecoin](https://docs.filecoin.cloud/). This repository holds the `fil` command-line interface, a read-only API with an MCP server, and a web explorer and wallet dashboard. It is a pnpm and Turborepo monorepo. The CLI publishes to npm, and the apps stay private.
 
 ## Packages and apps
 
 | Directory | npm | Contents |
 | --- | --- | --- |
 | [`packages/fil-cli`](packages/fil-cli/README.md) | `@hugomrdias/fil` | `fil`, a prototype CLI that stores files and folders on one Curio provider and returns retrieval URLs. People and agents both run it. |
-| [`packages/vite-plugin-agent-skills`](packages/vite-plugin-agent-skills/README.md) | `@hugomrdias/vite-plugin-agent-skills` | A Vite plugin that publishes Agent Skills under `/.well-known/agent-skills/` for agent skills discovery. fil-app uses it. |
-| [`packages/clipact`](packages/clipact/README.md) | `clipact` | A framework for Node.js CLIs that agents run. Each command writes one JSON result with stable error codes and `next` steps. |
 | [`apps/fil-api`](apps/fil-api/README.md) | Private | A Cloudflare Worker that serves a REST API and an MCP server for providers, data sets, pieces, Filecoin Pay rails, and session keys. |
 | [`apps/fil-app`](apps/fil-app/README.md) | Private | A React explorer for fil-api data, and a wallet dashboard for Filecoin Pay, Warm Storage approval, data sets, and session keys. |
-| [`examples/launchpad`](examples/launchpad/README.md) | Private | A complete clipact CLI that deploys sites to a mock host, with an esbuild bundle. |
 | [`plugins/fil`](plugins/fil/README.md) | | The fil agent plugin for Claude Code, Codex, and other [Agent Plugins](https://agent-plugins.org) clients. It bundles the agent skills and the MCP server. Its `skills/` directory is the only source of the skills, which `fil skills install`, fil-app's `/.well-known/agent-skills/`, and `npx skills add hugomrdias/fil` also read. |
 
 ## Documentation
@@ -21,7 +18,6 @@ Tools for [Filecoin](https://docs.filecoin.cloud/). This repository holds the `f
 | [fil overview](docs/fil/README.md) | The CLI, REST API, MCP server, and app, with the assumptions, compromises, open questions, and follow-up work of the proof of concept |
 | [fil architecture](docs/fil/architecture.md) | Modules, login, put, get, and delete flows, state, recovery, and verification |
 | [fil interface research](docs/fil/interface-research.md) | The historical design research behind the CLI: commands, resources, operations, and local state |
-| [Agent-facing CLIs](docs/agent-cli/README.md) | Guidelines for Node.js CLIs that agents run, and the design of clipact |
 
 ## Build and check
 
@@ -37,10 +33,10 @@ pnpm check
 
 ## Release
 
-[release-please](https://github.com/googleapis/release-please) versions the three packages, the two apps, and the plugin from [Conventional Commits](https://www.conventionalcommits.org/). [`.github/release-please-config.json`](.github/release-please-config.json) lists them, and [`.github/.release-please-manifest.json`](.github/.release-please-manifest.json) holds their current versions. The examples are not released.
+[release-please](https://github.com/googleapis/release-please) versions the CLI, the two apps, and the plugin from [Conventional Commits](https://www.conventionalcommits.org/). [`.github/release-please-config.json`](.github/release-please-config.json) lists them, and [`.github/.release-please-manifest.json`](.github/.release-please-manifest.json) holds their current versions.
 
-1. On each push to `main`, the [Release workflow](.github/workflows/release.yml) opens or updates one release pull request. It bumps the version and updates `CHANGELOG.md` of every package, app, or plugin that a commit touched since its last release. The first release of each is 0.1.0, because `initial-version` overrides release-please's default of 1.0.0. Below 1.0.0, `feat` bumps the minor version and `fix` the patch version.
+1. On each push to `main`, the [Release workflow](.github/workflows/release.yml) opens or updates one release pull request. It bumps the version and updates `CHANGELOG.md` of every package, app, or plugin that a commit touched since its last release. The first release of each was 0.1.0, because `initial-version` overrides release-please's default of 1.0.0. Below 1.0.0, `feat` bumps the minor version and `fix` the patch version.
 2. Merging the release pull request tags each release as `<component>-v<version>`, such as `fil-cli-v0.1.0`, and creates its GitHub release.
 3. The same workflow then publishes each released package with `pnpm publish`, which replaces `workspace:` and `catalog:` specifiers, and adds provenance. The apps get a version, a changelog, and a GitHub release, but are never published. Their own workflows deploy them. The plugin's version goes into both of its manifests, and the marketplaces serve it from `main`.
 
-The workflow publishes through [npm trusted publishing](https://docs.npmjs.com/trusted-publishers), so the repository holds no npm token. Each package needs a trusted publisher on npmjs.com for the `hugomrdias/fil` repository and the `release.yml` workflow. The publish job runs in the `npm` GitHub environment, which GitHub creates on the first run. Naming `npm` as the trusted publisher's optional environment limits publishing to that job, and the environment's protection rules can later require a reviewer or the `main` branch. npm configures it only for a package that exists, so publish each package once by hand before its first release. Pull requests that `GITHUB_TOKEN` opens do not trigger CI, so set a `RELEASE_PLEASE_TOKEN` secret with a token that can open pull requests to run CI on the release pull request.
+The workflow publishes through [npm trusted publishing](https://docs.npmjs.com/trusted-publishers), so the repository holds no npm token. `@hugomrdias/fil` needs a trusted publisher on npmjs.com for the `hugomrdias/fil` repository and the `release.yml` workflow. The publish job runs in the `npm` GitHub environment, which GitHub creates on the first run. Naming `npm` as the trusted publisher's optional environment limits publishing to that job, and the environment's protection rules can later require a reviewer or the `main` branch. npm configures it only for a package that exists, so publish each package once by hand before its first release. Pull requests that `GITHUB_TOKEN` opens do not trigger CI, so set a `RELEASE_PLEASE_TOKEN` secret with a token that can open pull requests to run CI on the release pull request.

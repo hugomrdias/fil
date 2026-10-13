@@ -5,7 +5,7 @@
  * Also copies the agent skills from the fil plugin into `skills/`, which
  * `fil skills install` reads.
  *
- * @see ../../../docs/agent-cli/guidelines.md#startup-performance
+ * @see https://github.com/hugomrdias/agents/blob/main/docs/agent-cli/guidelines.md#startup-performance
  */
 import { cp, rm } from 'node:fs/promises'
 import { build } from 'esbuild'

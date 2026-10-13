@@ -14,7 +14,7 @@
  *   as those from `.claude/skills` to `.agents/skills`, are fine.
  *
  * @see https://github.com/vercel-labs/skills
- * @see ../packages/vite-plugin-agent-skills/README.md
+ * @see https://github.com/hugomrdias/agents/blob/main/packages/vite-plugin-agent-skills/README.md
  */
 import { readdir, readFile } from 'node:fs/promises'
 import { publishSkills } from '@hugomrdias/vite-plugin-agent-skills'

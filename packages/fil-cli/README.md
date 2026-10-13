@@ -2,7 +2,7 @@
 
 `fil` is a prototype command-line interface for Filecoin. It stores a file or a folder as one copy on one Curio provider and returns retrieval URLs on [fil-api](../../apps/fil-api/README.md#retrieval). It runs on the calibration network unless you choose mainnet.
 
-`fil` calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly. It uses [clipact](../clipact/README.md) for the agent output contract and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil/interface-research.md) and the [CLI guidelines for agents](../../docs/agent-cli/guidelines.md). The [architecture](../../docs/fil/architecture.md) describes the modules and flows.
+`fil` calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly. It uses [clipact](https://github.com/hugomrdias/agents/blob/main/packages/clipact/README.md) for the agent output contract and [iso-conf](https://github.com/hugomrdias/iso-repo/tree/main/packages/iso-conf) for configuration. The design follows the [CLI interface research](../../docs/fil/interface-research.md) and the [CLI guidelines for agents](https://github.com/hugomrdias/agents/blob/main/docs/agent-cli/guidelines.md). The [architecture](../../docs/fil/architecture.md) describes the modules and flows.
 
 Releases publish to npm as [`@hugomrdias/fil`](https://www.npmjs.com/package/@hugomrdias/fil). It needs Node.js 24 or newer. Install it, or run it without installing with `npx -y @hugomrdias/fil`:
 
@@ -100,7 +100,7 @@ Ctrl+C, SIGTERM, or SIGHUP stops the work at the next step. `fil` returns an `in
 
 ## Output and errors
 
-`fil` follows the [clipact](../clipact/README.md) output contract. It uses machine mode when you pass `--json`, set `FIL_OUTPUT=json`, run it from a detected agent, or redirect stdout away from a terminal. In machine mode, it writes one JSON object to stdout, with `data` on success or `error` on failure, then optional `next` steps. The exit code is `0` when the result has `data` and `1` when it has `error`. Diagnostics and progress go to stderr in every mode.
+`fil` follows the [clipact](https://github.com/hugomrdias/agents/blob/main/packages/clipact/README.md) output contract. It uses machine mode when you pass `--json`, set `FIL_OUTPUT=json`, run it from a detected agent, or redirect stdout away from a terminal. In machine mode, it writes one JSON object to stdout, with `data` on success or `error` on failure, then optional `next` steps. The exit code is `0` when the result has `data` and `1` when it has `error`. Diagnostics and progress go to stderr in every mode.
 
 | Command | Prints |
 | --- | --- |
@@ -119,7 +119,7 @@ Ctrl+C, SIGTERM, or SIGHUP stops the work at the next step. `fil` returns an `in
 | `operation_failed`, `commit_rejected`, `removal_reverted`, `source_changed`, `staging_missing`, `operation_running` | A put or delete stopped. Follow the `next` steps |
 | `verification_failed` | Retrieved bytes or blocks do not match their CIDs |
 | `unsafe_path` | A retrieved archive tried to write outside the output directory |
-| `invalid_input`, `confirmation_required`, `interrupted`, `internal_error`, `service_unavailable`, `timeout` | Built into clipact. See [clipact errors](../clipact/README.md#errors) |
+| `invalid_input`, `confirmation_required`, `interrupted`, `internal_error`, `service_unavailable`, `timeout` | Built into clipact. See [clipact errors](https://github.com/hugomrdias/agents/blob/main/packages/clipact/README.md#errors) |
 
 ## Configuration and state
 

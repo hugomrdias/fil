@@ -35,7 +35,7 @@
     "@filoz/synapse-core": "^0.10.1",
     "@ipld/car": "^5.4.7",
     "@types/node": "catalog:",
-    "clipact": "workspace:*",
+    "clipact": "0.4.0",
     "env-paths": "^4.0.0",
     "esbuild": "0.28.2",
     "ipfs-unixfs-exporter": "^16.2.3",

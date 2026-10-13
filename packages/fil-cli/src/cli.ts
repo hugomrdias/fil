@@ -8,7 +8,7 @@ import { errors } from './errors.ts'
  * clipact, so `--help`, `--version`, and `schema` never load an SDK; each
  * handler is imported when its command runs.
  *
- * @see ../../../docs/agent-cli/framework-design.md
+ * @see https://github.com/hugomrdias/agents/blob/main/docs/agent-cli/framework-design.md
  * @see ../../../docs/fil/interface-research.md
  */
 export const cli = defineCli({

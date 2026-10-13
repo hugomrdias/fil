@@ -36,7 +36,7 @@ export function firstLine(error: Error): string {
  * first, so they never reach this hook. Loaded only when a handler throws
  * something other than a `CliError`.
  *
- * @see ../../../docs/agent-cli/framework-design.md#output-and-errors
+ * @see https://github.com/hugomrdias/agents/blob/main/docs/agent-cli/framework-design.md#output-and-errors
  */
 export default function mapError(error: unknown): CliError | undefined {
   for (const cause of causes(error)) {

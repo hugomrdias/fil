@@ -11,7 +11,7 @@ This document describes how the `fil` prototype in [`packages/fil-cli`](../../pa
 - **synapse-core only.** The CLI calls [synapse-core](https://github.com/FilOzone/synapse-sdk/tree/master/packages/synapse-core) directly and does not use synapse-sdk.
 - **Delegated signing.** A session key signs uploads and removals. The wallet owner approves the key on the [fil-app setup page](../../apps/fil-app/README.md#setup-links), and the owner's wallet pays for storage.
 - **Recoverable operations.** `fil` saves each `put` and `delete` as an operation in SQLite before it changes anything outside the machine. `fil operations resume` never commits an interrupted operation twice.
-- **Machine contract.** [clipact](../../packages/clipact/README.md) implements the [CLI guidelines for agents](../agent-cli/guidelines.md). It gives `fil` one JSON result on stdout, exit codes `0` and `1`, and errors with `retryable` and `next` steps marked `by: "agent"` or `by: "user"`. It also provides an offline `schema` command, confirmation prompts, signal handling, and lazily loaded handlers.
+- **Machine contract.** [clipact](https://github.com/hugomrdias/agents/blob/main/packages/clipact/README.md) implements the [CLI guidelines for agents](https://github.com/hugomrdias/agents/blob/main/docs/agent-cli/guidelines.md). It gives `fil` one JSON result on stdout, exit codes `0` and `1`, and errors with `retryable` and `next` steps marked `by: "agent"` or `by: "user"`. It also provides an offline `schema` command, confirmation prompts, signal handling, and lazily loaded handlers.
 
 ```mermaid
 flowchart LR

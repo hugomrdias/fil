@@ -20,13 +20,8 @@
     { "type": "build", "section": "Build System", "hidden": true },
     { "type": "ci", "section": "Continuous Integration", "hidden": true }
   ],
-  "plugins": ["node-workspace"],
   "packages": {
-    "packages/clipact": { "component": "clipact" },
     "packages/fil-cli": { "component": "fil-cli" },
-    "packages/vite-plugin-agent-skills": {
-      "component": "vite-plugin-agent-skills"
-    },
     "apps/fil-api": { "component": "fil-api" },
     "apps/fil-app": { "component": "fil-app" },
     "plugins/fil": {

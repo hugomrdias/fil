@@ -1,7 +1,6 @@
 packages:
   - 'apps/*'
   - 'packages/*'
-  - 'examples/*'
 
 allowBuilds:
   '@biomejs/biome': true
@@ -15,3 +14,4 @@ catalog:
 minimumReleaseAgeExclude:
   - iso-conf@0.4.2
   - '@filoz/synapse-core@0.10.1'
+  - clipact@0.4.0
