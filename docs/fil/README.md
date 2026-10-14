@@ -68,6 +68,7 @@ Each fact has one owner, and the others link to it. The skill owns the agent's w
 | --- | --- |
 | [fil architecture](architecture.md) | How the CLI works: modules, login, put, get, delete, local state, recovery, and how the CLI differs from the research |
 | [fil interface research](interface-research.md) | The historical design research from 2026-09-28 that came before the CLI. The [differences table](architecture.md#differences-from-the-research-design) lists where the CLI differs from it. |
+| [MCP domains](mcp-domains.md) | The plan to serve the MCP server from its own hostname, on `hugomrdias.dev` or on a domain whose DNS another provider manages |
 | [fil-api README](../../apps/fil-api/README.md) | Routes, retrieval redirects, MCP tools, deploys, and limits |
 | [fil-app README](../../apps/fil-app/README.md) | The explorer, the dashboard, the stack, and deploys |
 | [hooks-synapse README](../../apps/fil-app/src/hooks-synapse/README.md) | React hooks that synapse-react lacks, and the synapse-core and synapse-react bugs found while writing them |
@@ -154,6 +155,7 @@ Each fact has one owner, and the others link to it. The skill owns the agent's w
 - **CLI keys.** Store the session key in the OS keychain. Revoke the key on chain from `logout`.
 - **CLI cancellation.** Pass the abort signal to viem once its actions and `fallback` transport accept one. Then remove `withSignal()` and `abortable()` ([#67](https://github.com/hugomrdias/fil/issues/67)).
 - **CLI state.** Track a removal until the provider deletes the piece. Check every file of a folder in `inspect --check`.
+- **MCP domain.** Serve only the MCP server on its own hostname, as [MCP domains](mcp-domains.md) plans, once the domain is decided.
 - **MCP servers.** Review the [foc-observer](https://github.com/FilOzone/foc-observer) MCP server. Merge its tools into the fil-api MCP server.
 - **Indexer.** Index `data_sets(payer)` in the early-repair schema ([#13](https://github.com/hugomrdias/fil/issues/13)). Consider moving the databases near Frankfurt, where Hyperdrive pools their connections, to cut each query from about 30 ms to an estimated 5–10 ms ([placement](../../apps/fil-api/README.md#placement)).
 - **Upstream.** Move `hooks-synapse` into synapse-react. Report the synapse-core and synapse-react bugs listed in its README.
