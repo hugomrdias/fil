@@ -20,7 +20,7 @@
     "@hono/zod-openapi": "1.6.3",
     "@modelcontextprotocol/sdk": "1.31.0",
     "@scalar/hono-api-reference": "0.12.6",
-    "hono": "4.13.12",
+    "hono": "4.13.16",
     "multiformats": "14.0.5",
     "postgres": "3.4.9",
     "viem": "2.57.2",
